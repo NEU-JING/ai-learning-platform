@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>章节内容 - AI学习平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Highlight.js -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <!-- Marked.js -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <a href="index.html" class="navbar-brand">
+            <div class="navbar-logo">AI</div>
+            <span>AI学习平台</span>
+        </a>
+        <ul class="navbar-nav">
+            <li><a href="index.html">课程</a></li>
+            <li><a href="#">学习路径</a></li>
+            <li><a href="#">社区</a></li>
+        </ul>
+        <div class="navbar-right">
+            <div data-guest>
+                <a href="login.html" class="btn btn-secondary btn-sm">登录</a>
+                <a href="register.html" class="btn btn-primary btn-sm">注册</a>
+            </div>
+            <div data-auth class="user-menu" style="display: none;">
+                <div class="user-menu-trigger">
+                    <div class="user-avatar"></div>
+                    <span class="user-name"></span>
+                    <span>▼</span>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="#" class="dropdown-item">个人中心</a>
+                    <a href="#" class="dropdown-item">我的课程</a>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item" onclick="auth.logout(); return false;">退出登录</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 课程布局 -->
+    <div class="course-layout">
+        <!-- 侧边栏 -->
+        <aside class="sidebar" id="sidebar">
+            <div class="loading" style="padding: 2rem;">
+                <div class="spinner"></div>
+            </div>
+        </aside>
+
+        <!-- 内容区 -->
+        <main class="content-area" id="content">
+            <div class="loading" style="padding: 3rem;">
+                <div class="spinner"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 脚本 -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // 获取参数
+        const chapterId = app.getUrlParam('id');
+        const courseId = app.getUrlParam('course_id');
+        
+        if (!chapterId) {
+            window.location.href = 'index.html';
+        }
+        
+        let currentChapter = null;
+        let courseData = null;
+        
+        // 加载章节内容
+        async function loadChapter() {
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+            
+            try {
+                // 并行加载章节和课程信息
+                const [chapter, course] = await Promise.all([
+                    api.chapters.get(chapterId),
+                    courseId ? api.courses.get(courseId) : Promise.resolve(null)
+                ]);
+                
+                currentChapter = chapter;
+                courseData = course;
+                
+                // 更新页面标题
+                app.setTitle(chapter.title);
+                
+                // 渲染侧边栏
+                renderSidebar(course, chapter);
+                
+                // 渲染章节内容
+                renderChapterContent(chapter);
+                
+            } catch (error) {
+                sidebar.innerHTML = '';
+                app.showError(content, error.message || '章节加载失败');
+            }
+        }
+        
+        // 渲染侧边栏
+        function renderSidebar(course, currentChapter) {
+            const sidebar = document.getElementById('sidebar');
+            
+            if (!course) {
+                sidebar.innerHTML = `
+                    <div class="sidebar-header">
+                        <h2>章节导航</h2>
+                    </div>
+                `;
+                return;
+            }
+            
+            const chapters = course.chapters || [];
+            const currentIndex = chapters.findIndex(ch => ch.id == currentChapter.id);
+            
+            sidebar.innerHTML = `
+                <div class="sidebar-header">
+                    <a href="course.html?id=${course.id}" style="color: var(--primary-color); text-decoration: none; font-size: 0.875rem;">
+                        ← 返回课程
+                    </a>
+                    <h2 style="margin-top: 0.5rem;">${escapeHtml(course.title)}</h2>
+                </div>
+                <ul class="chapter-list">
+                    ${chapters.map((chapter, index) => `
+                        <li class="chapter-item">
+                            <a href="chapter.html?id=${chapter.id}&course_id=${course.id}" 
+                               class="chapter-link ${chapter.id == currentChapter.id ? 'active' : ''}">
+                                <span class="chapter-number">${index + 1}</span>
+                                <span class="chapter-title">${escapeHtml(chapter.title)}</span>
+                            </a>
+                        </li>
+                    `).join('')}
+                </ul>
+            `;
+        }
+        
+        // 渲染章节内容
+        function renderChapterContent(chapter) {
+            const content = document.getElementById('content');
+            const hasLab = chapter.has_code_lab || chapter.lab_enabled;
+            
+            content.innerHTML = `
+                <div style="margin-bottom: 1rem;">
+                    <span style="color: var(--text-secondary); font-size: 0.875rem;">
+                        第 ${chapter.order || 1} 章
+                    </span>
+                </div>
+                <h1 style="margin-bottom: 1.5rem;">${escapeHtml(chapter.title)}</h1>
+                
+                ${hasLab ? `
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.25rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3 style="margin: 0 0 0.25rem 0;">💻 代码实验室</h3>
+                            <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">动手实践，巩固所学知识</p>
+                        </div>
+                        <a href="lab.html?chapter_id=${chapter.id}&course_id=${courseId}" class="btn btn-primary" style="background: white; color: var(--primary-color);">
+                            进入实验
+                        </a>
+                    </div>
+                ` : ''}
+                
+                <div class="markdown-content">
+                    ${app.renderMarkdown(chapter.content || '暂无内容')}
+                </div>
+                
+                <!-- 章节导航 -->
+                <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between;">
+                    ${renderPrevNextNav()}
+                </div>
+            `;
+            
+            // 高亮代码
+            if (typeof hljs !== 'undefined') {
+                content.querySelectorAll('pre code').forEach((block) => {
+                    hljs.highlightElement(block);
+                });
+            }
+        }
+        
+        // 渲染上一页/下一页导航
+        function renderPrevNextNav() {
+            if (!courseData || !currentChapter) return '';
+            
+            const chapters = courseData.chapters || [];
+            const currentIndex = chapters.findIndex(ch => ch.id == currentChapter.id);
+            
+            const prevChapter = currentIndex > 0 ? chapters[currentIndex - 1] : null;
+            const nextChapter = currentIndex < chapters.length - 1 ? chapters[currentIndex + 1] : null;
+            
+            return `
+                <div>
+                    ${prevChapter ? `
+                        <a href="chapter.html?id=${prevChapter.id}&course_id=${courseId}" 
+                           style="color: var(--text-secondary); text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>←</span>
+                            <span>上一章: ${escapeHtml(prevChapter.title)}</span>
+                        </a>
+                    ` : '<span></span>'}
+                </div>
+                <div>
+                    ${nextChapter ? `
+                        <a href="chapter.html?id=${nextChapter.id}&course_id=${courseId}" 
+                           style="color: var(--primary-color); text-decoration: none; display: flex; align-items: center; gap: 0.5rem;">
+                            <span>下一章: ${escapeHtml(nextChapter.title)}</span>
+                            <span>→</span>
+                        </a>
+                    ` : '<span></span>'}
+                </div>
+            `;
+        }
+        
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadChapter();
+        });
+    </script>
+</body>
+</html>
