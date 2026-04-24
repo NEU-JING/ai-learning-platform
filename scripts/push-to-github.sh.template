@@ -1,0 +1,34 @@
+#!/bin/bash
+# GitHub 推送脚本 - 安全版本
+# 使用方法:
+#   1. 复制为 push-to-github.sh: cp push-to-github.sh.template push-to-github.sh
+#   2. 设置 GitHub Token: export GITHUB_TOKEN=your_token_here
+#   3. 运行: bash push-to-github.sh
+
+set -e
+
+# 从环境变量读取 Token
+TOKEN="${GITHUB_TOKEN}"
+
+if [ -z "$TOKEN" ]; then
+    echo "❌ 错误: 未设置 GITHUB_TOKEN 环境变量"
+    echo "请设置环境变量后重试:"
+    echo "  export GITHUB_TOKEN=ghp_xxxxxxxxxxxx"
+    exit 1
+fi
+
+echo "开始推送 GitHub 仓库..."
+
+# ai-learning-platform
+echo ""
+echo "📦 推送 ai-learning-platform..."
+cd "$(dirname "$0")/.."  # 切换到项目根目录
+git remote set-url origin "https://${TOKEN}@github.com/NEU-JING/ai-learning-platform.git"
+git config --local http.version HTTP/1.1
+git add -A
+git commit -m "Update: $(date '+%Y-%m-%d %H:%M:%S')" || echo "无需提交"
+git push -u origin main
+echo "✅ ai-learning-platform 推送成功"
+
+echo ""
+echo "✅ 所有仓库推送完成！"

@@ -1,307 +1,222 @@
-"""
-AI学习平台 - 主入口
-"""
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from typing import List, Optional
-import jwt
-from passlib.context import CryptContext
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, HTMLResponse
+from contextlib import asynccontextmanager
+import os
+import asyncio
 
 from app.core.config import settings
-from app.core.database import get_db, init_db
-from app.models import User, Course, Chapter, Lab, LearningProgress, LabSubmission
-from app.schemas import (
-    UserCreate, UserResponse, Token, 
-    CourseResponse, ChapterResponse, LabResponse,
-    CodeExecutionRequest, CodeExecutionResponse,
-    ProgressUpdate, ProgressResponse
-)
-from app.services.code_executor import execute_code_sandbox
-from app.services.course_service import get_all_courses, get_course_detail
-from app.data.courses_extended import COURSES_DATA
+from app.core.database import init_db
+from app.api.v1 import auth, courses, labs, progress, certificates, discussions
 
-# 创建应用
+
+def _format_size(size_bytes: int) -> str:
+    """格式化字节大小为人类可读格式"""
+    if size_bytes == 0:
+        return "0 B"
+    for unit in ['B', 'KB', 'MB', 'GB']:
+        if abs(size_bytes) < 1024:
+            return f"{size_bytes:.1f} {unit}"
+        size_bytes /= 1024
+    return f"{size_bytes:.1f} TB"
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 启动时初始化数据库
+    init_db()
+    print("✅ 数据库初始化完成")
+    
+    # 异步检查沙箱镜像（不阻塞启动）
+    async def check_sandbox_image():
+        """后台检查沙箱镜像，避免阻塞启动"""
+        try:
+            from app.services.code_executor import get_sandbox_image_info, ensure_sandbox_image
+            
+            print("🔍 正在检查 Docker 沙箱镜像...")
+            image_info = get_sandbox_image_info()
+            
+            if not image_info['docker_available']:
+                print("⚠️ Docker 不可用，代码执行将使用本地回退模式")
+                print("   如需使用 Docker 沙箱，请确保 Docker 服务已启动")
+                return
+            
+            if image_info['image_exists']:
+                print(f"✅ 沙箱镜像已存在: {image_info['image_tag']}")
+                print(f"   镜像版本: {image_info['image_details']['labels'].get('sandbox.version', 'unknown')}")
+                print(f"   镜像大小: {_format_size(image_info['image_details'].get('size', 0))}")
+            else:
+                print(f"⏳ 沙箱镜像未找到，正在后台构建: {image_info['image_tag']}")
+                # 异步构建镜像，不等待完成
+                asyncio.create_task(_build_sandbox_image_async())
+        except Exception as e:
+            print(f"⚠️ 沙箱镜像检查失败: {e}")
+            print("   代码执行将使用本地回退模式")
+    
+    async def _build_sandbox_image_async():
+        """后台异步构建沙箱镜像"""
+        try:
+            from app.services.code_executor import ensure_sandbox_image
+            
+            success = await ensure_sandbox_image()
+            if success:
+                print("✅ 沙箱镜像后台构建完成")
+            else:
+                print("⚠️ 沙箱镜像构建失败，代码执行将使用本地回退模式")
+        except Exception as e:
+            print(f"❌ 沙箱镜像后台构建异常: {e}")
+    
+    # 启动后台检查任务
+    asyncio.create_task(check_sandbox_image())
+    
+    yield
+    # 关闭时的清理
+    print("👋 应用关闭")
+
+
 app = FastAPI(
     title=settings.APP_NAME,
+    description="AI学习平台 - 从入门到AI团队Leader",
     version=settings.VERSION,
-    description="AI学习平台API - 从入门到AI团队Leader"
+    lifespan=lifespan
 )
 
-# CORS配置
+# CORS配置 - 从配置文件中读取
+# 开发环境: 允许localhost:3000
+# 生产环境: 通过环境变量CORS_ORIGINS配置，例如: "https://example.com,https://app.example.com"
+cors_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 生产环境应该限制域名
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_origins=cors_origins,
+    allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID"],
+    max_age=600,  # 预检请求缓存10分钟
 )
 
-# 密码加密
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+# 静态文件服务配置
+# 生产环境: 前端文件挂载到容器中，由后端同时提供API和静态文件服务
+STATIC_DIR = os.getenv("STATIC_DIR", "../frontend")
+SERVE_STATIC = os.getenv("SERVE_STATIC", "false").lower() == "true"
 
-# 启动事件
-@app.on_event("startup")
-async def startup_event():
-    # 初始化数据库
-    init_db()
-    # 初始化课程数据
-    init_courses_data()
+if SERVE_STATIC and os.path.exists(STATIC_DIR):
+    # 挂载静态文件目录
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    print(f"✅ 静态文件服务已启用: {STATIC_DIR}")
 
-def init_courses_data():
-    """初始化内置课程数据"""
-    from app.core.database import SessionLocal
-    db = SessionLocal()
-    try:
-        # 检查是否已有课程
-        if db.query(Course).first():
-            return
-        
-        for course_data in COURSES_DATA:
-            course = Course(
-                title=course_data["title"],
-                description=course_data["description"],
-                level=course_data["level"],
-                category=course_data["category"],
-                duration_hours=course_data["duration_hours"],
-                order_index=course_data["order_index"],
-                is_published=True
-            )
-            db.add(course)
-            db.flush()  # 获取course.id
-            
-            # 添加章节
-            for chapter_data in course_data.get("chapters", []):
-                chapter = Chapter(
-                    course_id=course.id,
-                    title=chapter_data["title"],
-                    content=chapter_data["content"],
-                    chapter_type=chapter_data.get("chapter_type", "text"),
-                    duration_minutes=chapter_data.get("duration_minutes", 60),
-                    order_index=chapter_data.get("order_index", 0)
-                )
-                db.add(chapter)
-                db.flush()
-                
-                # 添加实验（如果有）
-                if "lab" in chapter_data:
-                    lab_data = chapter_data["lab"]
-                    lab = Lab(
-                        chapter_id=chapter.id,
-                        title=lab_data["title"],
-                        description=lab_data.get("description", ""),
-                        starter_code=lab_data.get("starter_code", ""),
-                        solution_code=lab_data.get("solution_code", ""),
-                        test_cases=lab_data.get("test_cases", []),
-                        hints=lab_data.get("hints", [])
-                    )
-                    db.add(lab)
-        
-        db.commit()
-        print("✅ 课程数据初始化完成")
-    except Exception as e:
-        print(f"❌ 课程数据初始化失败: {e}")
-        db.rollback()
-    finally:
-        db.close()
 
-# 认证相关函数
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+# 注册API路由
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
+app.include_router(courses.router, prefix="/api/v1/courses", tags=["课程"])
+app.include_router(labs.router, prefix="/api/v1/labs", tags=["实验"])
+app.include_router(progress.router, prefix="/api/v1/progress", tags=["学习进度"])
+app.include_router(certificates.router, prefix="/api/v1/certificates", tags=["证书"])
+app.include_router(discussions.router, prefix="/api/v1", tags=["讨论区"])
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
-
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="无效的认证凭证",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except jwt.PyJWTError:
-        raise credentials_exception
-    
-    user = db.query(User).filter(User.email == email).first()
-    if user is None:
-        raise credentials_exception
-    return user
-
-# ========== API路由 ==========
 
 @app.get("/")
-async def root():
+def root():
+    """API根路径 - 返回应用信息"""
     return {
         "name": settings.APP_NAME,
         "version": settings.VERSION,
-        "message": "欢迎使用AI学习平台！"
+        "docs": "/docs",
+        "redoc": "/redoc",
+        "health": "/health"
     }
 
-# 用户认证
-@app.post("/api/auth/register", response_model=UserResponse)
-async def register(user: UserCreate, db: Session = Depends(get_db)):
-    # 检查邮箱是否已存在
-    if db.query(User).filter(User.email == user.email).first():
-        raise HTTPException(status_code=400, detail="邮箱已注册")
-    if db.query(User).filter(User.username == user.username).first():
-        raise HTTPException(status_code=400, detail="用户名已存在")
-    
-    # 创建用户
-    db_user = User(
-        email=user.email,
-        username=user.username,
-        password_hash=get_password_hash(user.password)
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
 
-@app.post("/api/auth/login", response_model=Token)
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == form_data.username).first()
-    if not user or not verify_password(form_data.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="邮箱或密码错误",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@app.get("/api/auth/me", response_model=UserResponse)
-async def get_me(current_user: User = Depends(get_current_user)):
-    return current_user
-
-# 课程相关
-@app.get("/api/courses", response_model=List[CourseResponse])
-async def list_courses(db: Session = Depends(get_db)):
-    """获取所有已发布课程"""
-    courses = db.query(Course).filter(Course.is_published == True).order_by(Course.order_index).all()
-    return courses
-
-@app.get("/api/courses/{course_id}", response_model=CourseResponse)
-async def get_course(course_id: int, db: Session = Depends(get_db)):
-    """获取课程详情"""
-    course = db.query(Course).filter(Course.id == course_id, Course.is_published == True).first()
-    if not course:
-        raise HTTPException(status_code=404, detail="课程不存在")
-    return course
-
-@app.get("/api/chapters/{chapter_id}", response_model=ChapterResponse)
-async def get_chapter(chapter_id: int, db: Session = Depends(get_db)):
-    """获取章节详情"""
-    chapter = db.query(Chapter).filter(Chapter.id == chapter_id).first()
-    if not chapter:
-        raise HTTPException(status_code=404, detail="章节不存在")
-    return chapter
-
-# 在线代码执行
-@app.post("/api/code/execute", response_model=CodeExecutionResponse)
-async def execute_code(
-    request: CodeExecutionRequest,
-    current_user: User = Depends(get_current_user)
-):
-    """执行Python代码"""
-    result = await execute_code_sandbox(request.code, request.timeout)
-    return result
-
-# 实验提交
-@app.post("/api/labs/{lab_id}/submit")
-async def submit_lab(
-    lab_id: int,
-    code: str,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """提交实验代码"""
-    lab = db.query(Lab).filter(Lab.id == lab_id).first()
-    if not lab:
-        raise HTTPException(status_code=404, detail="实验不存在")
-    
-    # 执行代码
-    result = await execute_code_sandbox(code, lab.time_limit_seconds)
-    
-    # 保存提交记录
-    submission = LabSubmission(
-        user_id=current_user.id,
-        lab_id=lab_id,
-        code=code,
-        output=result.output,
-        status="success" if result.success else "failed",
-        execution_time_ms=result.execution_time_ms,
-        error_message=result.error
-    )
-    db.add(submission)
-    db.commit()
-    
+@app.get("/health")
+def health_check():
+    """健康检查端点 - 用于负载均衡器和监控"""
     return {
-        "success": result.success,
-        "output": result.output,
-        "error": result.error,
-        "execution_time_ms": result.execution_time_ms,
-        "submission_id": submission.id
+        "status": "healthy",
+        "version": settings.VERSION,
+        "environment": os.getenv("ENVIRONMENT", "development")
     }
 
-# 学习进度
-@app.get("/api/progress", response_model=List[ProgressResponse])
-async def get_progress(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """获取用户学习进度"""
-    progress = db.query(LearningProgress).filter(
-        LearningProgress.user_id == current_user.id
-    ).all()
-    return progress
 
-@app.post("/api/progress/{chapter_id}")
-async def update_progress(
-    chapter_id: int,
-    update: ProgressUpdate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """更新学习进度"""
-    progress = db.query(LearningProgress).filter(
-        LearningProgress.user_id == current_user.id,
-        LearningProgress.chapter_id == chapter_id
-    ).first()
+# SPA路由回退处理
+# 捕获所有非API路径，返回spa.html用于前端路由处理
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def spa_fallback(request: Request, full_path: str):
+    """
+    SPA路由回退处理
     
-    if progress:
-        progress.status = update.status
-        if update.status == "completed":
-            progress.completed_at = datetime.utcnow()
-        progress.last_accessed_at = datetime.utcnow()
-    else:
-        progress = LearningProgress(
-            user_id=current_user.id,
-            chapter_id=chapter_id,
-            status=update.status
-        )
-        db.add(progress)
+    所有未匹配的静态路径都将返回spa.html，由前端路由处理。
+    排除的路径:
+    - /api/* - API路由
+    - /docs, /redoc, /openapi.json - API文档
+    - /static/* - 静态文件
+    """
+    # 排除API和文档路径
+    excluded_paths = [
+        "/api/",
+        "/docs",
+        "/redoc",
+        "/openapi.json",
+        "/static/",
+        "/health"
+    ]
     
-    db.commit()
-    return {"message": "进度更新成功"}
+    # 检查是否是排除路径
+    for excluded in excluded_paths:
+        if full_path.startswith(excluded.lstrip("/")) or full_path == excluded.lstrip("/"):
+            return HTMLResponse(content="Not Found", status_code=404)
+    
+    # 尝试返回具体的HTML文件
+    # 优先检查是否存在对应的页面文件
+    page_mapping = {
+        "": "index.html",
+        "index": "index.html",
+        "login": "login.html",
+        "register": "register.html",
+        "course": "course.html",
+        "chapter": "chapter.html",
+        "lab": "lab.html",
+        "courses": "index.html",  # 课程列表使用主页面
+        "dashboard": "index.html",
+        "profile": "index.html",
+        "certificates": "index.html",
+    }
+    
+    # 获取请求路径的第一部分
+    path_first = full_path.split("/")[0] if full_path else ""
+    
+    # 如果存在具体页面，返回对应页面
+    if path_first in page_mapping:
+        page_file = os.path.join(STATIC_DIR, page_mapping[path_first])
+        if os.path.exists(page_file):
+            return FileResponse(page_file)
+    
+    # 否则返回spa.html (SPA路由回退)
+    spa_file = os.path.join(STATIC_DIR, "spa.html")
+    if os.path.exists(spa_file):
+        return FileResponse(spa_file)
+    
+    # 如果连spa.html都没有，返回index.html
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    
+    # 最后的回退
+    return HTMLResponse(
+        content="""<!DOCTYPE html>
+<html>
+<head><title>AI Learning Platform</title></head>
+<body>
+    <h1>AI Learning Platform</h1>
+    <p>Frontend files not found. Please build the frontend or check STATIC_DIR configuration.</p>
+    <p>API Documentation: <a href="/docs">/docs</a></p>
+</body>
+</html>""",
+        status_code=200
+    )
+
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -14,9 +14,12 @@ from typing import Dict, List, Optional
 from pathlib import Path
 
 from app.core.code_security import check_code_security, get_security_report
+from app.core.config import settings
 
 # ========== 配置常量 ==========
-SANDBOX_IMAGE_NAME = "ai-learning-platform-sandbox"
+SANDBOX_IMAGE_NAME = settings.SANDBOX_IMAGE_NAME
+SANDBOX_IMAGE_VERSION = settings.SANDBOX_IMAGE_VERSION
+SANDBOX_IMAGE_TAG = f"{SANDBOX_IMAGE_NAME}:{SANDBOX_IMAGE_VERSION}"
 SANDBOX_CONTAINER_PREFIX = "sandbox-"
 DEFAULT_TIMEOUT = 30  # 默认30秒
 MAX_TIMEOUT = 300  # 最大300秒
@@ -62,34 +65,184 @@ def check_docker_available() -> bool:
         return False
 
 
-async def ensure_sandbox_image() -> bool:
-    """确保沙箱镜像存在"""
+# 镜像检查锁，防止并发构建
+_image_check_lock = asyncio.Lock()
+_image_checked = False
+_image_exists = False
+
+async def ensure_sandbox_image(force_rebuild: bool = False) -> bool:
+    """
+    确保沙箱镜像存在，支持版本管理
+    
+    Args:
+        force_rebuild: 是否强制重新构建镜像
+        
+    Returns:
+        bool: 镜像是否可用
+    """
+    global _image_checked, _image_exists
+    
     if not DOCKER_AVAILABLE or docker is None:
+        print("⚠️ Docker不可用，将使用本地回退模式")
         return False
+    
+    async with _image_check_lock:
+        # 如果已经检查过且镜像存在，直接返回（除非强制重建）
+        if _image_checked and _image_exists and not force_rebuild:
+            return True
+        
+        try:
+            client = docker.from_env()
+            
+            # 检查带版本标签的镜像
+            try:
+                image = client.images.get(SANDBOX_IMAGE_TAG)
+                # 验证镜像版本标签
+                labels = image.labels or {}
+                image_version = labels.get('sandbox.version', 'unknown')
+                
+                if image_version == SANDBOX_IMAGE_VERSION:
+                    print(f"✅ 沙箱镜像 {SANDBOX_IMAGE_TAG} 已存在且版本匹配")
+                    _image_checked = True
+                    _image_exists = True
+                    return True
+                else:
+                    print(f"⚠️ 镜像版本不匹配 (当前: {image_version}, 期望: {SANDBOX_IMAGE_VERSION})")
+                    # 继续执行重新构建
+            except docker.errors.ImageNotFound:
+                print(f"ℹ️ 沙箱镜像 {SANDBOX_IMAGE_TAG} 未找到，需要构建")
+            
+            # 检查是否存在旧版本镜像（带latest标签的）
+            needs_rebuild = force_rebuild
+            if not needs_rebuild:
+                try:
+                    old_image = client.images.get(SANDBOX_IMAGE_NAME)
+                    old_labels = old_image.labels or {}
+                    old_version = old_labels.get('sandbox.version', 'unknown')
+                    if old_version != SANDBOX_IMAGE_VERSION:
+                        print(f"⚠️ 检测到旧版本镜像 (v{old_version})，将重新构建 v{SANDBOX_IMAGE_VERSION}")
+                        needs_rebuild = True
+                except docker.errors.ImageNotFound:
+                    needs_rebuild = True
+            
+            # 构建镜像
+            sandbox_dir = Path(__file__).parent.parent.parent.parent.parent / "sandbox"
+            if not sandbox_dir.exists():
+                print(f"❌ 沙箱目录不存在: {sandbox_dir}")
+                _image_checked = True
+                _image_exists = False
+                return False
+            
+            if not (sandbox_dir / "Dockerfile").exists():
+                print(f"❌ Dockerfile 不存在: {sandbox_dir / 'Dockerfile'}")
+                _image_checked = True
+                _image_exists = False
+                return False
+            
+            print(f"🔨 正在构建沙箱镜像 {SANDBOX_IMAGE_TAG}...")
+            print(f"   构建目录: {sandbox_dir}")
+            print(f"   版本: {SANDBOX_IMAGE_VERSION}")
+            
+            try:
+                # 构建镜像
+                image, build_logs = client.images.build(
+                    path=str(sandbox_dir),
+                    tag=SANDBOX_IMAGE_TAG,
+                    buildargs={'SANDBOX_VERSION': SANDBOX_IMAGE_VERSION},
+                    rm=True,
+                    forcerm=True,
+                    labels={
+                        'sandbox.version': SANDBOX_IMAGE_VERSION,
+                        'sandbox.name': 'ai-learning-platform',
+                        'sandbox.built_at': str(int(time.time()))
+                    }
+                )
+                
+                # 同时打 latest 标签便于兼容
+                image.tag(SANDBOX_IMAGE_NAME, 'latest')
+                
+                print(f"✅ 沙箱镜像 {SANDBOX_IMAGE_TAG} 构建完成")
+                print(f"   镜像ID: {image.id[:12]}")
+                
+                _image_checked = True
+                _image_exists = True
+                return True
+                
+            except docker.errors.BuildError as e:
+                print(f"❌ 镜像构建失败:")
+                for log in e.build_log:
+                    if 'stream' in log:
+                        print(f"   {log['stream'].strip()}")
+                    if 'error' in log:
+                        print(f"   ERROR: {log['error']}")
+                _image_checked = True
+                _image_exists = False
+                return False
+                
+        except Exception as e:
+            print(f"❌ 检查/构建沙箱镜像失败: {e}")
+            _image_checked = True
+            _image_exists = False
+            return False
+
+
+def get_sandbox_image_info() -> dict:
+    """
+    获取当前沙箱镜像信息
+    
+    Returns:
+        dict: 包含镜像状态、版本等信息的字典
+    """
+    info = {
+        'image_name': SANDBOX_IMAGE_NAME,
+        'image_version': SANDBOX_IMAGE_VERSION,
+        'image_tag': SANDBOX_IMAGE_TAG,
+        'docker_available': check_docker_available(),
+        'image_exists': False,
+        'image_details': None
+    }
+    
+    if not DOCKER_AVAILABLE or docker is None:
+        return info
+    
     try:
         client = docker.from_env()
         
+        # 检查带版本标签的镜像
         try:
-            client.images.get(SANDBOX_IMAGE_NAME)
-            return True
+            image = client.images.get(SANDBOX_IMAGE_TAG)
+            info['image_exists'] = True
+            info['image_details'] = {
+                'id': image.id,
+                'short_id': image.short_id,
+                'tags': image.tags,
+                'created': image.attrs.get('Created'),
+                'size': image.attrs.get('Size', 0),
+                'labels': image.labels
+            }
         except docker.errors.ImageNotFound:
-            # 尝试构建镜像
-            sandbox_dir = Path(__file__).parent.parent.parent.parent.parent / "sandbox"
-            if sandbox_dir.exists():
-                print(f"正在构建沙箱镜像 {SANDBOX_IMAGE_NAME}...")
-                client.images.build(
-                    path=str(sandbox_dir),
-                    tag=SANDBOX_IMAGE_NAME,
-                    rm=True
-                )
-                print(f"沙箱镜像 {SANDBOX_IMAGE_NAME} 构建完成")
-                return True
-            else:
-                print(f"沙箱目录不存在: {sandbox_dir}")
-                return False
+            pass
+        
+        # 也检查 latest 标签
+        try:
+            latest_image = client.images.get(f"{SANDBOX_IMAGE_NAME}:latest")
+            if not info['image_exists']:
+                info['image_exists'] = True
+                info['image_details'] = {
+                    'id': latest_image.id,
+                    'short_id': latest_image.short_id,
+                    'tags': latest_image.tags,
+                    'created': latest_image.attrs.get('Created'),
+                    'size': latest_image.attrs.get('Size', 0),
+                    'labels': latest_image.labels
+                }
+        except docker.errors.ImageNotFound:
+            pass
+            
     except Exception as e:
-        print(f"检查/构建沙箱镜像失败: {e}")
-        return False
+        info['error'] = str(e)
+    
+    return info
 
 
 def validate_code(code: str, timeout: int) -> tuple[bool, str]:

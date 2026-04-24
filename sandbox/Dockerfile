@@ -1,5 +1,8 @@
 FROM python:3.11-slim
 
+# 构建参数
+ARG SANDBOX_VERSION=1.0.0
+
 # 安装必要的系统包
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
@@ -7,6 +10,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
+
+# 设置镜像标签
+LABEL sandbox.version="${SANDBOX_VERSION}" \
+      sandbox.name="ai-learning-platform" \
+      maintainer="AI Learning Platform Team" \
+      description="Secure sandbox environment for executing Python code"
 
 # 升级pip并安装常用AI库（使用清华镜像加速）
 RUN pip install --no-cache-dir --upgrade pip && \

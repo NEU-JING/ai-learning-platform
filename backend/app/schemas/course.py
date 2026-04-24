@@ -134,3 +134,20 @@ class LabSubmissionResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+# ========== 代码执行相关 ==========
+
+class CodeExecutionRequest(BaseModel):
+    """代码执行请求"""
+    code: str
+    language: str = "python"
+    timeout: Optional[int] = 30
+
+
+class CodeExecutionResponse(BaseModel):
+    """代码执行响应"""
+    success: bool
+    output: str
+    error: Optional[str] = None
+    execution_time_ms: int

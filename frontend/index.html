@@ -2,130 +2,54 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="refresh" content="0; url=spa.html">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI学习平台</title>
-    <link rel="stylesheet" href="css/style.css">
-    <!-- Highlight.js -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+    <title>AI学习平台 - 从入门到AI团队Leader</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .loading-container {
+            text-align: center;
+        }
+        .loading-text {
+            font-size: 1.2rem;
+            margin-top: 20px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        a {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <!-- 导航栏 -->
-    <nav class="navbar">
-        <a href="index.html" class="navbar-brand">
-            <div class="navbar-logo">AI</div>
-            <span>AI学习平台</span>
-        </a>
-        <ul class="navbar-nav">
-            <li><a href="index.html" class="active">课程</a></li>
-            <li><a href="#">学习路径</a></li>
-            <li><a href="#">社区</a></li>
-        </ul>
-        <div class="navbar-right">
-            <div data-guest>
-                <a href="login.html" class="btn btn-secondary btn-sm">登录</a>
-                <a href="register.html" class="btn btn-primary btn-sm">注册</a>
-            </div>
-            <div data-auth class="user-menu" style="display: none;">
-                <div class="user-menu-trigger">
-                    <div class="user-avatar"></div>
-                    <span class="user-name"></span>
-                    <span>▼</span>
-                </div>
-                <div class="dropdown-menu">
-                    <a href="#" class="dropdown-item">个人中心</a>
-                    <a href="#" class="dropdown-item">我的课程</a>
-                    <div class="dropdown-divider"></div>
-                    <a href="#" class="dropdown-item" onclick="auth.logout(); return false;">退出登录</a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- 主内容 -->
-    <main class="main-container">
-        <div class="page-header">
-            <h1>探索课程</h1>
-            <p>选择适合你的AI学习课程，开启智能时代之旅</p>
-        </div>
-
-        <!-- 课程列表容器 -->
-        <div id="courses-container">
-            <div class="loading">
-                <div style="text-align: center;">
-                    <div class="spinner" style="margin: 0 auto 1rem;"></div>
-                    <p>正在加载课程...</p>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- 脚本 -->
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/app.js"></script>
+    <div class="loading-container">
+        <div class="spinner"></div>
+        <p class="loading-text">🚀 正在跳转到新版学习平台...</p>
+        <p>如果未自动跳转，请<a href="spa.html">点击这里</a></p>
+    </div>
     <script>
-        // 加载课程列表
-        async function loadCourses() {
-            const container = document.getElementById('courses-container');
-            
-            try {
-                const courses = await api.courses.list();
-                
-                if (!courses || courses.length === 0) {
-                    app.showEmpty(container, '暂无课程', '敬请期待更多优质课程');
-                    return;
-                }
-                
-                // 渲染课程卡片
-                container.innerHTML = `
-                    <div class="courses-grid">
-                        ${courses.map(course => `
-                            <div class="course-card" onclick="location.href='course.html?id=${course.id}'">
-                                <div class="course-card-header">
-                                    ${course.icon || '📚'}
-                                </div>
-                                <div class="course-card-body">
-                                    <h3>${escapeHtml(course.title)}</h3>
-                                    <p>${escapeHtml(course.description || '暂无描述')}</p>
-                                    <div class="course-meta">
-                                        <span class="difficulty-badge difficulty-${course.difficulty || 'beginner'}">
-                                            ${getDifficultyText(course.difficulty)}
-                                        </span>
-                                        <span>${course.chapter_count || 0} 章节</span>
-                                        <span>${course.duration || '0小时'}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-            } catch (error) {
-                app.showError(container, error.message || '课程加载失败', 'loadCourses');
-            }
-        }
-        
-        // HTML转义
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        // 获取难度文本
-        function getDifficultyText(level) {
-            const map = {
-                'beginner': '入门',
-                'intermediate': '进阶',
-                'advanced': '高级'
-            };
-            return map[level] || '入门';
-        }
-        
-        // 页面加载
-        document.addEventListener('DOMContentLoaded', () => {
-            loadCourses();
-        });
+        // 确保立即跳转
+        window.location.href = 'spa.html';
     </script>
 </body>
 </html>

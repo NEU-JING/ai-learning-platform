@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI学习平台 - 从入门到AI团队Leader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #718096;
+        }
+
+        .courses-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+
+        .course-card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+
+        .course-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+        }
+
+        .course-level {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        .level-beginner { background: #c6f6d5; color: #22543d; }
+        .level-intermediate { background: #feebc8; color: #744210; }
+        .level-advanced { background: #fed7d7; color: #742a2a; }
+        .level-expert { background: #e9d8fd; color: #553c9a; }
+
+        .course-title {
+            font-size: 1.4rem;
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .course-desc {
+            color: #718096;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .course-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #a0aec0;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: opacity 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .nav {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: #4a5568;
+            text-decoration: none;
+            margin-left: 25px;
+            font-weight: 500;
+        }
+
+        .nav-links a:hover {
+            color: #667eea;
+        }
+
+        .login-form {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 400px;
+            margin: 0 auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #app {
+            min-height: 100vh;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 60px;
+            color: white;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="loading">加载中...</div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+
+        // 路由管理
+        const router = {
+            current: 'home',
+            navigate(page) {
+                this.current = page;
+                render();
+            }
+        };
+
+        // 状态管理
+        const state = {
+            user: null,
+            courses: [],
+            currentCourse: null,
+            chapters: []
+        };
+
+        // API调用
+        async function api(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                },
+                ...options
+            });
+            return response.json();
+        }
+
+        // 页面渲染
+        function render() {
+            const app = document.getElementById('app');
+            
+            switch(router.current) {
+                case 'home':
+                    renderHome(app);
+                    break;
+                case 'courses':
+                    renderCourses(app);
+                    break;
+                case 'login':
+                    renderLogin(app);
+                    break;
+                case 'register':
+                    renderRegister(app);
+                    break;
+            }
+        }
+
+        function renderNav() {
+            return `
+                <div class="nav">
+                    <div style="font-weight: 700; font-size: 1.3rem; color: #667eea;">
+                        🤖 AI学习平台
+                    </div>
+                    <div class="nav-links">
+                        <a href="#" onclick="router.navigate('home')">首页</a>
+                        <a href="#" onclick="router.navigate('courses')">课程</a>
+                        ${state.user ? `
+                            <span style="color: #667eea;">${state.user.username}</span>
+                            <a href="#" onclick="logout()">退出</a>
+                        ` : `
+                            <a href="#" onclick="router.navigate('login')">登录</a>
+                            <a href="#" onclick="router.navigate('register')">注册</a>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderHome(container) {
+            container.innerHTML = `
+                ${renderNav()}
+                <div class="container">
+                    <header>
+                        <h1>🚀 从入门到AI团队Leader</h1>
+                        <p class="subtitle">系统化AI学习平台 · 在线实验环境 · 完整知识体系</p>
+                        <br>
+                        <button class="btn" onclick="router.navigate('courses')">开始学习</button>
+                    </header>
+
+                    <div class="courses-grid">
+                        <div class="course-card">
+                            <div class="course-level level-beginner">入门</div>
+                            <h3 class="course-title">Python for AI</h3>
+                            <p class="course-desc">为零基础学员设计的Python编程入门课程，涵盖基础语法、数据结构和常用库。</p>
+                            <div class="course-meta">
+                                <span>⏱️ 28小时</span>
+                                <span>📚 14章节</span>
+                            </div>
+                        </div>
+
+                        <div class="course-card">
+                            <div class="course-level level-intermediate">进阶</div>
+                            <h3 class="course-title">LangChain框架</h3>
+                            <p class="course-desc">深入学习LangChain框架，掌握Chain、Agent、Memory等核心概念。</p>
+                            <div class="course-meta">
+                                <span>⏱️ 42小时</span>
+                                <span>📚 21章节</span>
+                            </div>
+                        </div>
+
+                        <div class="course-card">
+                            <div class="course-level level-advanced">高级</div>
+                            <h3 class="course-title">AI Agent开发实战</h3>
+                            <p class="course-desc">通过实际项目掌握AI Agent开发，包括多Agent协作、RAG系统构建。</p>
+                            <div class="course-meta">
+                                <span>⏱️ 56小时</span>
+                                <span>📚 28章节</span>
+                            </div>
+                        </div>
+
+                        <div class="course-card">
+                            <div class="course-level level-expert">专家</div>
+                            <h3 class="course-title">AI团队领导力</h3>
+                            <p class="course-desc">培养AI团队Leadership能力，包括项目管理、技术决策、团队协作。</p>
+                            <div class="course-meta">
+                                <span>⏱️ 28小时</span>
+                                <span>📚 14章节</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function renderCourses(container) {
+            container.innerHTML = `
+                ${renderNav()}
+                <div class="container">
+                    <div style="background: white; padding: 30px; border-radius: 16px; margin-bottom: 30px;">
+                        <h2 style="color: #2d3748;">📚 全部课程</h2>
+                    </div>
+                    <div id="courses-list" class="courses-grid">
+                        <div class="loading">加载课程...</div>
+                    </div>
+                </div>
+            `;
+
+            try {
+                const courses = await api('/courses/');
+                state.courses = courses;
+                
+                const coursesList = document.getElementById('courses-list');
+                coursesList.innerHTML = courses.map(course => `
+                    <div class="course-card" onclick="viewCourse(${course.id})">
+                        <div class="course-level level-${course.level}">${getLevelText(course.level)}</div>
+                        <h3 class="course-title">${course.title}</h3>
+                        <p class="course-desc">${course.description}</p>
+                        <div class="course-meta">
+                            <span>⏱️ ${course.duration_hours}小时</span>
+                            <span>📚 ${course.chapter_count || 0}章节</span>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('courses-list').innerHTML = `
+                    <div style="color: #e53e3e; text-align: center; padding: 40px;">
+                        加载失败，请检查后端服务是否启动<br>
+                        <small>运行: cd backend && python app/main.py</small>
+                    </div>
+                `;
+            }
+        }
+
+        function getLevelText(level) {
+            const levels = {
+                'beginner': '入门',
+                'intermediate': '进阶',
+                'advanced': '高级',
+                'expert': '专家'
+            };
+            return levels[level] || level;
+        }
+
+        function renderLogin(container) {
+            container.innerHTML = `
+                ${renderNav()}
+                <div class="container" style="padding-top: 60px;">
+                    <div class="login-form">
+                        <h2 style="text-align: center; margin-bottom: 30px; color: #2d3748;">🔐 登录</h2>
+                        <form onsubmit="handleLogin(event)">
+                            <div class="form-group">
+                                <label>邮箱</label>
+                                <input type="email" name="email" required placeholder="your@email.com">
+                            </div>
+                            <div class="form-group">
+                                <label>密码</label>
+                                <input type="password" name="password" required placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="btn" style="width: 100%;">登录</button>
+                        </form>
+                        <p style="text-align: center; margin-top: 20px; color: #718096;">
+                            还没有账号？<a href="#" onclick="router.navigate('register')" style="color: #667eea;">立即注册</a>
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderRegister(container) {
+            container.innerHTML = `
+                ${renderNav()}
+                <div class="container" style="padding-top: 60px;">
+                    <div class="login-form">
+                        <h2 style="text-align: center; margin-bottom: 30px; color: #2d3748;">📝 注册</h2>
+                        <form onsubmit="handleRegister(event)">
+                            <div class="form-group">
+                                <label>用户名</label>
+                                <input type="text" name="username" required placeholder="yourname">
+                            </div>
+                            <div class="form-group">
+                                <label>邮箱</label>
+                                <input type="email" name="email" required placeholder="your@email.com">
+                            </div>
+                            <div class="form-group">
+                                <label>密码</label>
+                                <input type="password" name="password" required placeholder="••••••••">
+                            </div>
+                            <button type="submit" class="btn" style="width: 100%;">注册</button>
+                        </form>
+                        <p style="text-align: center; margin-top: 20px; color: #718096;">
+                            已有账号？<a href="#" onclick="router.navigate('login')" style="color: #667eea;">立即登录</a>
+                        </p>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                email: form.email.value,
+                password: form.password.value
+            };
+
+            try {
+                const result = await api('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                
+                if (result.access_token) {
+                    localStorage.setItem('token', result.access_token);
+                    state.user = { email: data.email };
+                    router.navigate('home');
+                } else {
+                    alert(result.detail || '登录失败');
+                }
+            } catch (err) {
+                alert('登录失败: ' + err.message);
+            }
+        }
+
+        async function handleRegister(e) {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                username: form.username.value,
+                email: form.email.value,
+                password: form.password.value
+            };
+
+            try {
+                const result = await api('/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                
+                if (result.id) {
+                    alert('注册成功，请登录');
+                    router.navigate('login');
+                } else {
+                    alert(result.detail || '注册失败');
+                }
+            } catch (err) {
+                alert('注册失败: ' + err.message);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            state.user = null;
+            router.navigate('home');
+        }
+
+        function viewCourse(courseId) {
+            alert('课程详情功能开发中...');
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            render();
+        });
+    </script>
+</body>
+</html>

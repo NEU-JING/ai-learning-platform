@@ -1202,7 +1202,166 @@ df['age'] = df['age'].astype(int)
 """,
                 "chapter_type": "code",
                 "duration_minutes": 120,
-                "order_index": 4
+                "order_index": 4,
+                "lab": {
+                    "title": "实验：CSV数据处理与编码处理",
+                    "description": "学习如何正确读取CSV文件，处理各种编码问题，包括UTF-8、GBK等常见编码",
+                    "starter_code": """import pandas as pd
+import os
+
+def read_csv_with_encoding(filepath):
+    """
+    读取CSV文件，自动检测并处理编码问题
+    需要处理的编码: utf-8, gbk, latin-1
+    
+    Args:
+        filepath: CSV文件路径
+    
+    Returns:
+        DataFrame对象
+    """
+    # TODO: 实现编码检测和读取
+    # 1. 尝试用utf-8读取
+    # 2. 如果失败，尝试gbk
+    # 3. 如果还失败，尝试latin-1
+    pass
+
+
+def process_csv_data(filepath):
+    """
+    完整的CSV处理流程
+    - 读取数据
+    - 显示基本信息
+    - 处理缺失值
+    - 保存处理后的数据
+    """
+    # TODO: 实现完整处理流程
+    pass
+
+
+# 测试代码
+if __name__ == "__main__":
+    # 创建测试数据
+    test_data = """姓名,年龄,城市,收入
+张三,25,北京,8000
+李四,30,上海,12000
+王五,35,广州,15000
+赵六,28,深圳,10000"""
+    
+    # 保存为不同编码的文件
+    with open('test_utf8.csv', 'w', encoding='utf-8') as f:
+        f.write(test_data)
+    
+    with open('test_gbk.csv', 'w', encoding='gbk') as f:
+        f.write(test_data)
+    
+    # TODO: 测试读取函数
+    # df = read_csv_with_encoding('test_utf8.csv')
+    # print(df)
+""",
+                    "solution_code": """import pandas as pd
+import os
+
+def read_csv_with_encoding(filepath):
+    """
+    读取CSV文件，自动检测并处理编码问题
+    需要处理的编码: utf-8, gbk, latin-1
+    """
+    encodings = ['utf-8', 'gbk', 'latin-1', 'utf-16']
+    
+    for encoding in encodings:
+        try:
+            df = pd.read_csv(filepath, encoding=encoding)
+            print(f"成功使用 {encoding} 编码读取文件")
+            return df
+        except UnicodeDecodeError:
+            continue
+        except Exception as e:
+            print(f"使用 {encoding} 失败: {e}")
+            continue
+    
+    raise ValueError(f"无法使用已知编码读取文件: {filepath}")
+
+
+def process_csv_data(filepath, output_path='processed.csv'):
+    """
+    完整的CSV处理流程
+    """
+    # 1. 读取数据
+    df = read_csv_with_encoding(filepath)
+    
+    # 2. 显示基本信息
+    print("=" * 50)
+    print("数据基本信息:")
+    print(f"行数: {len(df)}")
+    print(f"列数: {len(df.columns)}")
+    print(f"列名: {list(df.columns)}")
+    print("\\n数据类型:")
+    print(df.dtypes)
+    
+    # 3. 缺失值统计
+    print("\\n缺失值统计:")
+    print(df.isnull().sum())
+    
+    # 4. 处理缺失值（删除完全缺失的行）
+    before_count = len(df)
+    df = df.dropna(how='all')
+    after_count = len(df)
+    print(f"\\n删除完全缺失的行: {before_count - after_count} 行")
+    
+    # 5. 数值列的统计信息
+    print("\\n数值列统计:")
+    print(df.describe())
+    
+    # 6. 保存处理后的数据（统一使用utf-8-sig以兼容Excel）
+    df.to_csv(output_path, index=False, encoding='utf-8-sig')
+    print(f"\\n处理后的数据已保存: {output_path}")
+    
+    return df
+
+
+# 测试代码
+if __name__ == "__main__":
+    # 创建测试数据
+    test_data = """姓名,年龄,城市,收入
+张三,25,北京,8000
+李四,30,上海,12000
+王五,35,广州,15000
+赵六,28,深圳,10000"""
+    
+    # 保存为不同编码的文件
+    with open('test_utf8.csv', 'w', encoding='utf-8') as f:
+        f.write(test_data)
+    
+    with open('test_gbk.csv', 'w', encoding='gbk') as f:
+        f.write(test_data)
+    
+    # 测试读取函数
+    print("=== 测试UTF-8文件 ===")
+    df1 = read_csv_with_encoding('test_utf8.csv')
+    print(df1)
+    
+    print("\\n=== 测试GBK文件 ===")
+    df2 = read_csv_with_encoding('test_gbk.csv')
+    print(df2)
+    
+    # 测试完整处理流程
+    print("\\n=== 测试完整处理流程 ===")
+    df_processed = process_csv_data('test_utf8.csv', 'output.csv')
+""",
+                    "test_cases": [
+                        {"description": "能正确读取UTF-8编码的CSV", "expected": "DataFrame读取成功"},
+                        {"description": "能正确读取GBK编码的CSV", "expected": "DataFrame读取成功"},
+                        {"description": "处理后的数据保存为UTF-8-SIG格式", "expected": "文件可正常打开"},
+                        {"description": "显示正确的数据基本信息", "expected": "行列数正确"}
+                    ],
+                    "validation_rules": [
+                        {"type": "function_exists", "name": "read_csv_with_encoding"},
+                        {"type": "function_exists", "name": "process_csv_data"},
+                        {"type": "code_contains", "pattern": "encoding"},
+                        {"type": "code_contains", "pattern": "pd.read_csv"}
+                    ]
+                }
             },
             {
                 "title": "第5章：Pandas高级数据操作",
@@ -1327,7 +1486,249 @@ print(f"数量: {len(high_value)}")
 """,
                 "chapter_type": "code",
                 "duration_minutes": 90,
-                "order_index": 5
+                "order_index": 5,
+                "lab": {
+                    "title": "实验：Pandas数据转换与清洗",
+                    "description": "学习使用Pandas进行数据清洗、类型转换、数据格式化处理",
+                    "starter_code": """import pandas as pd
+import numpy as np
+
+def clean_and_transform_data(df):
+    """
+    数据清洗和转换函数
+    包括: 类型转换、缺失值处理、异常值检测、格式标准化
+    
+    Args:
+        df: 原始DataFrame
+    
+    Returns:
+        清洗后的DataFrame
+    """
+    # 创建副本避免修改原始数据
+    df_clean = df.copy()
+    
+    # TODO: 实现数据清洗逻辑
+    # 1. 数据类型转换 - 将年龄转为整数，收入转为浮点数
+    
+    # 2. 处理缺失值 - 数值列用中位数填充，文本列用众数填充
+    
+    # 3. 异常值检测 - 使用IQR方法检测异常值
+    
+    # 4. 字符串标准化 - 统一大小写、去除空格
+    
+    # 5. 日期解析 - 将日期字符串转为datetime对象
+    
+    return df_clean
+
+
+def transform_categories(df, column, mapping):
+    """
+    类别数据转换
+    例如: 将城市名称映射为区域
+    
+    Args:
+        df: DataFrame
+        column: 需要转换的列名
+        mapping: 映射字典
+    
+    Returns:
+        转换后的DataFrame
+    """
+    # TODO: 实现类别映射
+    pass
+
+
+def create_derived_features(df):
+    """
+    创建派生特征
+    例如: 根据年龄计算年龄段，根据收入计算收入水平
+    """
+    # TODO: 创建以下派生特征:
+    # 1. 年龄段 (青年/中年/老年)
+    # 2. 收入水平 (低/中/高)
+    # 3. 城市等级 (一线/二线/三线)
+    
+    return df
+
+
+# 测试数据
+test_data = {
+    '姓名': ['张三', '李四', '王五', '赵六', '  孙七  '],
+    '年龄': ['25', '30', 'N/A', '28', '35'],
+    '城市': ['北京', '上海', '广州', '深圳', '北京'],
+    '收入': ['8000', '12000', '15000', 'invalid', '10000'],
+    '入职日期': ['2020-01-15', '2019/03/20', '2021.06.10', '2020-12-01', '2018-08-08']
+}
+
+df_test = pd.DataFrame(test_data)
+print("原始数据:")
+print(df_test)
+print("\\n数据类型:")
+print(df_test.dtypes)
+
+# TODO: 调用清洗函数
+# df_cleaned = clean_and_transform_data(df_test)
+# print("\\n清洗后数据:")
+# print(df_cleaned)
+""",
+                    "solution_code": """import pandas as pd
+import numpy as np
+
+def clean_and_transform_data(df):
+    """
+    数据清洗和转换函数
+    """
+    df_clean = df.copy()
+    
+    # 1. 数据类型转换
+    # 将年龄转为数值，无法转换的设为NaN
+    df_clean['年龄'] = pd.to_numeric(df_clean['年龄'], errors='coerce')
+    # 将收入转为数值
+    df_clean['收入'] = pd.to_numeric(df_clean['收入'], errors='coerce')
+    
+    # 2. 处理缺失值
+    # 数值列用中位数填充
+    numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
+    for col in numeric_cols:
+        median_val = df_clean[col].median()
+        df_clean[col].fillna(median_val, inplace=True)
+    
+    # 文本列用众数填充
+    text_cols = df_clean.select_dtypes(include=['object']).columns
+    for col in text_cols:
+        if col != '入职日期':  # 日期单独处理
+            mode_val = df_clean[col].mode()
+            if len(mode_val) > 0:
+                df_clean[col].fillna(mode_val[0], inplace=True)
+    
+    # 3. 异常值检测 (使用IQR方法)
+    for col in ['年龄', '收入']:
+        if col in df_clean.columns:
+            Q1 = df_clean[col].quantile(0.25)
+            Q3 = df_clean[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            
+            # 标记异常值
+            outliers = (df_clean[col] < lower_bound) | (df_clean[col] > upper_bound)
+            if outliers.sum() > 0:
+                print(f"列 '{col}' 发现 {outliers.sum()} 个异常值")
+                # 用边界值替换异常值
+                df_clean.loc[df_clean[col] < lower_bound, col] = lower_bound
+                df_clean.loc[df_clean[col] > upper_bound, col] = upper_bound
+    
+    # 4. 字符串标准化
+    for col in text_cols:
+        if df_clean[col].dtype == 'object':
+            df_clean[col] = df_clean[col].astype(str).str.strip().str.title()
+    
+    # 5. 日期解析 - 智能识别多种日期格式
+    def parse_date(date_str):
+        """尝试多种日期格式解析"""
+        if pd.isna(date_str):
+            return pd.NaT
+        
+        formats = ['%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d', '%d-%m-%Y', '%m/%d/%Y']
+        for fmt in formats:
+            try:
+                return pd.to_datetime(date_str, format=fmt)
+            except:
+                continue
+        return pd.to_datetime(date_str, errors='coerce')
+    
+    if '入职日期' in df_clean.columns:
+        df_clean['入职日期'] = df_clean['入职日期'].apply(parse_date)
+        df_clean['入职年份'] = df_clean['入职日期'].dt.year
+        df_clean['入职月份'] = df_clean['入职日期'].dt.month
+    
+    return df_clean
+
+
+def transform_categories(df, column, mapping):
+    """
+    类别数据转换
+    """
+    df_result = df.copy()
+    df_result[f'{column}_区域'] = df_result[column].map(mapping)
+    return df_result
+
+
+def create_derived_features(df):
+    """
+    创建派生特征
+    """
+    df_new = df.copy()
+    
+    # 1. 年龄段
+    df_new['年龄段'] = pd.cut(
+        df_new['年龄'],
+        bins=[0, 25, 35, 50, 100],
+        labels=['青年', '中青年', '中年', '老年']
+    )
+    
+    # 2. 收入水平
+    income_median = df_new['收入'].median()
+    df_new['收入水平'] = pd.cut(
+        df_new['收入'],
+        bins=[0, income_median * 0.7, income_median * 1.3, float('inf')],
+        labels=['低', '中', '高']
+    )
+    
+    # 3. 城市等级
+    city_mapping = {
+        '北京': '一线', '上海': '一线', '广州': '一线', '深圳': '一线',
+        '杭州': '二线', '南京': '二线', '成都': '二线', '武汉': '二线',
+        '西安': '三线', '郑州': '三线', '长沙': '三线'
+    }
+    df_new['城市等级'] = df_new['城市'].map(city_mapping).fillna('其他')
+    
+    return df_new
+
+
+# 测试数据
+test_data = {
+    '姓名': ['张三', '李四', '王五', '赵六', '  孙七  '],
+    '年龄': ['25', '30', 'N/A', '28', '35'],
+    '城市': ['北京', '上海', '广州', '深圳', '北京'],
+    '收入': ['8000', '12000', '15000', 'invalid', '10000'],
+    '入职日期': ['2020-01-15', '2019/03/20', '2021.06.10', '2020-12-01', '2018-08-08']
+}
+
+df_test = pd.DataFrame(test_data)
+print("原始数据:")
+print(df_test)
+print("\\n数据类型:")
+print(df_test.dtypes)
+
+# 调用清洗函数
+df_cleaned = clean_and_transform_data(df_test)
+print("\\n清洗后数据:")
+print(df_cleaned)
+print("\\n清洗后数据类型:")
+print(df_cleaned.dtypes)
+
+# 创建派生特征
+df_final = create_derived_features(df_cleaned)
+print("\\n最终数据 (含派生特征):")
+print(df_final)
+print("\\n数据统计:")
+print(df_final.describe())
+""",
+                    "test_cases": [
+                        {"description": "能正确转换数据类型", "expected": "年龄转为int，收入转为float"},
+                        {"description": "能正确处理缺失值", "expected": "无NaN值或已合理填充"},
+                        {"description": "能正确解析多种日期格式", "expected": "日期列转为datetime类型"},
+                        {"description": "能正确创建派生特征", "expected": "新增年龄段、收入水平列"}
+                    ],
+                    "validation_rules": [
+                        {"type": "function_exists", "name": "clean_and_transform_data"},
+                        {"type": "function_exists", "name": "create_derived_features"},
+                        {"type": "code_contains", "pattern": "pd.to_numeric"},
+                        {"type": "code_contains", "pattern": "fillna"},
+                        {"type": "code_contains", "pattern": "pd.cut"}
+                    ]
+                }
             },
             {
                 "title": "第6章：Python ETL项目实战",
@@ -2430,7 +2831,332 @@ importances = model.feature_importances_
 """,
                 "chapter_type": "code",
                 "duration_minutes": 90,
-                "order_index": 2
+                "order_index": 2,
+                "lab": {
+                    "title": "实验：数据清洗 - 处理缺失值与异常值",
+                    "description": "学习如何处理数据中的缺失值和异常值，掌握多种填充策略和异常值检测方法",
+                    "starter_code": """import pandas as pd
+import numpy as np
+from scipy import stats
+
+def handle_missing_values(df, strategy='auto'):
+    """
+    处理缺失值
+    
+    Args:
+        df: 输入DataFrame
+        strategy: 填充策略 ('auto', 'mean', 'median', 'mode', 'drop')
+    
+    Returns:
+        处理后的DataFrame
+    """
+    df_clean = df.copy()
+    
+    # TODO: 实现缺失值处理逻辑
+    # 1. 统计每列的缺失值数量
+    
+    # 2. 根据strategy选择填充方法:
+    #    - 数值列: mean, median
+    #    - 类别列: mode
+    #    - 时间列: 前后填充
+    
+    # 3. 如果某列缺失值超过50%，考虑删除该列
+    
+    return df_clean
+
+
+def detect_outliers(df, method='iqr', columns=None):
+    """
+    检测异常值
+    
+    Args:
+        df: 输入DataFrame
+        method: 检测方法 ('iqr', 'zscore', 'modified_zscore')
+        columns: 要检测的数值列，None则检测所有数值列
+    
+    Returns:
+        异常值索引列表
+    """
+    outlier_indices = set()
+    
+    # TODO: 实现异常值检测
+    # 1. 获取数值列
+    
+    # 2. 根据method选择检测方法:
+    #    - IQR: Q1 - 1.5*IQR, Q3 + 1.5*IQR 之外的值
+    #    - Z-score: |z| > 3 的值
+    #    - Modified Z-score: 使用median代替mean
+    
+    return list(outlier_indices)
+
+
+def handle_outliers(df, method='clip', outlier_indices=None):
+    """
+    处理检测到的异常值
+    
+    Args:
+        df: 输入DataFrame
+        method: 处理方法 ('clip', 'remove', 'replace_median')
+        outlier_indices: 异常值索引
+    
+    Returns:
+        处理后的DataFrame
+    """
+    df_clean = df.copy()
+    
+    # TODO: 实现异常值处理
+    # - clip: 将异常值裁剪到边界
+    # - remove: 删除异常值行
+    # - replace_median: 用中位数替换
+    
+    return df_clean
+
+
+# 创建含缺失值和异常值的测试数据
+np.random.seed(42)
+n = 200
+test_df = pd.DataFrame({
+    'id': range(1, n+1),
+    '年龄': np.random.normal(35, 10, n).astype(int),
+    '收入': np.random.normal(10000, 3000, n),
+    '评分': np.random.uniform(1, 5, n),
+    '类别': np.random.choice(['A', 'B', 'C'], n)
+})
+
+# 添加缺失值
+test_df.loc[np.random.choice(n, 20, replace=False), '年龄'] = np.nan
+test_df.loc[np.random.choice(n, 15, replace=False), '收入'] = np.nan
+test_df.loc[np.random.choice(n, 10, replace=False), '类别'] = np.nan
+
+# 添加异常值
+test_df.loc[5, '年龄'] = 150  # 异常年龄
+test_df.loc[10, '收入'] = 1000000  # 异常收入
+test_df.loc[15, '评分'] = -10  # 异常评分
+
+print("原始数据统计:")
+print(test_df.describe())
+print("\\n缺失值统计:")
+print(test_df.isnull().sum())
+
+# TODO: 调用函数进行处理
+""",
+                    "solution_code": """import pandas as pd
+import numpy as np
+from scipy import stats
+
+def handle_missing_values(df, strategy='auto'):
+    """
+    处理缺失值
+    """
+    df_clean = df.copy()
+    
+    # 1. 统计每列的缺失值数量
+    missing_stats = df_clean.isnull().sum()
+    missing_percent = (missing_stats / len(df_clean)) * 100
+    
+    print("缺失值统计:")
+    for col in df_clean.columns:
+        if missing_stats[col] > 0:
+            print(f"  {col}: {missing_stats[col]} ({missing_percent[col]:.1f}%)")
+    
+    # 2. 删除缺失值过多的列 (>50%)
+    cols_to_drop = missing_percent[missing_percent > 50].index.tolist()
+    if cols_to_drop:
+        print(f"\\n删除缺失值过多的列: {cols_to_drop}")
+        df_clean = df_clean.drop(columns=cols_to_drop)
+    
+    # 3. 填充缺失值
+    for col in df_clean.columns:
+        if df_clean[col].isnull().sum() == 0:
+            continue
+        
+        if strategy == 'auto':
+            # 根据列类型自动选择策略
+            if df_clean[col].dtype in ['int64', 'float64']:
+                # 数值列用中位数填充（更鲁棒）
+                fill_value = df_clean[col].median()
+                df_clean[col].fillna(fill_value, inplace=True)
+                print(f"列 '{col}' 用中位数 {fill_value:.2f} 填充")
+            elif pd.api.types.is_datetime64_any_dtype(df_clean[col]):
+                # 时间列用前后值填充
+                df_clean[col].fillna(method='ffill', inplace=True)
+                df_clean[col].fillna(method='bfill', inplace=True)
+                print(f"列 '{col}' 用前后值填充")
+            else:
+                # 类别列用众数填充
+                mode_val = df_clean[col].mode()
+                if len(mode_val) > 0:
+                    df_clean[col].fillna(mode_val[0], inplace=True)
+                    print(f"列 '{col}' 用众数 '{mode_val[0]}' 填充")
+        elif strategy == 'mean':
+            df_clean[col].fillna(df_clean[col].mean(), inplace=True)
+        elif strategy == 'median':
+            df_clean[col].fillna(df_clean[col].median(), inplace=True)
+        elif strategy == 'mode':
+            mode_val = df_clean[col].mode()
+            if len(mode_val) > 0:
+                df_clean[col].fillna(mode_val[0], inplace=True)
+        elif strategy == 'drop':
+            df_clean.dropna(subset=[col], inplace=True)
+    
+    return df_clean
+
+
+def detect_outliers(df, method='iqr', columns=None):
+    """
+    检测异常值
+    """
+    outlier_indices = set()
+    
+    # 获取数值列
+    if columns is None:
+        numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    else:
+        numeric_cols = columns
+    
+    print(f"检测异常值 - 数值列: {numeric_cols}")
+    print(f"使用方法: {method}")
+    
+    for col in numeric_cols:
+        if col not in df.columns:
+            continue
+        
+        col_data = df[col].dropna()
+        
+        if method == 'iqr':
+            # IQR方法
+            Q1 = col_data.quantile(0.25)
+            Q3 = col_data.quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            
+            outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)].index
+            outlier_indices.update(outliers)
+            print(f"  {col}: 发现 {len(outliers)} 个异常值 (范围: [{lower_bound:.2f}, {upper_bound:.2f}])")
+            
+        elif method == 'zscore':
+            # Z-score方法
+            z_scores = np.abs(stats.zscore(col_data))
+            outliers = df.loc[col_data.index[z_scores > 3]].index
+            outlier_indices.update(outliers)
+            print(f"  {col}: 发现 {len(outliers)} 个异常值 (|z| > 3)")
+            
+        elif method == 'modified_zscore':
+            # Modified Z-score (使用MAD)
+            median = col_data.median()
+            mad = np.median(np.abs(col_data - median))
+            modified_z_scores = 0.6745 * (col_data - median) / mad
+            outliers = df.loc[col_data.index[np.abs(modified_z_scores) > 3.5]].index
+            outlier_indices.update(outliers)
+            print(f"  {col}: 发现 {len(outliers)} 个异常值 (modified |z| > 3.5)")
+    
+    return list(outlier_indices)
+
+
+def handle_outliers(df, method='clip', outlier_indices=None):
+    """
+    处理检测到的异常值
+    """
+    df_clean = df.copy()
+    
+    if outlier_indices is None or len(outlier_indices) == 0:
+        print("没有检测到异常值")
+        return df_clean
+    
+    print(f"\\n处理 {len(outlier_indices)} 个异常值 - 方法: {method}")
+    
+    numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
+    
+    for col in numeric_cols:
+        col_outliers = [idx for idx in outlier_indices if idx in df_clean.index and col in df_clean.columns]
+        if not col_outliers:
+            continue
+        
+        Q1 = df_clean[col].quantile(0.25)
+        Q3 = df_clean[col].quantile(0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        if method == 'clip':
+            # 裁剪到边界
+            df_clean.loc[col_outliers, col] = df_clean.loc[col_outliers, col].clip(lower_bound, upper_bound)
+            print(f"  {col}: 异常值已裁剪到 [{lower_bound:.2f}, {upper_bound:.2f}]")
+            
+        elif method == 'remove':
+            # 删除异常值行
+            df_clean = df_clean.drop(index=col_outliers)
+            print(f"  {col}: 删除了 {len(col_outliers)} 行")
+            
+        elif method == 'replace_median':
+            # 用中位数替换
+            median_val = df_clean[col].median()
+            df_clean.loc[col_outliers, col] = median_val
+            print(f"  {col}: 异常值用中位数 {median_val:.2f} 替换")
+    
+    return df_clean
+
+
+# 创建含缺失值和异常值的测试数据
+np.random.seed(42)
+n = 200
+test_df = pd.DataFrame({
+    'id': range(1, n+1),
+    '年龄': np.random.normal(35, 10, n).astype(int),
+    '收入': np.random.normal(10000, 3000, n),
+    '评分': np.random.uniform(1, 5, n),
+    '类别': np.random.choice(['A', 'B', 'C'], n)
+})
+
+# 添加缺失值
+test_df.loc[np.random.choice(n, 20, replace=False), '年龄'] = np.nan
+test_df.loc[np.random.choice(n, 15, replace=False), '收入'] = np.nan
+test_df.loc[np.random.choice(n, 10, replace=False), '类别'] = np.nan
+
+# 添加异常值
+test_df.loc[5, '年龄'] = 150
+test_df.loc[10, '收入'] = 1000000
+test_df.loc[15, '评分'] = -10
+
+print("=" * 60)
+print("数据清洗演示")
+print("=" * 60)
+
+print("\\n原始数据统计:")
+print(test_df.describe())
+print("\\n缺失值统计:")
+print(test_df.isnull().sum())
+
+# 步骤1: 处理缺失值
+df_no_missing = handle_missing_values(test_df, strategy='auto')
+
+# 步骤2: 检测异常值
+outliers = detect_outliers(df_no_missing, method='iqr')
+print(f"\\n共检测到 {len(outliers)} 个异常值")
+
+# 步骤3: 处理异常值
+df_clean = handle_outliers(df_no_missing, method='clip', outlier_indices=outliers)
+
+print("\\n清洗后数据统计:")
+print(df_clean.describe())
+print(f"\\n最终数据行数: {len(df_clean)}")
+print(f"原始数据行数: {len(test_df)}")
+""",
+                    "test_cases": [
+                        {"description": "能正确识别缺失值", "expected": "返回缺失值统计"},
+                        {"description": "能正确处理数值列缺失值", "expected": "数值列无缺失"},
+                        {"description": "能正确检测异常值", "expected": "返回异常值索引列表"},
+                        {"description": "能正确处理异常值", "expected": "异常值被处理"}
+                    ],
+                    "validation_rules": [
+                        {"type": "function_exists", "name": "handle_missing_values"},
+                        {"type": "function_exists", "name": "detect_outliers"},
+                        {"type": "function_exists", "name": "handle_outliers"},
+                        {"type": "code_contains", "pattern": "fillna"},
+                        {"type": "code_contains", "pattern": "quantile"}
+                    ]
+                }
             },
             {
                 "title": "第14章：线性回归与正则化",

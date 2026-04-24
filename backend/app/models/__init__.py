@@ -21,6 +21,8 @@ class User(Base):
     # 关系
     progress = relationship("LearningProgress", back_populates="user")
     submissions = relationship("LabSubmission", back_populates="user")
+    discussions = relationship("Discussion", back_populates="user")
+    comments = relationship("Comment", back_populates="user")
 
 class Course(Base):
     __tablename__ = "courses"
@@ -39,6 +41,7 @@ class Course(Base):
     
     # 关系
     chapters = relationship("Chapter", back_populates="course", order_by="Chapter.order_index")
+    discussions = relationship("Discussion", back_populates="course", order_by="Discussion.is_pinned.desc(), Discussion.created_at.desc()")
 
 class Chapter(Base):
     __tablename__ = "chapters"
@@ -109,3 +112,44 @@ class LabSubmission(Base):
     # 关系
     user = relationship("User", back_populates="submissions")
     lab = relationship("Lab", back_populates="submissions")
+
+
+class Discussion(Base):
+    __tablename__ = "discussions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    title = Column(String(200), nullable=False)
+    content = Column(Text, nullable=False)
+    likes_count = Column(Integer, default=0)
+    comments_count = Column(Integer, default=0)
+    is_pinned = Column(Boolean, default=False)
+    is_locked = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 关系
+    user = relationship("User", back_populates="discussions")
+    course = relationship("Course", back_populates="discussions")
+    comments = relationship("Comment", back_populates="discussion", order_by="Comment.created_at.desc()", cascade="all, delete-orphan")
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    discussion_id = Column(Integer, ForeignKey("discussions.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    likes_count = Column(Integer, default=0)
+    is_solution = Column(Boolean, default=False)  # 是否被标记为解决方案
+    parent_id = Column(Integer, ForeignKey("comments.id"), nullable=True)  # 回复评论
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # 关系
+    user = relationship("User", back_populates="comments")
+    discussion = relationship("Discussion", back_populates="comments")
+    parent = relationship("Comment", remote_side="Comment.id", back_populates="replies")
+    replies = relationship("Comment", back_populates="parent", cascade="all, delete-orphan")

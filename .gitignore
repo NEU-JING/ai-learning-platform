@@ -39,3 +39,14 @@ logs/
 .env
 .env.local
 .env.*.local
+
+# Scripts with tokens (use .template version)
+scripts/push-to-github.sh
+scripts/*.sh
+!scripts/*.template
+
+# Security
+*.pem
+*.key
+secrets/
+*.secret
