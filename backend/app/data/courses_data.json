@@ -1,0 +1,19 @@
+[
+  {
+    "title": "Phase 1: Python基础与AI工具链",
+    "description": "从Java开发者视角快速掌握Python，学习NumPy、Pandas等AI核心工具链",
+    "level": "beginner",
+    "category": "python",
+    "duration_hours": 28,
+    "order_index": 1,
+    "chapters": [
+      {
+        "title": "第1章：Python快速上手",
+        "content": "# Python快速上手\n\n## 学习目标\n- 理解Python与Java的核心差异\n- 掌握Python基本数据类型和控制流",
+        "chapter_type": "text",
+        "duration_minutes": 120,
+        "order_index": 1
+      }
+    ]
+  }
+]

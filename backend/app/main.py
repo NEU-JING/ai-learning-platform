@@ -21,7 +21,16 @@ from app.schemas import (
 )
 from app.services.code_executor import execute_code_sandbox
 from app.services.course_service import get_all_courses, get_course_detail
-from app.data.courses_extended import COURSES_DATA
+import json
+import os
+
+def load_courses_data():
+    """Load courses from JSON file"""
+    data_path = os.path.join(os.path.dirname(__file__), "data", "courses_data.json")
+    with open(data_path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+COURSES_DATA = load_courses_data()
 
 # 创建应用
 app = FastAPI(
@@ -51,10 +60,13 @@ async def startup_event():
     # 初始化课程数据
     init_courses_data()
 
-def init_courses_data():
+def init_courses_data(db=None):
     """初始化内置课程数据"""
     from app.core.database import SessionLocal
-    db = SessionLocal()
+    close_db = False
+    if db is None:
+        db = SessionLocal()
+        close_db = True
     try:
         # 检查是否已有课程
         if db.query(Course).first():
@@ -106,7 +118,8 @@ def init_courses_data():
         print(f"❌ 课程数据初始化失败: {e}")
         db.rollback()
     finally:
-        db.close()
+        if close_db:
+            db.close()
 
 # 认证相关函数
 def verify_password(plain_password, hashed_password):
@@ -231,11 +244,12 @@ async def execute_code(
 @app.post("/api/labs/{lab_id}/submit")
 async def submit_lab(
     lab_id: int,
-    code: str,
+    body: dict,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """提交实验代码"""
+    code = body.get("code", "")
     lab = db.query(Lab).filter(Lab.id == lab_id).first()
     if not lab:
         raise HTTPException(status_code=404, detail="实验不存在")

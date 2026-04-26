@@ -1,6 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from enum import Enum
 
 
 class UserBase(BaseModel):
@@ -9,7 +10,13 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(min_length=8)
+
+
+class StatusEnum(str, Enum):
+    not_started = "not_started"
+    in_progress = "in_progress"
+    completed = "completed"
 
 
 class UserResponse(UserBase):
@@ -98,7 +105,7 @@ class CodeExecutionResponse(BaseModel):
 
 
 class ProgressUpdate(BaseModel):
-    status: str  # not_started, in_progress, completed
+    status: StatusEnum
 
 
 class ProgressResponse(BaseModel):
