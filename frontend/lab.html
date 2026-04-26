@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码实验室 - AI学习平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Monaco Editor -->
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <a href="index.html" class="navbar-brand">
+            <div class="navbar-logo">AI</div>
+            <span>AI学习平台</span>
+        </a>
+        <ul class="navbar-nav">
+            <li><a href="index.html">课程</a></li>
+            <li><a href="#">学习路径</a></li>
+            <li><a href="#">社区</a></li>
+        </ul>
+        <div class="navbar-right">
+            <a href="chapter.html?id=${chapterId}&course_id=${courseId}" class="btn btn-secondary btn-sm" id="back-btn">
+                ← 返回章节
+            </a>
+            <div data-guest style="display: flex; gap: 0.5rem;">
+                <a href="login.html" class="btn btn-secondary btn-sm">登录</a>
+                <a href="register.html" class="btn btn-primary btn-sm">注册</a>
+            </div>
+            <div data-auth class="user-menu" style="display: none;">
+                <div class="user-menu-trigger">
+                    <div class="user-avatar"></div>
+                    <span class="user-name"></span>
+                    <span>▼</span>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="#" class="dropdown-item">个人中心</a>
+                    <a href="#" class="dropdown-item">我的课程</a>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item" onclick="auth.logout(); return false;">退出登录</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 主内容 -->
+    <main class="main-container" style="padding-top: 1rem;">
+        <!-- 章节标题 -->
+        <div id="lab-header" style="margin-bottom: 1rem;">
+            <h1 style="font-size: 1.25rem;">代码实验室</h1>
+            <p style="color: var(--text-secondary); font-size: 0.875rem;">编写和运行你的代码</p>
+        </div>
+
+        <!-- 代码编辑器区域 -->
+        <div class="lab-container" id="lab-container">
+            <!-- 编辑器面板 -->
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <h3>
+                        <span>📝</span>
+                        编辑器
+                    </h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="language-select" class="form-control" style="width: 120px; font-size: 0.875rem; padding: 0.375rem 0.5rem;">
+                            <option value="python">Python</option>
+                            <option value="javascript">JavaScript</option>
+                        </select>
+                        <button class="btn btn-success btn-sm" onclick="runCode()">
+                            <span>▶</span> 运行
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <div id="monaco-editor"></div>
+                </div>
+            </div>
+
+            <!-- 输出面板 -->
+            <div class="output-panel">
+                <div class="panel-header">
+                    <h3>
+                        <span>📤</span>
+                        输出结果
+                    </h3>
+                    <button class="btn btn-secondary btn-sm" onclick="clearOutput()">
+                        清空
+                    </button>
+                </div>
+                <div class="panel-body">
+                    <div id="output-content" class="output-content" style="background: #1e1e1e; color: #d4d4d4;">
+                        <span style="color: #6e7681;">// 点击"运行"按钮执行代码...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- 脚本 -->
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        // 获取参数
+        const chapterId = app.getUrlParam('chapter_id');
+        const courseId = app.getUrlParam('course_id');
+        
+        // 更新返回按钮链接
+        document.getElementById('back-btn').href = `chapter.html?id=${chapterId}&course_id=${courseId}`;
+        
+        // Monaco编辑器实例
+        let editor = null;
+        
+        // 默认代码模板
+        const codeTemplates = {
+            python: `# 在这里编写你的Python代码\n\nprint("Hello, AI Learning!")\n\n# 示例：计算斐波那契数列\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n\n# 输出前10个斐波那契数\nprint(\"\\n斐波那契数列:\")\nfor i in range(10):\n    print(f\"F({i}) = {fibonacci(i)}\")`,
+            
+            javascript: `// 在这里编写你的JavaScript代码\n\nconsole.log("Hello, AI Learning!");\n\n// 示例：计算斐波那契数列\nfunction fibonacci(n) {\n    if (n <= 1) return n;\n    return fibonacci(n - 1) + fibonacci(n - 2);\n}\n\n// 输出前10个斐波那契数\nconsole.log("\\n斐波那契数列:");\nfor (let i = 0; i < 10; i++) {\n    console.log(\`F(\${i}) = \${fibonacci(i)}\`);\n}`
+        };
+        
+        // 初始化Monaco编辑器
+        function initEditor() {
+            require.config({ 
+                paths: { 
+                    'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' 
+                }
+            });
+            
+            require(['vs/editor/editor.main'], function() {
+                editor = monaco.editor.create(document.getElementById('monaco-editor'), {
+                    value: codeTemplates.python,
+                    language: 'python',
+                    theme: 'vs-dark',
+                    fontSize: 14,
+                    minimap: { enabled: false },
+                    automaticLayout: true,
+                    scrollBeyondLastLine: false,
+                    wordWrap: 'on',
+                    lineNumbers: 'on',
+                    renderWhitespace: 'selection',
+                    tabSize: 4,
+                    insertSpaces: true,
+                    fontFamily: 'Menlo, Monaco, "Courier New", monospace'
+                });
+                
+                // 语言切换
+                document.getElementById('language-select').addEventListener('change', function(e) {
+                    const lang = e.target.value;
+                    monaco.editor.setModelLanguage(editor.getModel(), lang);
+                    editor.setValue(codeTemplates[lang]);
+                });
+                
+                // 键盘快捷键 - Ctrl+Enter运行
+                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
+                    runCode();
+                });
+            });
+        }
+        
+        // 运行代码
+        async function runCode() {
+            if (!editor) return;
+            
+            const code = editor.getValue();
+            const language = document.getElementById('language-select').value;
+            const outputEl = document.getElementById('output-content');
+            
+            outputEl.innerHTML = '<span style="color: #6e7681;">运行中...</span>';
+            
+            try {
+                const result = await api.code.execute(code, language);
+                
+                if (result.error) {
+                    outputEl.innerHTML = `<span class="output-error">${escapeHtml(result.error)}</span>`;
+                } else {
+                    const output = result.output || result.result || '程序执行完成（无输出）';
+                    outputEl.innerHTML = `<span class="output-success">${escapeHtml(output)}</span>`;
+                }
+            } catch (error) {
+                outputEl.innerHTML = `<span class="output-error">执行出错: ${escapeHtml(error.message)}</span>`;
+            }
+        }
+        
+        // 清空输出
+        function clearOutput() {
+            document.getElementById('output-content').innerHTML = '<span style="color: #6e7681;">// 点击"运行"按钮执行代码...</span>';
+        }
+        
+        // HTML转义
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+        
+        // 加载章节信息
+        async function loadChapterInfo() {
+            if (!chapterId) return;
+            
+            try {
+                const chapter = await api.chapters.get(chapterId);
+                document.getElementById('lab-header').innerHTML = `
+                    <h1 style="font-size: 1.25rem;">💻 ${escapeHtml(chapter.title)} - 代码实验室</h1>
+                    <p style="color: var(--text-secondary); font-size: 0.875rem;">动手实践，加深理解</p>
+                `;
+            } catch (error) {
+                console.error('加载章节信息失败:', error);
+            }
+        }
+        
+        // 页面加载
+        document.addEventListener('DOMContentLoaded', () => {
+            initEditor();
+            loadChapterInfo();
+        });
+    </script>
+</body>
+</html>
