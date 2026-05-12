@@ -8,6 +8,8 @@ from app.core.config import settings
 from app.core.security import create_access_token, create_refresh_token
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
 from app.services.user_service import user_service
+from app.models import User
+from app.api.deps import get_current_active_user
 
 router = APIRouter()
 security = HTTPBearer()
@@ -54,3 +56,9 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
         "refresh_token": refresh_token,
         "token_type": "bearer"
     }
+
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_active_user)):
+    """获取当前用户信息"""
+    return current_user

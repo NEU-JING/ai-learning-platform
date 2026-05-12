@@ -2,7 +2,8 @@
  * 讨论区列表视图
  */
 
-export default async function Discussion({ params, store }) {
+export default async function Discussion({ params }) {
+  const store = window.$store;
   const courseId = params.id;
   let discussions = [];
   let course = null;

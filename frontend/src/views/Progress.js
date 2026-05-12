@@ -2,8 +2,9 @@
  * 学习进度视图 - 包含学习路径可视化
  */
 
-export default async function Progress({ store }) {
-  await store.dispatch('fetchProgress');
+export default async function Progress() {
+  const store = window.$store;
+  await store?.dispatch('fetchProgress');
   
   // 获取学习路径数据
   const learningPath = await window.$api.progress.getLearningPath();

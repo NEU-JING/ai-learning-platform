@@ -4,7 +4,8 @@
 
 import { Skeleton } from '../components/Skeleton.js';
 
-export default async function Courses({ store }) {
+export default async function Courses() {
+  const store = window.$store;
   const container = document.createElement('div');
   container.className = 'page courses-page';
   
@@ -33,7 +34,7 @@ export default async function Courses({ store }) {
         <li><a href="#" data-nav="/courses">课程</a></li>
       </ul>
       <div class="navbar-right">
-        ${store.state.user ? `
+        ${store?.state?.user ? `
           <span class="user-name">${store.state.user.email}</span>
           <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); return false;">退出</a>
         ` : `
@@ -110,8 +111,8 @@ export default async function Courses({ store }) {
   contentContainer.appendChild(renderSkeleton());
   
   // 异步加载数据
-  store.dispatch('fetchCourses').then(() => {
-    const courses = store.state.courses;
+  store?.dispatch('fetchCourses').then(() => {
+    const courses = store?.state?.courses;
     
     // 替换骨架屏为实际内容
     contentContainer.innerHTML = '';

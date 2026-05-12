@@ -70,6 +70,13 @@ def submit_lab(
     current_user: User = Depends(get_current_active_user)
 ):
     """提交实验代码"""
+    from app.models import Lab
+    lab = db.query(Lab).filter(Lab.id == lab_id).first()
+    if not lab:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="实验不存在"
+        )
     result = lab_service.submit_code(
         db=db,
         user_id=current_user.id,

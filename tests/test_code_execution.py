@@ -6,9 +6,9 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from tests.test_auth import client, setup_db, override_get_db
-from app.core.database import get_db as get_db_original
+from app.core.database import get_db
 
-app.dependency_overrides[get_db_original] = override_get_db
+app.dependency_overrides[get_db] = override_get_db
 
 
 class TestCodeExecution:
@@ -18,7 +18,7 @@ class TestCodeExecution:
         """测试执行简单Python代码"""
         # 注册并登录
         client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "testuser",
                 "email": "test@example.com",
@@ -26,9 +26,9 @@ class TestCodeExecution:
             }
         )
         login_response = client.post(
-            "/api/auth/login",
-            data={
-                "username": "test@example.com",
+            "/api/v1/auth/login",
+            json={
+                "email": "test@example.com",
                 "password": "testpassword123"
             }
         )
@@ -36,7 +36,7 @@ class TestCodeExecution:
         
         # 执行代码
         response = client.post(
-            "/api/code/execute",
+            "/api/v1/labs/execute",
             json={
                 "code": "print('Hello, World!')",
                 "timeout": 5
@@ -52,7 +52,7 @@ class TestCodeExecution:
         """测试执行有错误的代码"""
         # 注册并登录
         client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "testuser",
                 "email": "test@example.com",
@@ -60,9 +60,9 @@ class TestCodeExecution:
             }
         )
         login_response = client.post(
-            "/api/auth/login",
-            data={
-                "username": "test@example.com",
+            "/api/v1/auth/login",
+            json={
+                "email": "test@example.com",
                 "password": "testpassword123"
             }
         )
@@ -70,12 +70,9 @@ class TestCodeExecution:
         
         # 执行有错误的代码
         response = client.post(
-            "/api/code/execute",
-            json={
-                "code": "print(undefined_variable)",
-                "timeout": 5
-            },
-            headers={"Authorization": f"Bearer {token}"}
+            "/api/v1/labs/execute",
+            json={"code": "", "timeout": 5},
+            headers={"Authorization": f"Bearer {auth_token}"}
         )
         assert response.status_code == 200
         data = response.json()
@@ -86,7 +83,7 @@ class TestCodeExecution:
         """测试代码执行超时"""
         # 注册并登录
         client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "testuser",
                 "email": "test@example.com",
@@ -94,9 +91,9 @@ class TestCodeExecution:
             }
         )
         login_response = client.post(
-            "/api/auth/login",
-            data={
-                "username": "test@example.com",
+            "/api/v1/auth/login",
+            json={
+                "email": "test@example.com",
                 "password": "testpassword123"
             }
         )
@@ -104,7 +101,7 @@ class TestCodeExecution:
         
         # 执行耗时代码
         response = client.post(
-            "/api/code/execute",
+            "/api/v1/labs/execute",
             json={
                 "code": "import time; time.sleep(10)",
                 "timeout": 1
@@ -119,7 +116,7 @@ class TestCodeExecution:
     def test_execute_code_unauthorized(self, setup_db):
         """测试未授权执行代码"""
         response = client.post(
-            "/api/code/execute",
+            "/api/v1/labs/execute",
             json={
                 "code": "print('test')",
                 "timeout": 5
@@ -131,7 +128,7 @@ class TestCodeExecution:
         """测试危险代码被阻止"""
         # 注册并登录
         client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "testuser",
                 "email": "test@example.com",
@@ -139,9 +136,9 @@ class TestCodeExecution:
             }
         )
         login_response = client.post(
-            "/api/auth/login",
-            data={
-                "username": "test@example.com",
+            "/api/v1/auth/login",
+            json={
+                "email": "test@example.com",
                 "password": "testpassword123"
             }
         )
@@ -157,7 +154,7 @@ class TestCodeExecution:
         
         for code in dangerous_codes:
             response = client.post(
-                "/api/code/execute",
+                "/api/v1/labs/execute",
                 json={
                     "code": code,
                     "timeout": 5

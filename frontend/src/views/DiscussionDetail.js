@@ -2,7 +2,8 @@
  * 讨论详情视图
  */
 
-export default async function DiscussionDetail({ params, store }) {
+export default async function DiscussionDetail({ params }) {
+  const store = window.$store;
   const discussionId = params.id;
   let discussion = null;
   let loading = true;

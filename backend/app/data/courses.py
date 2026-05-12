@@ -11,6 +11,7 @@ COURSES_DATA = [
         "category": "python",
         "duration_hours": 28,
         "order_index": 1,
+        "is_published": True,
         "chapters": [
             {
                 "title": "Day 1 - Python快速上手",
@@ -173,6 +174,7 @@ def slow_function():
         "category": "langchain",
         "duration_hours": 42,
         "order_index": 2,
+        "is_published": True,
         "chapters": [
             {
                 "title": "LangChain基础概念",
@@ -203,10 +205,10 @@ print(result)
 ```python
 from langchain import PromptTemplate
 
-template = """
+template = '''
 你是一位{role}。请用{style}的风格回答以下问题：
 问题：{question}
-"""
+'''
 
 prompt = PromptTemplate(
     input_variables=["role", "style", "question"],
@@ -295,6 +297,7 @@ class MyAgent:
         "category": "agent",
         "duration_hours": 56,
         "order_index": 3,
+        "is_published": True,
         "chapters": [
             {
                 "title": "多Agent协作架构",
@@ -379,11 +382,11 @@ relevant_docs = retriever.get_relevant_documents("问题内容")
 
 # 构建增强Prompt
 context = "\\n".join([doc.page_content for doc in relevant_docs])
-prompt = f"""基于以下上下文回答问题：
+prompt = f'''基于以下上下文回答问题：
 {context}
 
 问题：{question}
-"""
+'''
 
 # 生成回答
 answer = llm.predict(prompt)
@@ -404,6 +407,7 @@ answer = llm.predict(prompt)
         "category": "leadership",
         "duration_hours": 28,
         "order_index": 4,
+        "is_published": True,
         "chapters": [
             {
                 "title": "AI项目管理",

@@ -160,14 +160,27 @@ export class Router {
       }
 
       if (component) {
-        const content = await component({
+        const result = await component({
           params: this.params,
           query: this.query,
-          route
+          route,
+          store: window.$store
         });
-        app.innerHTML = content;
         
-        // 执行组件的挂载钩子
+        if (typeof result === 'string') {
+          app.innerHTML = result;
+        } else if (result instanceof Node) {
+          app.innerHTML = '';
+          app.appendChild(result);
+        } else if (result && typeof result === 'object') {
+          if (result.template) {
+            app.innerHTML = result.template;
+          }
+          if (result.onMount) {
+            result.onMount();
+          }
+        }
+        
         if (component.onMount) {
           component.onMount();
         }

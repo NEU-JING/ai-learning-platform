@@ -2,11 +2,12 @@
  * 首页视图
  */
 
-export default async function Home({ store }) {
-  const courses = store.state.courses;
+export default async function Home() {
+  const store = window.$store;
+  const courses = store?.state?.courses || [];
   
   if (courses.length === 0) {
-    await store.dispatch('fetchCourses');
+    await store?.dispatch('fetchCourses');
   }
 
   const levelColors = {
@@ -43,12 +44,12 @@ export default async function Home({ store }) {
         <ul class="navbar-nav">
           <li><a href="#/">首页</a></li>
           <li><a href="#/courses">课程</a></li>
-          ${store.state.user ? `
+          ${store?.state?.user ? `
             <li><a href="#/progress">进度</a></li>
           ` : ''}
         </ul>
         <div class="navbar-right">
-          ${store.state.user ? `
+          ${store?.state?.user ? `
             <span class="user-name">${store.state.user.email}</span>
             <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); return false;">退出</a>
           ` : `

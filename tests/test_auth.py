@@ -7,9 +7,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.main import app, get_db
-from app.models.base import Base
-from app.core.database import get_db as get_db_original
+from app.main import app
+from app.models import Base
+from app.core.database import get_db
 
 # 测试数据库配置
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
@@ -28,7 +28,7 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db_original] = override_get_db
+app.dependency_overrides[get_db] = override_get_db
 
 client = TestClient(app)
 
@@ -46,14 +46,14 @@ class TestAuth:
     def test_register_success(self, setup_db):
         """测试用户注册成功"""
         response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "testuser",
                 "email": "test@example.com",
                 "password": "testpassword123"
             }
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["username"] == "testuser"
         assert data["email"] == "test@example.com"
@@ -63,7 +63,7 @@ class TestAuth:
         """测试重复邮箱注册失败"""
         # 首次注册
         client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "user1",
                 "email": "test@example.com",
@@ -72,7 +72,7 @@ class TestAuth:
         )
         # 重复注册
         response = client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "user2",
                 "email": "test@example.com",
@@ -86,7 +86,7 @@ class TestAuth:
         """测试登录成功"""
         # 先注册
         client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "testuser",
                 "email": "test@example.com",
@@ -95,9 +95,9 @@ class TestAuth:
         )
         # 登录
         response = client.post(
-            "/api/auth/login",
-            data={
-                "username": "test@example.com",
+            "/api/v1/auth/login",
+            json={
+                "email": "test@example.com",
                 "password": "testpassword123"
             }
         )
@@ -110,7 +110,7 @@ class TestAuth:
         """测试密码错误"""
         # 先注册
         client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "testuser",
                 "email": "test@example.com",
@@ -119,9 +119,9 @@ class TestAuth:
         )
         # 错误密码登录
         response = client.post(
-            "/api/auth/login",
-            data={
-                "username": "test@example.com",
+            "/api/v1/auth/login",
+            json={
+                "email": "test@example.com",
                 "password": "wrongpassword"
             }
         )
@@ -130,14 +130,14 @@ class TestAuth:
     
     def test_get_me_unauthorized(self, setup_db):
         """测试未授权访问"""
-        response = client.get("/api/auth/me")
+        response = client.get("/api/v1/auth/me")
         assert response.status_code == 401
     
     def test_get_me_authorized(self, setup_db):
         """测试已授权访问用户信息"""
         # 注册
         client.post(
-            "/api/auth/register",
+            "/api/v1/auth/register",
             json={
                 "username": "testuser",
                 "email": "test@example.com",
@@ -146,9 +146,9 @@ class TestAuth:
         )
         # 登录获取token
         login_response = client.post(
-            "/api/auth/login",
-            data={
-                "username": "test@example.com",
+            "/api/v1/auth/login",
+            json={
+                "email": "test@example.com",
                 "password": "testpassword123"
             }
         )
@@ -156,7 +156,7 @@ class TestAuth:
         
         # 访问用户信息
         response = client.get(
-            "/api/auth/me",
+            "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"}
         )
         assert response.status_code == 200
