@@ -341,11 +341,22 @@ ALTER TABLE lab_submissions ADD COLUMN feedback TEXT;
 | 项目 | 规范 |
 |------|------|
 | URL前缀 | `/api/v1` |
-| 认证方式 | `Authorization: Bearer <access_token>` |
+| 认证方式 | `Authorization: Bearer ***` |
 | Content-Type | `application/json` |
 | 分页参数 | `?page=1&per_page=20`（MVP后实现） |
 | 时间格式 | ISO 8601: `2026-05-13T10:30:00Z` |
 | 错误响应 | `{"detail": "错误描述"}` |
+
+### 4.1.1 API契约红线 🚨
+
+> **根因**：前后端独立演化，字段名不一致是最常见的bug来源。以下规则是强制红线，违反即视为bug。
+
+1. **后端Pydantic schema的字段名 = 前端消费的字段名**，必须完全一致（包括单复数）
+2. **禁止前端自行翻译字段名**（如后端返回`chapters_count`，前端不得写成`chapter_count`）
+3. **修改schema字段名时**，必须在同一commit中同步修改前端代码，并执行`grep -rn "old_field_name" frontend/`确认无遗漏
+4. **新增API端点时**，必须在DEVELOPMENT_HARNESS.md §4.7.3 API契约注册表中登记
+5. **response_model必须与函数实际返回类型一致**，禁止声明`List[T]`但返回`dict`
+6. **Pydantic schema是唯一真相源**，DESIGN.md中的API示例json以schema为准
 
 ### 4.2 认证 API — `/api/v1/auth`
 

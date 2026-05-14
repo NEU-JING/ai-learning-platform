@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -22,7 +22,7 @@ from app.services.lab_service import lab_service
 router = APIRouter()
 
 
-@router.get("/", response_model=List[CourseListResponse])
+@router.get("/", response_model=PaginatedResponse[CourseListResponse])
 def list_courses(
     level: Optional[str] = None,
     category: Optional[str] = None,
@@ -32,8 +32,8 @@ def list_courses(
 ):
     """List published courses.
 
-    When `page` is provided, returns a paginated response with metadata.
-    When `page` is omitted, returns the full list (backward compatible).
+    Always returns a PaginatedResponse. When `page` is omitted, returns all
+    items in a single page (backward compatible wrapper).
     """
     courses, total = course_service.list_courses(db, level=level, category=category, page=page, per_page=per_page)
 
@@ -48,8 +48,14 @@ def list_courses(
             "pages": _pages,
         }
 
-    # Backward compatible: return plain list
-    return courses
+    # Backward compatible: wrap all items in PaginatedResponse with page=None
+    return {
+        "items": courses,
+        "total": total,
+        "page": None,
+        "per_page": None,
+        "pages": None,
+    }
 
 
 @router.get("/{course_id}", response_model=CourseResponse)

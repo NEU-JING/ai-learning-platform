@@ -93,7 +93,9 @@ const store = new Store({
     async fetchCourses({ commit }) {
       commit('SET_LOADING', true);
       try {
-        const courses = await API.courses.list();
+        const response = await API.courses.list();
+        // API returns PaginatedResponse { items, total, page, ... }
+        const courses = Array.isArray(response) ? response : (response.items || []);
         commit('SET_COURSES', courses);
       } finally {
         commit('SET_LOADING', false);

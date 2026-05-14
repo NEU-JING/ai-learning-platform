@@ -6,22 +6,24 @@ class TestCourseList:
         resp = client.get("/api/v1/courses/")
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) >= 1
-        assert data[0]["title"] == "Python for AI"
+        # API now returns PaginatedResponse { items, total, page, ... }
+        assert "items" in data
+        assert len(data["items"]) >= 1
+        assert data["items"][0]["title"] == "Python for AI"
 
     def test_list_courses_filter_level(self, client, test_course):
         resp = client.get("/api/v1/courses/?level=beginner")
         assert resp.status_code == 200
-        assert len(resp.json()) >= 1
+        assert len(resp.json()["items"]) >= 1
 
     def test_list_courses_filter_category(self, client, test_course):
         resp = client.get("/api/v1/courses/?category=python")
         assert resp.status_code == 200
-        assert len(resp.json()) >= 1
+        assert len(resp.json()["items"]) >= 1
 
     def test_list_courses_no_match(self, client, test_course):
         resp = client.get("/api/v1/courses/?level=expert")
-        # Unpublished or no match → empty list is fine
+        # Unpublished or no match → empty items is fine
         assert resp.status_code == 200
 
 
@@ -68,12 +70,13 @@ class TestCourseListPagination:
         assert resp.status_code == 422
 
     def test_list_courses_no_page_returns_list(self, client, test_course):
-        """Without page param, should return a plain list (backward compat)."""
+        """Without page param, returns PaginatedResponse with page=None."""
         resp = client.get("/api/v1/courses/")
         assert resp.status_code == 200
         data = resp.json()
-        assert isinstance(data, list)
-        assert len(data) >= 1
+        assert "items" in data
+        assert data["page"] is None
+        assert len(data["items"]) >= 1
 
 
 class TestCourseDetail:

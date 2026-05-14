@@ -1,0 +1,76 @@
+# AGENTS.md — AI Learning Platform 开发指引
+
+> 本文件是所有 AI Agent 在本项目开发时必须遵循的入口文件。
+> 详细规范见 DEVELOPMENT_HARNESS.md 和 DESIGN.md。
+
+## 快速启动
+
+```bash
+cd /root/workspace/ai-learning-platform/backend
+source /tmp/ailp-venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000   # 启动后端
+pytest tests/ -v                                     # 跑测试（62个）
+```
+
+- venv: `/tmp/ailp-venv` (Python 3.11)
+- 前端: 静态文件由后端 `SERVE_STATIC=True` 直接服务
+- 数据库: MVP用SQLite，Schema兼容PostgreSQL
+
+## 🚨 红线规则（违反即视为bug）
+
+### 1. 前后端契约同步（DEVELOPMENT_HARNESS.md §4.7）
+- **后端Pydantic schema字段名 = 前端消费的字段名**，必须完全一致（包括单复数）
+- 修改schema字段名时，**同一commit**中必须 `grep -rn "old_field_name" frontend/` 并同步更新
+- 禁止前端自行"翻译"字段名（如 `chapters_count` → `chapter_count`）
+- 新增API端点必须在 §4.7.3 API契约注册表中登记
+
+### 2. response_model一致性（DEVELOPMENT_HARNESS.md §4.8）
+- `response_model` 必须与函数实际返回类型严格一致
+- 分页端点用 `PaginatedResponse[T]`，禁止声明 `List[T]` 后返回dict
+- 修改端点返回逻辑后必须 `pytest` 验证——不一致会暴露为 `ResponseValidationError`
+
+### 3. 契约测试必须覆盖（DEVELOPMENT_HARNESS.md §5.6）
+- 新增/变更API端点 → 必须在 `tests/e2e/test_contract.py` 添加断言
+- 契约测试失败 = 前后端不一致 = 禁止合并
+
+### 4. Schema变更影响评估（DEVELOPMENT_HARNESS.md §4.7.2）
+修改任何Pydantic响应schema时，必须逐项确认：
+1. 变更类型：新增/修改字段名/修改类型/删除字段
+2. 影响的前端文件路径
+3. 前端已同步修改
+4. 是否Breaking Change
+5. 契约测试已更新
+
+## 项目结构
+
+```
+backend/app/
+├── api/v1/          # 路由层：只做参数校验和调用Service
+├── core/            # 配置、数据库、安全、缓存
+├── models/          # SQLAlchemy ORM模型
+├── schemas/         # Pydantic请求/响应模型（唯一真相源）
+├── services/        # 业务逻辑
+└── data/            # 种子数据（Phase1课程）
+frontend/
+├── src/             # SPA版（ES Modules, Router, Store）
+├── js/              # 传统版（多页面）
+└── *.html           # 页面
+```
+
+## 已知Quirk
+
+- **JWT sub必须string**: python-jose按RFC 7519要求sub是string，传int导致decode返回None
+- **bcrypt<5.0**: bcrypt 5.0+默认禁止>72字节密码
+- **SQLite内存DB测试需StaticPool**: 普通`sqlite://`每个连接是独立空DB
+- **登录用email**: UserLogin schema要求email字段，不是username
+- **注册不返token**: 返回UserResponse，前端需走登录流程
+- **课程列表返回PaginatedResponse**: 统一结构 `{items, total, page, ...}`，前端取 `.items`
+
+## 关键文档索引
+
+| 文档 | 内容 |
+|------|------|
+| `DEVELOPMENT_HARNESS.md` | 全流程开发规范（分支、需求、设计、测试、CI） |
+| `DESIGN.md` | 技术架构、数据库、API定义（含§4.1.1契约红线） |
+| `PRD.md` | 产品需求定义 |
+| `README.md` | 项目概览 |

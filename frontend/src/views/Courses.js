@@ -77,7 +77,7 @@ export default async function Courses() {
         <p class="course-desc">${course.description || ''}</p>
         <div class="course-meta">
           <span>⏱️ ${course.duration_hours}小时</span>
-          <span>📚 ${course.chapter_count || 0}章节</span>
+          <span>📚 ${course.chapters_count || 0}章节</span>
         </div>
       </div>
     `;
