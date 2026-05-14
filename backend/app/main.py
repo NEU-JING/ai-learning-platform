@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.core.database import init_db, SessionLocal
 from app.data.courses import init_courses_data
 from app.data.courses_phase1 import init_phase1_data
+from app.data.courses_phase2 import init_phase2_data
 from app.api.v1 import auth, courses, labs, progress, certificates, discussions
 
 
@@ -34,6 +35,7 @@ async def lifespan(app: FastAPI):
     try:
         init_courses_data(db)
         init_phase1_data(db)
+        init_phase2_data(db)
     finally:
         db.close()
     print("✅ 数据库初始化完成")

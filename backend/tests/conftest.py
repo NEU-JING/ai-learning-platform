@@ -52,8 +52,11 @@ def client(test_db):
 
     app.dependency_overrides[get_db] = _override_get_db
 
+    # Patch both database.SessionLocal AND the module-level imports in main.py
+    # so lifespan seeding writes to the same test DB
     with patch("app.core.database.init_db"), \
-         patch("app.core.database.SessionLocal", _TestSessionLocal):
+         patch("app.core.database.SessionLocal", _TestSessionLocal), \
+         patch("app.main.SessionLocal", _TestSessionLocal):
         with TestClient(app) as c:
             yield c
 
