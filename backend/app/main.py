@@ -9,6 +9,7 @@ import asyncio
 from app.core.config import settings
 from app.core.database import init_db, SessionLocal
 from app.data.courses import init_courses_data
+from app.data.courses_phase1 import init_phase1_data
 from app.api.v1 import auth, courses, labs, progress, certificates, discussions
 
 
@@ -25,11 +26,14 @@ def _format_size(size_bytes: int) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 启动时初始化数据库
+    # 启动时确保数据库schema就绪
+    # 开发环境: init_db() 创建缺失表 (Alembic未跑时的fallback)
+    # 生产环境: 应使用 `alembic upgrade head` 管理迁移
     init_db()
     db = SessionLocal()
     try:
         init_courses_data(db)
+        init_phase1_data(db)
     finally:
         db.close()
     print("✅ 数据库初始化完成")
@@ -106,7 +110,9 @@ app.add_middleware(
 # 静态文件服务配置
 # 生产环境: 前端文件挂载到容器中，由后端同时提供API和静态文件服务
 STATIC_DIR = os.getenv("STATIC_DIR", "../frontend")
-SERVE_STATIC = os.getenv("SERVE_STATIC", "false").lower() == "true"
+# Force absolute path to avoid cwd issues
+STATIC_DIR = os.path.abspath(STATIC_DIR)
+SERVE_STATIC = True  # Always serve static files in this deployment
 
 if SERVE_STATIC and os.path.exists(STATIC_DIR):
     # 挂载静态文件目录
@@ -123,16 +129,16 @@ app.include_router(certificates.router, prefix="/api/v1/certificates", tags=["�
 app.include_router(discussions.router, prefix="/api/v1", tags=["讨论区"])
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 def root():
-    """API根路径 - 返回应用信息"""
-    return {
-        "name": settings.APP_NAME,
-        "version": settings.VERSION,
-        "docs": "/docs",
-        "redoc": "/redoc",
-        "health": "/health"
-    }
+    """首页 - 返回SPA应用"""
+    spa_file = os.path.join(STATIC_DIR, "spa.html")
+    if os.path.exists(spa_file):
+        return FileResponse(spa_file)
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse(content="<h1>AI Learning Platform</h1><p>Frontend not found</p>")
 
 
 @app.get("/health")
@@ -158,6 +164,34 @@ async def spa_fallback(request: Request, full_path: str):
     - /docs, /redoc, /openapi.json - API文档
     - /static/* - 静态文件
     """
+    # --- Static file serving (js/css/images/src/etc.) ---
+    # Before falling back to SPA/HTML, check if the path maps to a real file
+    # under STATIC_DIR. This handles relative paths like js/api.js, css/style.css,
+    # src/main.js that HTML pages reference without the /static/ prefix.
+    static_extensions = (
+        ".js", ".mjs", ".css", ".map", ".png", ".jpg", ".jpeg", ".gif",
+        ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".json", ".webp",
+    )
+    if full_path and any(full_path.endswith(ext) for ext in static_extensions):
+        file_path = os.path.normpath(os.path.join(STATIC_DIR, full_path))
+        # Security: ensure we don't escape STATIC_DIR
+        if file_path.startswith(os.path.abspath(STATIC_DIR)) and os.path.isfile(file_path):
+            response = FileResponse(file_path)
+            # Prevent aggressive caching of JS/CSS during development
+            if any(full_path.endswith(ext) for ext in (".js", ".mjs", ".css", ".map")):
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            return response
+        # File not found under STATIC_DIR — don't fall through to HTML fallback
+        return HTMLResponse(content="Not Found", status_code=404)
+
+    # --- Direct file match (html, ico, etc.) ---
+    # If the path directly corresponds to a file under STATIC_DIR, serve it.
+    # This ensures /login.html returns the actual login.html, not a SPA fallback.
+    if full_path:
+        direct_file = os.path.normpath(os.path.join(STATIC_DIR, full_path))
+        if direct_file.startswith(os.path.abspath(STATIC_DIR)) and os.path.isfile(direct_file):
+            return FileResponse(direct_file)
+
     # 排除API和文档路径
     excluded_paths = [
         "/api/",
@@ -173,8 +207,7 @@ async def spa_fallback(request: Request, full_path: str):
         if full_path.startswith(excluded.lstrip("/")) or full_path == excluded.lstrip("/"):
             return HTMLResponse(content="Not Found", status_code=404)
     
-    # 尝试返回具体的HTML文件
-    # 优先检查是否存在对应的页面文件
+    # 尝试返回具体的HTML文件 (bare paths like /login → login.html)
     page_mapping = {
         "": "index.html",
         "index": "index.html",
@@ -183,7 +216,7 @@ async def spa_fallback(request: Request, full_path: str):
         "course": "course.html",
         "chapter": "chapter.html",
         "lab": "lab.html",
-        "courses": "index.html",  # 课程列表使用主页面
+        "courses": "index.html",
         "dashboard": "index.html",
         "profile": "index.html",
         "certificates": "index.html",
@@ -198,7 +231,7 @@ async def spa_fallback(request: Request, full_path: str):
         if os.path.exists(page_file):
             return FileResponse(page_file)
     
-    # 否则返回spa.html (SPA路由回退)
+    # SPA路由回退 (only for unknown paths without file extension)
     spa_file = os.path.join(STATIC_DIR, "spa.html")
     if os.path.exists(spa_file):
         return FileResponse(spa_file)

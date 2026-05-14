@@ -17,7 +17,7 @@ import { MobileNav, BottomNav } from './components/MobileNav.js';
 const store = new Store({
   state: {
     user: null,
-    token: localStorage.getItem('token'),
+    token: localStorage.getItem('access_token'),
     courses: [],
     currentCourse: null,
     currentChapter: null,
@@ -33,9 +33,10 @@ const store = new Store({
     SET_TOKEN(state, token) {
       state.token = token;
       if (token) {
-        localStorage.setItem('token', token);
+        localStorage.setItem('access_token', token);
       } else {
-        localStorage.removeItem('token');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
       }
     },
     SET_COURSES(state, courses) {
@@ -70,6 +71,10 @@ const store = new Store({
       try {
         const response = await API.auth.login(credentials);
         commit('SET_TOKEN', response.access_token);
+        // 同时存储 refresh_token
+        if (response.refresh_token) {
+          localStorage.setItem('refresh_token', response.refresh_token);
+        }
         commit('SET_USER', { email: credentials.email });
         return { success: true };
       } catch (error) {
@@ -201,7 +206,13 @@ const router = new Router({
       return;
     }
     
-    // 仅限游客访问的页面
+    // 已登录用户访问 /login 或 /register 时重定向到首页
+    if (isAuthenticated && (to.path === '/login' || to.path === '/register')) {
+      next('/');
+      return;
+    }
+    
+    // 仅限游客访问的页面（guestOnly 标记，兼容旧逻辑）
     if (to.guestOnly && isAuthenticated) {
       next('/');
       return;
@@ -250,9 +261,14 @@ async function initApp() {
   // 检查登录状态
   if (store.state.token) {
     try {
-      // 这里可以验证token有效性
-      store.commit('SET_USER', { token: store.state.token });
+      // Fetch real user info from API
+      const user = await API.auth.me();
+      if (user) {
+        store.commit('SET_USER', user);
+      }
     } catch (error) {
+      // Token invalid — logout
+      console.warn('Token验证失败，自动登出:', error.message);
       store.dispatch('logout');
     }
   }

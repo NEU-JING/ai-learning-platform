@@ -1,244 +1,143 @@
 /**
- * 讨论区列表视图
+ * Discussion View — List discussions for a course
  */
 
-export default async function Discussion({ params }) {
-  const store = window.$store;
-  const courseId = params.id;
-  let discussions = [];
-  let course = null;
-  let currentSort = 'newest';
-  let loading = true;
+import { API } from '../services/api.js';
+import { AuthService } from '../services/auth.js';
 
+export default async function Discussion() {
+  const isLoggedIn = AuthService.isAuthenticated();
+  let selectedCourseId = null;
+  let discussions = [];
+  let courses = [];
+  let sort = 'newest';
+
+  // Load courses
   try {
-    course = await store.$api.courses.get(courseId);
-    discussions = await store.$api.discussions.list(courseId, currentSort);
-  } catch (error) {
-    console.error('加载讨论区失败:', error);
-  } finally {
-    loading = false;
+    courses = await API.courses.list();
+  } catch (e) {
+    courses = [];
   }
 
-  const renderDiscussionItem = (discussion) => {
-    const pinnedBadge = discussion.is_pinned 
-      ? '<span class="discussion-badge pinned">📌 置顶</span>' 
-      : '';
-    
-    const lockedBadge = discussion.is_locked 
-      ? '<span class="discussion-badge locked">🔒 已锁定</span>' 
-      : '';
+  async function loadDiscussions(courseId, sortBy = 'newest') {
+    sort = sortBy;
+    selectedCourseId = courseId;
+    try {
+      discussions = await API.discussions.list(courseId, sortBy);
+    } catch (e) {
+      discussions = [];
+    }
+    render();
+  }
 
-    const timeAgo = formatTimeAgo(discussion.created_at);
+  async function handleCreate(title, content) {
+    if (!selectedCourseId || !isLoggedIn) return;
+    try {
+      await API.discussions.create(selectedCourseId, { title, content });
+      await loadDiscussions(selectedCourseId, sort);
+    } catch (e) {
+      alert('创建失败: ' + e.message);
+    }
+  }
 
-    return `
-      <div class="discussion-item" onclick="window.$router.push('/courses/${courseId}/discussions/${discussion.id}')">
-        <div class="discussion-header">
-          <img src="${discussion.user.avatar_url || '/assets/default-avatar.png'}" 
-               alt="${discussion.user.username}" 
-               class="discussion-avatar">
-          <div class="discussion-meta">
-            <span class="discussion-author">${discussion.user.username}</span>
-            <span class="discussion-time">${timeAgo}</span>
+  function formatTime(dt) {
+    if (!dt) return '';
+    const d = new Date(dt);
+    const now = new Date();
+    const diffMs = now - d;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return '刚刚';
+    if (diffMin < 60) return `${diffMin}分钟前`;
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return `${diffH}小时前`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD < 30) return `${diffD}天前`;
+    return d.toLocaleDateString('zh-CN');
+  }
+
+  function render() {
+    const container = document.getElementById('discussion-container');
+    if (!container) return;
+
+    const courseSelector = courses.map(c =>
+      `<button class="btn ${selectedCourseId === c.id ? 'btn-primary' : ''}" 
+        onclick="window.__discussSelect(${c.id})" 
+        style="margin:0 4px 4px 0;font-size:0.85rem;">
+        ${c.title}
+      </button>`
+    ).join('');
+
+    const sortBtns = ['newest', 'popular', 'pinned'].map(s =>
+      `<button class="btn ${sort === s ? 'btn-primary' : ''}" 
+        onclick="window.__discussSort('${s}')" 
+        style="font-size:0.8rem;margin-right:4px;">
+        ${{newest:'最新',popular:'最热',pinned:'置顶'}[s]}
+      </button>`
+    ).join('');
+
+    let discussionList = '';
+    if (!selectedCourseId) {
+      discussionList = '<p style="color:#666;text-align:center;padding:2rem;">请选择一个课程查看讨论</p>';
+    } else if (discussions.length === 0) {
+      discussionList = '<p style="color:#666;text-align:center;padding:2rem;">暂无讨论，来发起第一个吧！</p>';
+    } else {
+      discussionList = discussions.map(d => `
+        <div class="card" style="margin-bottom:12px;cursor:pointer;" onclick="window.__discussDetail(${d.id})">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;font-size:1.05rem;">
+              ${d.is_pinned ? '📌 ' : ''}${d.title}
+            </h3>
+            ${d.is_locked ? '<span style="color:#999;font-size:0.8rem;">🔒 已锁定</span>' : ''}
           </div>
-          ${pinnedBadge}
-          ${lockedBadge}
+          <p style="color:#666;margin:8px 0 0;font-size:0.9rem;">${d.content_preview || ''}</p>
+          <div style="display:flex;gap:16px;margin-top:8px;font-size:0.8rem;color:#999;">
+            <span>👤 ${d.user?.username || '匿名'}</span>
+            <span>❤️ ${d.likes_count}</span>
+            <span>💬 ${d.comments_count}</span>
+            <span>🕐 ${formatTime(d.created_at)}</span>
+          </div>
         </div>
-        <h3 class="discussion-title">${discussion.title}</h3>
-        <p class="discussion-preview">${discussion.content_preview}</p>
-        <div class="discussion-stats">
-          <span class="stat-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-            </svg>
-            ${discussion.likes_count}
-          </span>
-          <span class="stat-item">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-            ${discussion.comments_count}
-          </span>
-        </div>
+      `).join('');
+    }
+
+    container.innerHTML = `
+      <div style="margin-bottom:16px;">
+        <h3 style="margin:0 0 8px;">选择课程</h3>
+        <div>${courseSelector || '<p style="color:#999;">暂无课程</p>'}</div>
       </div>
+      ${selectedCourseId ? `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>${sortBtns}</div>
+          ${isLoggedIn ? '<button class="btn btn-primary" onclick="window.__discussCreate()" style="font-size:0.85rem;">+ 发起讨论</button>' : ''}
+        </div>
+        ${discussionList}
+      ` : ''}
     `;
+  }
+
+  // Expose handlers to global scope for onclick
+  window.__discussSelect = (id) => loadDiscussions(id, sort);
+  window.__discussSort = (s) => { if (selectedCourseId) loadDiscussions(selectedCourseId, s); };
+  window.__discussDetail = (id) => { window.location.hash = `#/discussions/${id}`; };
+  window.__discussCreate = () => {
+    const title = prompt('讨论标题:');
+    if (!title) return;
+    const content = prompt('讨论内容:');
+    if (!content) return;
+    handleCreate(title, content);
   };
 
-  const discussionsHtml = discussions.length > 0
-    ? discussions.map(renderDiscussionItem).join('')
-    : `
-      <div class="empty-state">
-        <div class="empty-icon">💬</div>
-        <h3>暂无讨论</h3>
-        <p>成为第一个发起讨论的人吧！</p>
-      </div>
-    `;
-
+  // Initial render
   const html = `
-    <div class="page discussion-page">
-      <nav class="navbar">
-        <a href="#/" class="navbar-brand">
-          <div class="navbar-logo">AI</div>
-          <span>AI学习平台</span>
-        </a>
-        <ul class="navbar-nav">
-          <li><a href="#/">首页</a></li>
-          <li><a href="#/courses">课程</a></li>
-          <li><a href="#/courses/${courseId}">${course ? course.title : '课程'}</a></li>
-          <li><a href="#/courses/${courseId}/discussions" class="active">讨论区</a></li>
-        </ul>
-        <div class="navbar-right">
-          ${store.state.user ? `
-            <span class="user-name">${store.state.user.email || store.state.user.username}</span>
-            <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); return false;">退出</a>
-          ` : `
-            <a href="#/login" class="btn btn-secondary btn-sm">登录</a>
-          `}
-        </div>
-      </nav>
-
+    <div class="page">
       <div class="container">
-        <div class="discussion-header-section">
-          <div class="discussion-breadcrumb">
-            <a href="#/courses/${courseId}">← 返回课程</a>
-          </div>
-          <div class="discussion-title-section">
-            <h1>💬 讨论区</h1>
-            <p class="course-title">${course ? course.title : ''}</p>
-          </div>
-          <div class="discussion-actions">
-            <div class="sort-options">
-              <button class="sort-btn ${currentSort === 'newest' ? 'active' : ''}" 
-                      onclick="changeSort('newest')">最新</button>
-              <button class="sort-btn ${currentSort === 'popular' ? 'active' : ''}" 
-                      onclick="changeSort('popular')">最热</button>
-              <button class="sort-btn ${currentSort === 'pinned' ? 'active' : ''}" 
-                      onclick="changeSort('pinned')">置顶</button>
-            </div>
-            ${store.state.user ? `
-              <button class="btn btn-primary" onclick="showCreateModal()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="12" y1="5" x2="12" y2="19"></line>
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                </svg>
-                发起讨论
-              </button>
-            ` : ''}
-          </div>
-        </div>
-
-        <div class="discussions-list">
-          ${loading ? '<div class="loading">加载中...</div>' : discussionsHtml}
-        </div>
+        <h1 style="margin-bottom:16px;">💬 讨论区</h1>
+        <div id="discussion-container"></div>
       </div>
-
-      ${store.state.user ? `
-        <div id="create-modal" class="modal" style="display: none;">
-          <div class="modal-overlay" onclick="hideCreateModal()"></div>
-          <div class="modal-content">
-            <div class="modal-header">
-              <h2>发起新讨论</h2>
-              <button class="modal-close" onclick="hideCreateModal()">×</button>
-            </div>
-            <form id="create-discussion-form" onsubmit="handleCreateSubmit(event)">
-              <div class="form-group">
-                <label for="discussion-title">标题</label>
-                <input type="text" id="discussion-title" name="title" required 
-                       placeholder="简短描述你的问题或话题" maxlength="200">
-              </div>
-              <div class="form-group">
-                <label for="discussion-content">内容</label>
-                <textarea id="discussion-content" name="content" required rows="8"
-                          placeholder="详细描述你的问题、想法或经验..."></textarea>
-              </div>
-              <div class="form-actions">
-                <button type="button" class="btn btn-secondary" onclick="hideCreateModal()">取消</button>
-                <button type="submit" class="btn btn-primary">发布讨论</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      ` : ''}
     </div>
   `;
 
-  // 挂载方法到window
-  window.showCreateModal = () => {
-    const modal = document.getElementById('create-modal');
-    if (modal) modal.style.display = 'block';
-  };
-
-  window.hideCreateModal = () => {
-    const modal = document.getElementById('create-modal');
-    if (modal) modal.style.display = 'none';
-  };
-
-  window.changeSort = async (sort) => {
-    currentSort = sort;
-    try {
-      discussions = await store.$api.discussions.list(courseId, sort);
-      // 重新渲染讨论列表
-      const listContainer = document.querySelector('.discussions-list');
-      if (listContainer) {
-        listContainer.innerHTML = discussions.length > 0
-          ? discussions.map(renderDiscussionItem).join('')
-          : `
-            <div class="empty-state">
-              <div class="empty-icon">💬</div>
-              <h3>暂无讨论</h3>
-              <p>成为第一个发起讨论的人吧！</p>
-            </div>
-          `;
-      }
-      // 更新按钮状态
-      document.querySelectorAll('.sort-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      const activeBtn = document.querySelector(`.sort-btn[onclick="changeSort('${sort}')"]`);
-      if (activeBtn) activeBtn.classList.add('active');
-    } catch (error) {
-      console.error('切换排序失败:', error);
-    }
-  };
-
-  window.handleCreateSubmit = async (event) => {
-    event.preventDefault();
-    const form = event.target;
-    const title = form.title.value;
-    const content = form.content.value;
-
-    try {
-      await store.$api.discussions.create(courseId, { title, content });
-      hideCreateModal();
-      form.reset();
-      // 刷新列表
-      discussions = await store.$api.discussions.list(courseId, currentSort);
-      const listContainer = document.querySelector('.discussions-list');
-      if (listContainer) {
-        listContainer.innerHTML = discussions.map(renderDiscussionItem).join('');
-      }
-    } catch (error) {
-      alert('发布失败: ' + error.message);
-    }
-  };
-
+  // Defer render to after DOM mount
+  setTimeout(() => render(), 0);
   return html;
-}
-
-// 辅助函数：格式化时间
-function formatTimeAgo(dateString) {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diff = now - date;
-  
-  const seconds = Math.floor(diff / 1000);
-  const minutes = Math.floor(seconds / 60);
-  const hours = Math.floor(minutes / 60);
-  const days = Math.floor(hours / 24);
-  
-  if (seconds < 60) return '刚刚';
-  if (minutes < 60) return `${minutes}分钟前`;
-  if (hours < 24) return `${hours}小时前`;
-  if (days < 30) return `${days}天前`;
-  
-  return date.toLocaleDateString('zh-CN');
 }

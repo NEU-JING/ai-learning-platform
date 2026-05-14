@@ -1,14 +1,21 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+from math import ceil
 
 from app.core.database import get_db
 from app.api.deps import get_current_active_user
 from app.models import User
 from app.schemas.course import (
-    CourseResponse, CourseListResponse, 
-    ChapterResponse, LabResponse, LabSubmissionCreate, LabSubmissionResponse
+    CourseResponse,
+    CourseListResponse,
+    ChapterResponse,
+    LabPublicResponse,
+    LabSubmissionCreate,
+    LabSubmissionResponse,
 )
+from app.schemas.pagination import PaginatedResponse
 from app.services.course_service import course_service
 from app.services.lab_service import lab_service
 
@@ -19,46 +26,59 @@ router = APIRouter()
 def list_courses(
     level: Optional[str] = None,
     category: Optional[str] = None,
-    db: Session = Depends(get_db)
+    page: Optional[int] = Query(None, ge=1, description="Page number (1-indexed)"),
+    per_page: Optional[int] = Query(None, ge=1, le=100, description="Items per page (max 100)"),
+    db: Session = Depends(get_db),
 ):
-    """获取课程列表"""
-    courses = course_service.list_courses(db, level=level, category=category)
+    """List published courses.
+
+    When `page` is provided, returns a paginated response with metadata.
+    When `page` is omitted, returns the full list (backward compatible).
+    """
+    courses, total = course_service.list_courses(db, level=level, category=category, page=page, per_page=per_page)
+
+    if page is not None:
+        _per_page = min(per_page or 20, 100)
+        _pages = ceil(total / _per_page) if total > 0 else 0
+        return {
+            "items": courses,
+            "total": total,
+            "page": page,
+            "per_page": _per_page,
+            "pages": _pages,
+        }
+
+    # Backward compatible: return plain list
     return courses
 
 
 @router.get("/{course_id}", response_model=CourseResponse)
 def get_course(course_id: int, db: Session = Depends(get_db)):
-    """获取课程详情"""
+    """Get course detail with chapters."""
     course = course_service.get_course(db, course_id)
     if not course:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="课程不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="课程不存在")
     return course
 
 
 @router.get("/{course_id}/chapters", response_model=List[ChapterResponse])
 def list_chapters(course_id: int, db: Session = Depends(get_db)):
-    """获取课程章节列表"""
+    """List chapters of a course."""
     return course_service.get_chapters(db, course_id)
 
 
 @router.get("/chapters/{chapter_id}", response_model=ChapterResponse)
 def get_chapter(chapter_id: int, db: Session = Depends(get_db)):
-    """获取章节详情"""
+    """Get chapter detail."""
     chapter = course_service.get_chapter(db, chapter_id)
     if not chapter:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="章节不存在"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="章节不存在")
     return chapter
 
 
-@router.get("/chapters/{chapter_id}/lab", response_model=Optional[LabResponse])
+@router.get("/chapters/{chapter_id}/lab", response_model=Optional[LabPublicResponse])
 def get_chapter_lab(chapter_id: int, db: Session = Depends(get_db)):
-    """获取章节的实验"""
+    """Get the lab associated with a chapter (public view, no solution)."""
     return course_service.get_chapter_lab(db, chapter_id)
 
 
@@ -67,46 +87,15 @@ def submit_lab(
     lab_id: int,
     submission: LabSubmissionCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
-    """提交实验代码"""
-    from app.models import Lab
-    lab = db.query(Lab).filter(Lab.id == lab_id).first()
-    if not lab:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="实验不存在"
-        )
-    result = lab_service.submit_code(
+    """Submit code for a lab — executes in sandbox and auto-grades."""
+    result = lab_service.submit_and_grade(
         db=db,
         user_id=current_user.id,
         lab_id=lab_id,
-        code=submission.code
+        code=submission.code,
     )
+    # Invalidate course caches after lab submission (progress may have changed)
+    course_service.invalidate_course_cache()
     return result
-
-
-@router.get("/progress", response_model=List[dict])
-def get_learning_progress(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """获取学习进度"""
-    return course_service.get_user_progress(db, current_user.id)
-
-
-@router.post("/chapters/{chapter_id}/progress")
-def update_chapter_progress(
-    chapter_id: int,
-    status: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """更新章节学习进度"""
-    course_service.update_progress(
-        db=db,
-        user_id=current_user.id,
-        chapter_id=chapter_id,
-        status=status
-    )
-    return {"message": "进度已更新"}

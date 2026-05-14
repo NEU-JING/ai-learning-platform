@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.config import settings
-from app.core.security import create_access_token, create_refresh_token
-from app.schemas.user import UserCreate, UserLogin, UserResponse, Token
+from app.core.security import create_access_token, create_refresh_token, verify_refresh_token
+from app.schemas.user import UserCreate, UserLogin, UserResponse, Token, RefreshTokenRequest
 from app.services.user_service import user_service
 from app.models import User
 from app.api.deps import get_current_active_user
@@ -62,3 +62,39 @@ def login(login_data: UserLogin, db: Session = Depends(get_db)):
 def get_me(current_user: User = Depends(get_current_active_user)):
     """获取当前用户信息"""
     return current_user
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(refresh_data: RefreshTokenRequest, db: Session = Depends(get_db)):
+    """使用refresh_token刷新access_token"""
+    payload = verify_refresh_token(refresh_data.refresh_token)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效或过期的refresh_token",
+        )
+
+    user_id = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的refresh_token",
+        )
+
+    # 验证用户仍然存在且活跃
+    user = user_service.get_by_id(db, int(user_id))
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="用户不存在或已禁用",
+        )
+
+    # 生成新token对
+    access_token = create_access_token(data={"sub": user.id})
+    new_refresh_token = create_refresh_token(data={"sub": user.id})
+
+    return {
+        "access_token": access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer",
+    }

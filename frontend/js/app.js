@@ -1,201 +1,214 @@
 /**
- * 通用应用逻辑
+ * Common app utilities — Toast, Loading, URL helpers.
  */
 
 const app = {
-    // 显示提示消息
-    toast(message, type = 'success', duration = 3000) {
-        // 创建容器
-        let container = document.querySelector('.toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'toast-container';
-            document.body.appendChild(container);
-        }
-        
-        // 创建toast
-        const toast = document.createElement('div');
-        toast.className = `toast ${type}`;
-        
-        // 图标
-        const icons = {
-            success: '✓',
-            error: '✗',
-            warning: '!'
-        };
-        
-        toast.innerHTML = `
-            <span style="font-weight: bold;">${icons[type] || '•'}</span>
-            <span>${message}</span>
-        `;
-        
-        container.appendChild(toast);
-        
-        // 自动移除
-        setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(100%)';
-            toast.style.transition = 'all 0.3s ease';
-            setTimeout(() => toast.remove(), 300);
-        }, duration);
-    },
-    
-    // 显示加载状态
-    showLoading(container, message = '加载中...') {
-        const el = typeof container === 'string' 
-            ? document.querySelector(container) 
-            : container;
-            
-        if (el) {
-            el.innerHTML = `
-                <div class="loading">
-                    <div style="text-align: center;">
-                        <div class="spinner" style="margin: 0 auto 1rem;"></div>
-                        <p>${message}</p>
-                    </div>
-                </div>
-            `;
-        }
-    },
-    
-    // 显示空状态
-    showEmpty(container, title = '暂无数据', message = '') {
-        const el = typeof container === 'string' 
-            ? document.querySelector(container) 
-            : container;
-            
-        if (el) {
-            el.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">📭</div>
-                    <h3>${title}</h3>
-                    ${message ? `<p>${message}</p>` : ''}
-                </div>
-            `;
-        }
-    },
-    
-    // 显示错误状态
-    showError(container, message = '加载失败，请重试', onRetry = null) {
-        const el = typeof container === 'string' 
-            ? document.querySelector(container) 
-            : container;
-            
-        if (el) {
-            el.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">⚠️</div>
-                    <h3>出错了</h3>
-                    <p>${message}</p>
-                    ${onRetry ? `<button class="btn btn-primary" style="margin-top: 1rem;" onclick="(${onRetry})()">重试</button>` : ''}
-                </div>
-            `;
-        }
-    },
-    
-    // 从URL获取参数
-    getUrlParam(name) {
-        const params = new URLSearchParams(window.location.search);
-        return params.get(name);
-    },
-    
-    // 设置页面标题
-    setTitle(title) {
-        document.title = title ? `${title} - AI学习平台` : 'AI学习平台';
-    },
-    
-    // 格式化日期
-    formatDate(dateStr) {
-        const date = new Date(dateStr);
-        return date.toLocaleDateString('zh-CN', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-    },
-    
-    // 防抖
-    debounce(fn, delay = 300) {
-        let timer = null;
-        return function(...args) {
-            clearTimeout(timer);
-            timer = setTimeout(() => fn.apply(this, args), delay);
-        };
-    },
-    
-    // 节流
-    throttle(fn, limit = 300) {
-        let inThrottle;
-        return function(...args) {
-            if (!inThrottle) {
-                fn.apply(this, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
-            }
-        };
-    },
-    
-    // 初始化导航栏
-    initNavbar() {
-        // 高亮当前页面
-        const currentPage = window.location.pathname.split('/').pop() || 'index.html';
-        document.querySelectorAll('.navbar-nav a').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href === currentPage || (currentPage === '' && href === 'index.html')) {
-                link.classList.add('active');
-            }
-        });
-        
-        // 用户菜单下拉
-        const userMenu = document.querySelector('.user-menu');
-        if (userMenu) {
-            const trigger = userMenu.querySelector('.user-menu-trigger');
-            const dropdown = userMenu.querySelector('.dropdown-menu');
-            
-            if (trigger && dropdown) {
-                trigger.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    dropdown.classList.toggle('show');
-                });
-                
-                document.addEventListener('click', () => {
-                    dropdown.classList.remove('show');
-                });
-            }
-        }
-    },
-    
-    // Markdown渲染配置
-    initMarked() {
-        if (typeof marked !== 'undefined') {
-            marked.setOptions({
-                highlight: function(code, lang) {
-                    if (lang && hljs.getLanguage(lang)) {
-                        return hljs.highlight(code, { language: lang }).value;
-                    }
-                    return hljs.highlightAuto(code).value;
-                },
-                langPrefix: 'hljs language-',
-                breaks: true,
-                gfm: true
-            });
-        }
-    },
-    
-    // 渲染Markdown
-    renderMarkdown(content) {
-        if (typeof marked !== 'undefined') {
-            return marked.parse(content || '');
-        }
-        return content || '';
+  // ── Toast ─────────────────────────────────────────────
+
+  /**
+   * Show a toast notification.
+   * @param {string} message
+   * @param {'success'|'error'|'warning'|'info'} type
+   * @param {number} duration ms
+   */
+  toast(message, type = 'success', duration = 3000) {
+    let container = document.querySelector('.toast-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.className = 'toast-container';
+      container.style.cssText = 'position:fixed;top:1rem;right:1rem;z-index:9999;display:flex;flex-direction:column;gap:0.5rem;pointer-events:none;';
+      document.body.appendChild(container);
     }
+
+    const colors = {
+      success: { bg: '#10b981', icon: '✓' },
+      error:   { bg: '#ef4444', icon: '✗' },
+      warning: { bg: '#f59e0b', icon: '⚠' },
+      info:    { bg: '#3b82f6', icon: 'ℹ' },
+    };
+
+    const { bg, icon } = colors[type] || colors.info;
+
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      display:flex;align-items:center;gap:0.5rem;
+      padding:0.75rem 1.25rem;border-radius:0.5rem;
+      color:#fff;font-size:0.875rem;font-weight:500;
+      background:${bg};box-shadow:0 4px 12px rgba(0,0,0,0.15);
+      pointer-events:auto;opacity:1;transform:translateX(0);
+      transition:all 0.3s ease;max-width:360px;word-break:break-word;
+    `;
+    toast.innerHTML = `<span style="font-weight:bold;font-size:1rem;">${icon}</span><span>${message}</span>`;
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(100%)';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  },
+
+  // ── Loading ───────────────────────────────────────────
+
+  /**
+   * Show loading state in a container.
+   * @param {HTMLElement|string} target — selector or element
+   * @param {string} message
+   * @returns {Function} dismiss function
+   */
+  showLoading(target, message = '加载中...') {
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) return () => {};
+
+    const overlay = document.createElement('div');
+    overlay.className = 'loading-overlay';
+    overlay.style.cssText = `
+      display:flex;align-items:center;justify-content:center;
+      padding:2rem;flex-direction:column;gap:0.75rem;
+    `;
+    overlay.innerHTML = `
+      <div class="spinner" style="width:2rem;height:2rem;border:3px solid #e5e7eb;border-top-color:#3b82f6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+      <p style="color:#6b7280;font-size:0.875rem;">${message}</p>
+    `;
+
+    // Add spin animation if not exists
+    if (!document.getElementById('spin-keyframe')) {
+      const style = document.createElement('style');
+      style.id = 'spin-keyframe';
+      style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+      document.head.appendChild(style);
+    }
+
+    el.innerHTML = '';
+    el.appendChild(overlay);
+
+    return () => {
+      if (overlay.parentNode) overlay.remove();
+    };
+  },
+
+  /**
+   * Show empty state.
+   */
+  showEmpty(target, title = '暂无数据', message = '') {
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) return;
+    el.innerHTML = `
+      <div style="text-align:center;padding:3rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">📭</div>
+        <h3 style="color:#374151;margin:0 0 0.5rem;">${title}</h3>
+        ${message ? `<p style="color:#6b7280;">${message}</p>` : ''}
+      </div>
+    `;
+  },
+
+  /**
+   * Show error state with retry.
+   */
+  showError(target, message = '加载失败，请重试', onRetry = null) {
+    const el = typeof target === 'string' ? document.querySelector(target) : target;
+    if (!el) return;
+    el.innerHTML = `
+      <div style="text-align:center;padding:3rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">⚠️</div>
+        <h3 style="color:#374151;margin:0 0 0.5rem;">出错了</h3>
+        <p style="color:#6b7280;">${message}</p>
+        ${onRetry ? `<button class="btn btn-primary" style="margin-top:1rem;" id="retry-btn">重试</button>` : ''}
+      </div>
+    `;
+    if (onRetry) {
+      el.querySelector('#retry-btn')?.addEventListener('click', onRetry);
+    }
+  },
+
+  // ── Utilities ─────────────────────────────────────────
+
+  getUrlParam(name) {
+    return new URLSearchParams(window.location.search).get(name);
+  },
+
+  setTitle(title) {
+    document.title = title ? `${title} - AI学习平台` : 'AI学习平台';
+  },
+
+  formatDate(dateStr) {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleDateString('zh-CN', {
+      year: 'numeric', month: 'long', day: 'numeric'
+    });
+  },
+
+  debounce(fn, delay = 300) {
+    let timer;
+    return function (...args) {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn.apply(this, args), delay);
+    };
+  },
+
+  escapeHtml(text) {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  },
+
+  // ── Navbar & Markdown ─────────────────────────────────
+
+  initNavbar() {
+    const page = window.location.pathname.split('/').pop() || 'index.html';
+    document.querySelectorAll('.navbar-nav a').forEach(link => {
+      const href = link.getAttribute('href');
+      if (href === page || (page === '' && href === 'index.html')) {
+        link.classList.add('active');
+      }
+    });
+
+    // User dropdown
+    const userMenu = document.querySelector('.user-menu');
+    if (userMenu) {
+      const trigger = userMenu.querySelector('.user-menu-trigger');
+      const dropdown = userMenu.querySelector('.dropdown-menu');
+      if (trigger && dropdown) {
+        trigger.addEventListener('click', (e) => {
+          e.stopPropagation();
+          dropdown.classList.toggle('show');
+        });
+        document.addEventListener('click', () => dropdown.classList.remove('show'));
+      }
+    }
+  },
+
+  initMarked() {
+    if (typeof marked !== 'undefined') {
+      marked.setOptions({
+        highlight: (code, lang) => {
+          if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+            return hljs.highlight(code, { language: lang }).value;
+          }
+          return typeof hljs !== 'undefined' ? hljs.highlightAuto(code).value : code;
+        },
+        langPrefix: 'hljs language-',
+        breaks: true,
+        gfm: true
+      });
+    }
+  },
+
+  renderMarkdown(content) {
+    if (typeof marked !== 'undefined') {
+      return marked.parse(content || '');
+    }
+    return content || '';
+  }
 };
 
-// 导出
 window.app = app;
 
-// 页面加载时初始化
 document.addEventListener('DOMContentLoaded', () => {
-    app.initNavbar();
-    app.initMarked();
+  app.initNavbar();
+  app.initMarked();
 });

@@ -7,6 +7,8 @@
     <link rel="stylesheet" href="css/style.css">
     <!-- Monaco Editor -->
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+    <!-- Storage must load before auth/api -->
+    <script src="js/storage.js"></script>
 </head>
 <body>
     <!-- 导航栏 -->
@@ -17,13 +19,9 @@
         </a>
         <ul class="navbar-nav">
             <li><a href="index.html">课程</a></li>
-            <li><a href="#">学习路径</a></li>
-            <li><a href="#">社区</a></li>
         </ul>
         <div class="navbar-right">
-            <a href="chapter.html?id=${chapterId}&course_id=${courseId}" class="btn btn-secondary btn-sm" id="back-btn">
-                ← 返回章节
-            </a>
+            <a href="chapter.html" class="btn btn-secondary btn-sm" id="back-btn">← 返回章节</a>
             <div data-guest style="display: flex; gap: 0.5rem;">
                 <a href="login.html" class="btn btn-secondary btn-sm">登录</a>
                 <a href="register.html" class="btn btn-primary btn-sm">注册</a>
@@ -35,9 +33,6 @@
                     <span>▼</span>
                 </div>
                 <div class="dropdown-menu">
-                    <a href="#" class="dropdown-item">个人中心</a>
-                    <a href="#" class="dropdown-item">我的课程</a>
-                    <div class="dropdown-divider"></div>
                     <a href="#" class="dropdown-item" onclick="auth.logout(); return false;">退出登录</a>
                 </div>
             </div>
@@ -46,10 +41,20 @@
 
     <!-- 主内容 -->
     <main class="main-container" style="padding-top: 1rem;">
-        <!-- 章节标题 -->
+        <!-- 章节标题 + 实验信息 -->
         <div id="lab-header" style="margin-bottom: 1rem;">
             <h1 style="font-size: 1.25rem;">代码实验室</h1>
             <p style="color: var(--text-secondary); font-size: 0.875rem;">编写和运行你的代码</p>
+        </div>
+
+        <!-- 提示区域 -->
+        <div id="hints-section" style="display:none; margin-bottom: 1rem;">
+            <details>
+                <summary style="cursor:pointer; font-weight:600; color:var(--primary);">
+                    💡 查看提示
+                </summary>
+                <ul id="hints-list" style="margin:0.5rem 0 0 1.5rem; color:var(--text-secondary);"></ul>
+            </details>
         </div>
 
         <!-- 代码编辑器区域 -->
@@ -57,78 +62,70 @@
             <!-- 编辑器面板 -->
             <div class="editor-panel">
                 <div class="panel-header">
-                    <h3>
-                        <span>📝</span>
-                        编辑器
-                    </h3>
+                    <h3><span>📝</span> 编辑器</h3>
                     <div style="display: flex; gap: 0.5rem;">
-                        <select id="language-select" class="form-control" style="width: 120px; font-size: 0.875rem; padding: 0.375rem 0.5rem;">
-                            <option value="python">Python</option>
-                            <option value="javascript">JavaScript</option>
-                        </select>
-                        <button class="btn btn-success btn-sm" onclick="runCode()">
-                            <span>▶</span> 运行
+                        <button class="btn btn-secondary btn-sm" onclick="runCode()" id="run-btn">
+                            ▶ 运行
+                        </button>
+                        <button class="btn btn-primary btn-sm" onclick="submitLab()" id="submit-btn">
+                            ✅ 提交评测
                         </button>
                     </div>
                 </div>
                 <div class="panel-body">
-                    <div id="monaco-editor"></div>
+                    <div id="monaco-editor" style="height: 400px;"></div>
                 </div>
+                <!-- 自动保存状态 -->
+                <div id="autosave-status" style="font-size:0.75rem;color:#6b7280;padding:0.25rem 0.5rem;text-align:right;"></div>
             </div>
 
-            <!-- 输出面板 -->
+            <!-- 输出/评测结果面板 -->
             <div class="output-panel">
                 <div class="panel-header">
-                    <h3>
-                        <span>📤</span>
-                        输出结果
-                    </h3>
-                    <button class="btn btn-secondary btn-sm" onclick="clearOutput()">
-                        清空
-                    </button>
+                    <h3><span>📤</span> 输出结果</h3>
+                    <div style="display:flex;gap:0.5rem;">
+                        <button class="btn btn-secondary btn-sm" onclick="toggleTab('output')" id="tab-output" style="font-weight:bold;">输出</button>
+                        <button class="btn btn-secondary btn-sm" onclick="toggleTab('grading')" id="tab-grading">评测</button>
+                        <button class="btn btn-secondary btn-sm" onclick="toggleTab('history')" id="tab-history">历史</button>
+                    </div>
                 </div>
                 <div class="panel-body">
-                    <div id="output-content" class="output-content" style="background: #1e1e1e; color: #d4d4d4;">
-                        <span style="color: #6e7681;">// 点击"运行"按钮执行代码...</span>
+                    <div id="output-content" style="background: #1e1e1e; color: #d4d4d4; padding:1rem; border-radius:0.375rem; min-height:200px;">
+                        <span style="color: #6e7681;">// 点击"运行"按钮执行代码，或点击"提交评测"验证答案...</span>
                     </div>
+                    <div id="grading-content" style="display:none; padding:1rem;"></div>
+                    <div id="history-content" style="display:none; padding:1rem;"></div>
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- 脚本 -->
+    <!-- 脚本 (storage.js already loaded in head) -->
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/app.js"></script>
     <script>
-        // 获取参数
+        // ── URL params ─────────────────────────────────────
         const chapterId = app.getUrlParam('chapter_id');
         const courseId = app.getUrlParam('course_id');
-        
-        // 更新返回按钮链接
-        document.getElementById('back-btn').href = `chapter.html?id=${chapterId}&course_id=${courseId}`;
-        
-        // Monaco编辑器实例
+
+        document.getElementById('back-btn').href =
+            `chapter.html?id=${chapterId}&course_id=${courseId}`;
+
+        // ── State ──────────────────────────────────────────
         let editor = null;
-        
-        // 默认代码模板
-        const codeTemplates = {
-            python: `# 在这里编写你的Python代码\n\nprint("Hello, AI Learning!")\n\n# 示例：计算斐波那契数列\ndef fibonacci(n):\n    if n <= 1:\n        return n\n    return fibonacci(n-1) + fibonacci(n-2)\n\n# 输出前10个斐波那契数\nprint(\"\\n斐波那契数列:\")\nfor i in range(10):\n    print(f\"F({i}) = {fibonacci(i)}\")`,
-            
-            javascript: `// 在这里编写你的JavaScript代码\n\nconsole.log("Hello, AI Learning!");\n\n// 示例：计算斐波那契数列\nfunction fibonacci(n) {\n    if (n <= 1) return n;\n    return fibonacci(n - 1) + fibonacci(n - 2);\n}\n\n// 输出前10个斐波那契数\nconsole.log("\\n斐波那契数列:");\nfor (let i = 0; i < 10; i++) {\n    console.log(\`F(\${i}) = \${fibonacci(i)}\`);\n}`
-        };
-        
-        // 初始化Monaco编辑器
-        function initEditor() {
-            require.config({ 
-                paths: { 
-                    'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' 
-                }
+        let currentLab = null;  // LabPublicResponse
+        let autosaveTimer = null;
+
+        // ── Monaco init ────────────────────────────────────
+        function initEditor(starterCode = '# Write your code here\n') {
+            require.config({
+                paths: { 'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }
             });
-            
-            require(['vs/editor/editor.main'], function() {
+
+            require(['vs/editor/editor.main'], function () {
                 editor = monaco.editor.create(document.getElementById('monaco-editor'), {
-                    value: codeTemplates.python,
+                    value: starterCode,
                     language: 'python',
                     theme: 'vs-dark',
                     fontSize: 14,
@@ -137,85 +134,251 @@
                     scrollBeyondLastLine: false,
                     wordWrap: 'on',
                     lineNumbers: 'on',
-                    renderWhitespace: 'selection',
                     tabSize: 4,
                     insertSpaces: true,
                     fontFamily: 'Menlo, Monaco, "Courier New", monospace'
                 });
-                
-                // 语言切换
-                document.getElementById('language-select').addEventListener('change', function(e) {
-                    const lang = e.target.value;
-                    monaco.editor.setModelLanguage(editor.getModel(), lang);
-                    editor.setValue(codeTemplates[lang]);
-                });
-                
-                // 键盘快捷键 - Ctrl+Enter运行
-                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, function() {
-                    runCode();
-                });
+
+                // Ctrl+Enter → run code
+                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+
+                // Ctrl+Shift+Enter → submit
+                editor.addCommand(
+                    monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter,
+                    submitLab
+                );
+
+                // Auto-save every 30s
+                startAutoSave();
             });
         }
-        
-        // 运行代码
+
+        // ── Auto-save ──────────────────────────────────────
+        function startAutoSave() {
+            if (autosaveTimer) clearInterval(autosaveTimer);
+            const key = `lab-draft-${chapterId || 'default'}`;
+
+            // Restore draft if exists
+            const draft = localStorage.getItem(key);
+            if (draft && editor) {
+                try {
+                    const data = JSON.parse(draft);
+                    if (data.content && data.content !== editor.getValue()) {
+                        if (confirm(`发现自动保存的草稿 (${new Date(data.ts).toLocaleString()}), 是否恢复?`)) {
+                            editor.setValue(data.content);
+                        }
+                    }
+                } catch {}
+            }
+
+            autosaveTimer = setInterval(() => {
+                if (!editor) return;
+                const code = editor.getValue();
+                localStorage.setItem(key, JSON.stringify({ content: code, ts: Date.now() }));
+                const statusEl = document.getElementById('autosave-status');
+                statusEl.textContent = `已自动保存 ${new Date().toLocaleTimeString()}`;
+            }, 30000);
+        }
+
+        // ── Load lab info ──────────────────────────────────
+        async function loadLabInfo() {
+            if (!chapterId) return;
+            try {
+                const lab = await api.courses.getChapterLab(chapterId);
+                if (!lab) {
+                    document.getElementById('lab-header').innerHTML = `
+                        <h1>📝 自由练习</h1>
+                        <p style="color:var(--text-secondary);font-size:0.875rem;">本章节无关联实验，可自由编写代码</p>
+                    `;
+                    initEditor();
+                    return;
+                }
+                currentLab = lab;
+
+                document.getElementById('lab-header').innerHTML = `
+                    <h1>💻 ${app.escapeHtml(lab.title)}</h1>
+                    <p style="color:var(--text-secondary);font-size:0.875rem;">${app.escapeHtml(lab.description || '完成实验任务')}</p>
+                `;
+
+                // Show hints
+                if (lab.hints && lab.hints.length > 0) {
+                    document.getElementById('hints-section').style.display = '';
+                    document.getElementById('hints-list').innerHTML =
+                        lab.hints.map(h => `<li>${app.escapeHtml(h)}</li>`).join('');
+                }
+
+                initEditor(lab.starter_code || '# Write your code here\n');
+            } catch (error) {
+                console.error('加载实验信息失败:', error);
+                initEditor();
+            }
+        }
+
+        // ── Run code (no submission) ────────────────────────
         async function runCode() {
             if (!editor) return;
-            
             const code = editor.getValue();
-            const language = document.getElementById('language-select').value;
             const outputEl = document.getElementById('output-content');
-            
-            outputEl.innerHTML = '<span style="color: #6e7681;">运行中...</span>';
-            
+
+            // Switch to output tab
+            toggleTab('output');
+
+            outputEl.innerHTML = '<span style="color:#6e7681;">⏳ 运行中...</span>';
+            document.getElementById('run-btn').disabled = true;
+
             try {
-                const result = await api.code.execute(code, language);
-                
-                if (result.error) {
-                    outputEl.innerHTML = `<span class="output-error">${escapeHtml(result.error)}</span>`;
+                const result = await api.labs.execute(code);
+                if (result.success) {
+                    outputEl.innerHTML = `<pre style="margin:0;color:#4ade80;white-space:pre-wrap;">${app.escapeHtml(result.output || '(无输出)')}</pre>`;
                 } else {
-                    const output = result.output || result.result || '程序执行完成（无输出）';
-                    outputEl.innerHTML = `<span class="output-success">${escapeHtml(output)}</span>`;
+                    outputEl.innerHTML = `<pre style="margin:0;color:#f87171;white-space:pre-wrap;">${app.escapeHtml(result.error || '执行失败')}</pre>`;
+                }
+                if (result.execution_time_ms) {
+                    outputEl.innerHTML += `<div style="margin-top:0.5rem;color:#6e7681;font-size:0.75rem;">执行耗时: ${result.execution_time_ms}ms</div>`;
                 }
             } catch (error) {
-                outputEl.innerHTML = `<span class="output-error">执行出错: ${escapeHtml(error.message)}</span>`;
+                outputEl.innerHTML = `<span style="color:#f87171;">执行出错: ${app.escapeHtml(error.message)}</span>`;
+            } finally {
+                document.getElementById('run-btn').disabled = false;
             }
         }
-        
-        // 清空输出
-        function clearOutput() {
-            document.getElementById('output-content').innerHTML = '<span style="color: #6e7681;">// 点击"运行"按钮执行代码...</span>';
-        }
-        
-        // HTML转义
-        function escapeHtml(text) {
-            if (!text) return '';
-            return text
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
-        }
-        
-        // 加载章节信息
-        async function loadChapterInfo() {
-            if (!chapterId) return;
-            
+
+        // ── Submit lab for grading ─────────────────────────
+        async function submitLab() {
+            if (!editor || !currentLab) {
+                app.toast('请先加载实验', 'warning');
+                return;
+            }
+
+            if (!auth.isLoggedIn()) {
+                app.toast('请先登录后再提交', 'warning');
+                return;
+            }
+
+            const code = editor.getValue();
+            if (!code.trim()) {
+                app.toast('代码不能为空', 'warning');
+                return;
+            }
+
+            const gradingEl = document.getElementById('grading-content');
+            toggleTab('grading');
+            gradingEl.innerHTML = '<div style="text-align:center;padding:2rem;color:#6e7681;">⏳ 评测中...</div>';
+            document.getElementById('submit-btn').disabled = true;
+
             try {
-                const chapter = await api.chapters.get(chapterId);
-                document.getElementById('lab-header').innerHTML = `
-                    <h1 style="font-size: 1.25rem;">💻 ${escapeHtml(chapter.title)} - 代码实验室</h1>
-                    <p style="color: var(--text-secondary); font-size: 0.875rem;">动手实践，加深理解</p>
+                const result = await api.labs.submit(currentLab.id, code);
+
+                // Render grading results
+                const scoreColor = result.passed ? '#4ade80' : '#f87171';
+                const scoreIcon = result.passed ? '🎉' : '❌';
+
+                let html = `
+                    <div style="text-align:center;margin-bottom:1.5rem;">
+                        <div style="font-size:2.5rem;">${scoreIcon}</div>
+                        <div style="font-size:1.5rem;font-weight:bold;color:${scoreColor};">
+                            ${result.score !== null ? result.score + '分' : (result.passed ? '通过' : '未通过')}
+                        </div>
+                    </div>
                 `;
+
+                if (result.feedback) {
+                    html += `<div style="background:#f3f4f6;padding:0.75rem 1rem;border-radius:0.5rem;margin-bottom:1rem;white-space:pre-wrap;font-size:0.875rem;">${app.escapeHtml(result.feedback)}</div>`;
+                }
+
+                if (result.test_results && result.test_results.length > 0) {
+                    html += '<div style="font-weight:600;margin-bottom:0.5rem;">测试用例详情:</div>';
+                    result.test_results.forEach(t => {
+                        const icon = t.passed ? '✅' : '❌';
+                        html += `<div style="padding:0.5rem;margin-bottom:0.25rem;border-radius:0.25rem;background:${t.passed ? '#f0fdf4' : '#fef2f2'};">
+                            ${icon} <strong>${app.escapeHtml(t.name)}</strong>
+                            <span style="color:#6b7280;font-size:0.8rem;"> 期望: ${app.escapeHtml(String(t.expected || ''))} | 实际: ${app.escapeHtml(String(t.actual || 'N/A'))}</span>
+                            ${t.error ? `<div style="color:#f87171;font-size:0.75rem;">${app.escapeHtml(t.error)}</div>` : ''}
+                        </div>`;
+                    });
+                }
+
+                gradingEl.innerHTML = html;
+
+                // Toast
+                app.toast(result.passed ? '评测通过！' : '评测未通过，继续加油', result.passed ? 'success' : 'warning');
+
+                // Refresh history
+                loadSubmissionHistory();
             } catch (error) {
-                console.error('加载章节信息失败:', error);
+                gradingEl.innerHTML = `<div style="color:#f87171;text-align:center;padding:2rem;">评测失败: ${app.escapeHtml(error.message)}</div>`;
+                app.toast('评测失败: ' + error.message, 'error');
+            } finally {
+                document.getElementById('submit-btn').disabled = false;
             }
         }
-        
-        // 页面加载
+
+        // ── Submission history ──────────────────────────────
+        async function loadSubmissionHistory() {
+            if (!currentLab || !auth.isLoggedIn()) return;
+
+            const historyEl = document.getElementById('history-content');
+            historyEl.innerHTML = '<div style="color:#6e7681;text-align:center;">加载中...</div>';
+
+            try {
+                const submissions = await api.labs.getSubmissions(currentLab.id);
+                if (!submissions || submissions.length === 0) {
+                    historyEl.innerHTML = '<div style="color:#6b7280;text-align:center;padding:2rem;">暂无提交记录</div>';
+                    return;
+                }
+
+                historyEl.innerHTML = submissions.map((s, i) => `
+                    <div style="padding:0.75rem;border:1px solid #e5e7eb;border-radius:0.5rem;margin-bottom:0.5rem;cursor:pointer;" onclick="viewSubmission(${s.id})">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>${s.passed ? '✅' : '❌'} 第${submissions.length - i}次提交</span>
+                            <span style="color:${s.passed ? '#4ade80' : '#f87171'};font-weight:600;">${s.score !== null ? s.score + '分' : '-'}</span>
+                        </div>
+                        <div style="color:#6b7280;font-size:0.75rem;margin-top:0.25rem;">
+                            ${app.formatDate(s.created_at)}${s.execution_time_ms ? ' · ' + s.execution_time_ms + 'ms' : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                historyEl.innerHTML = '<div style="color:#f87171;">加载失败</div>';
+            }
+        }
+
+        // ── View submission detail ──────────────────────────
+        async function viewSubmission(id) {
+            try {
+                const s = await api.labs.getSubmission(id);
+                const gradingEl = document.getElementById('grading-content');
+                toggleTab('grading');
+
+                let html = `<div style="margin-bottom:1rem;"><strong>提交代码:</strong><pre style="background:#1e1e1e;color:#d4d4d4;padding:1rem;border-radius:0.375rem;overflow:auto;font-size:0.8rem;">${app.escapeHtml(s.code)}</pre></div>`;
+
+                if (s.output) {
+                    html += `<div style="margin-bottom:1rem;"><strong>输出:</strong><pre style="background:#1e1e1e;color:#d4d4d4;padding:0.75rem;border-radius:0.375rem;font-size:0.8rem;white-space:pre-wrap;">${app.escapeHtml(s.output)}</pre></div>`;
+                }
+
+                if (s.feedback) {
+                    html += `<div style="background:#f3f4f6;padding:0.75rem;border-radius:0.5rem;white-space:pre-wrap;font-size:0.875rem;">${app.escapeHtml(s.feedback)}</div>`;
+                }
+
+                gradingEl.innerHTML = html;
+            } catch (error) {
+                app.toast('加载提交详情失败', 'error');
+            }
+        }
+
+        // ── Tab switching ───────────────────────────────────
+        function toggleTab(tab) {
+            ['output', 'grading', 'history'].forEach(t => {
+                document.getElementById(`${t}-content`).style.display = t === tab ? '' : 'none';
+                document.getElementById(`tab-${t}`).style.fontWeight = t === tab ? 'bold' : 'normal';
+            });
+
+            if (tab === 'history') loadSubmissionHistory();
+        }
+
+        // ── Init ────────────────────────────────────────────
         document.addEventListener('DOMContentLoaded', () => {
-            initEditor();
-            loadChapterInfo();
+            loadLabInfo();
         });
     </script>
 </body>

@@ -3,9 +3,11 @@
  */
 
 import { Skeleton } from '../components/Skeleton.js';
+import { AuthService } from '../services/auth.js';
 
 export default async function Courses() {
   const store = window.$store;
+  const isAuthenticated = AuthService.isAuthenticated();
   const container = document.createElement('div');
   container.className = 'page courses-page';
   
@@ -34,9 +36,11 @@ export default async function Courses() {
         <li><a href="#" data-nav="/courses">课程</a></li>
       </ul>
       <div class="navbar-right">
-        ${store?.state?.user ? `
+        ${isAuthenticated && store?.state?.user ? `
           <span class="user-name">${store.state.user.email}</span>
-          <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); return false;">退出</a>
+          <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); window.location.hash = '#/'; return false;">退出</a>
+        ` : isAuthenticated ? `
+          <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); window.location.hash = '#/'; return false;">退出</a>
         ` : `
           <a href="#" class="btn btn-secondary btn-sm" data-nav="/login">登录</a>
           <a href="#" class="btn btn-primary btn-sm" data-nav="/register">注册</a>

@@ -1,0 +1,93 @@
+{
+  "title": "Phase 1: Python快速通道",
+  "description": "面向Java开发者的Python速成课——不教'什么是变量'，而是帮你完成从Java到Python的心智模型转换。2周掌握Python核心语法、函数式编程、OOP差异、NumPy/Pandas数据处理，并通过ETL项目实战打通全链路。",
+  "level": "beginner",
+  "category": "python",
+  "duration_hours": 28,
+  "order_index": 1,
+  "is_published": true,
+  "chapters": [
+    {
+      "title": "Day 1 - 心智模型转换: Python vs Java",
+      "content_file": "ch01_python_vs_java.md",
+      "chapter_type": "code",
+      "duration_minutes": 120,
+      "order_index": 1
+    },
+    {
+      "title": "Day 2 - 函数式编程: 从Stream到推导式",
+      "content_file": "ch02_functional.md",
+      "chapter_type": "code",
+      "duration_minutes": 120,
+      "order_index": 2
+    },
+    {
+      "title": "Day 3 - 面向对象: 超越Java的OOP",
+      "content_file": "ch03_oop.md",
+      "chapter_type": "code",
+      "duration_minutes": 120,
+      "order_index": 3
+    },
+    {
+      "title": "实验1 - 实现数据验证装饰器框架",
+      "content_file": "lab01_validate_decorator.md",
+      "chapter_type": "lab",
+      "duration_minutes": 90,
+      "order_index": 4,
+      "lab": {
+        "title": "数据验证装饰器框架",
+        "description": "实现@validate_types装饰器, 支持类型检查、自定义验证器、可选参数",
+        "starter_code_file": "lab01_starter.py",
+        "test_cases_file": "lab01_tests.py"
+      }
+    },
+    {
+      "title": "Day 4 - NumPy基础: 从Java数组到多维运算",
+      "content_file": "ch04_numpy.md",
+      "chapter_type": "code",
+      "duration_minutes": 120,
+      "order_index": 5
+    },
+    {
+      "title": "Day 5 - Pandas入门: 从SQL到DataFrame",
+      "content_file": "ch05_pandas.md",
+      "chapter_type": "code",
+      "duration_minutes": 120,
+      "order_index": 6
+    },
+    {
+      "title": "Day 6 - Pandas高级: 数据清洗与特征工程",
+      "content_file": "ch06_pandas_advanced.md",
+      "chapter_type": "code",
+      "duration_minutes": 120,
+      "order_index": 7
+    },
+    {
+      "title": "Day 7 - Python IO与API调用",
+      "content_file": "ch07_io_api.md",
+      "chapter_type": "code",
+      "duration_minutes": 90,
+      "order_index": 8
+    },
+    {
+      "title": "实验2 - ETL项目实战: 从API到数据仓库",
+      "content_file": "lab02_etl.md",
+      "chapter_type": "lab",
+      "duration_minutes": 180,
+      "order_index": 9,
+      "lab": {
+        "title": "ETL项目实战: 从API到数据仓库",
+        "description": "实现完整ETL Pipeline: 抽取多源数据->质量验证->清洗转换->RFM特征计算->加载输出",
+        "starter_code_file": "lab02_starter.py",
+        "test_cases_file": "lab02_tests.py"
+      }
+    },
+    {
+      "title": "Day 8 - Phase 1 复习与总结",
+      "content_file": "ch08_summary.md",
+      "chapter_type": "text",
+      "duration_minutes": 60,
+      "order_index": 10
+    }
+  ]
+}

@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     
     # CORS配置
     # 开发环境允许localhost，生产环境必须在环境变量中配置
-    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
+    CORS_ORIGINS: str = "*"
     CORS_ALLOW_CREDENTIALS: bool = True
     
     # JWT配置 - 生产环境必须通过环境变量设置 SECRET_KEY

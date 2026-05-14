@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.database import get_db
-from app.api.deps import get_current_active_user
+from app.api.deps import get_current_active_user, get_optional_current_user
 from app.models import User, Discussion, Comment, Course
 from app.schemas.discussion import (
     DiscussionCreate, DiscussionUpdate, DiscussionListResponse,
@@ -38,7 +38,7 @@ def list_discussions(
     course_id: int,
     sort: str = "newest",  # newest, popular, pinned
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """获取课程讨论列表"""
     # 检查课程是否存在
@@ -131,7 +131,7 @@ def create_discussion(
 def get_discussion(
     discussion_id: int,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_optional_current_user)
 ):
     """获取讨论详情"""
     discussion = db.query(Discussion).filter(Discussion.id == discussion_id).first()
@@ -342,22 +342,36 @@ def like_discussion(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """点赞/取消点赞讨论"""
+    """点赞/取消点赞讨论（toggle模式，防重复）"""
+    from app.models import DiscussionLike
+
     discussion = db.query(Discussion).filter(Discussion.id == discussion_id).first()
-    
+
     if not discussion:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="讨论不存在"
         )
-    
-    # 简单实现：每次请求增加一个赞
-    # 生产环境应该使用关联表记录谁点赞了
-    discussion.likes_count += 1
-    db.commit()
-    db.refresh(discussion)
-    
-    return {
-        "liked": True,
-        "likes_count": discussion.likes_count
-    }
+
+    # Check if user already liked
+    existing = db.query(DiscussionLike).filter(
+        DiscussionLike.user_id == current_user.id,
+        DiscussionLike.discussion_id == discussion_id
+    ).first()
+
+    if existing:
+        # Unlike
+        db.delete(existing)
+        discussion.likes_count = max(0, discussion.likes_count - 1)
+        db.commit()
+        return {"liked": False, "likes_count": discussion.likes_count}
+    else:
+        # Like
+        db_like = DiscussionLike(
+            user_id=current_user.id,
+            discussion_id=discussion_id
+        )
+        db.add(db_like)
+        discussion.likes_count += 1
+        db.commit()
+        return {"liked": True, "likes_count": discussion.likes_count}

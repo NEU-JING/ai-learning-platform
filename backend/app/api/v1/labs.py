@@ -1,83 +1,111 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from math import ceil
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.code_security import check_code_security
 from app.api.deps import get_current_active_user
-from app.models import User
+from app.models import User, LabSubmission
 from app.schemas.course import CodeExecutionRequest, CodeExecutionResponse, LabSubmissionResponse
-from app.services.lab_service import lab_service
+from app.schemas.pagination import PaginatedResponse
+from app.services.code_executor import execute_code_docker
 
 router = APIRouter()
 
 
 @router.post("/execute", response_model=CodeExecutionResponse)
-def execute_code(
+async def execute_code(
     request: CodeExecutionRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
-    """
-    在沙箱中执行代码
-    
-    - **code**: 要执行的Python代码
-    - **language**: 编程语言（目前仅支持python）
-    - **timeout**: 超时时间（秒，默认30）
-    """
+    """Execute code in sandbox (no submission recorded)."""
     if request.language != "python":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="目前仅支持Python语言"
+            detail="目前仅支持Python语言",
         )
-    
-    # 限制超时时间
-    timeout = min(request.timeout or 30, 60)  # 最大60秒
-    
-    result = lab_service.execute_code(request.code, timeout)
-    
+
+    # Security check before execution
+    is_safe, security_msg = check_code_security(request.code)
+    if not is_safe:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"代码安全检查未通过: {security_msg}",
+        )
+
+    timeout = min(request.timeout or 30, 300)
+
+    result = await execute_code_docker(request.code, timeout=timeout)
+
     return CodeExecutionResponse(
-        success=result["status"] == "success",
-        output=result["output"],
-        error=result["error"],
-        execution_time_ms=result["execution_time_ms"]
+        success=result.get("success", False),
+        output=result.get("output", ""),
+        error=result.get("error"),
+        execution_time_ms=result.get("execution_time_ms", 0),
     )
 
 
-@router.get("/{lab_id}/submissions", response_model=list[LabSubmissionResponse])
+@router.get("/{lab_id}/submissions")
 def get_lab_submissions(
     lab_id: int,
+    page: Optional[int] = Query(None, ge=1, description="Page number (1-indexed)"),
+    per_page: Optional[int] = Query(None, ge=1, le=100, description="Items per page (max 100)"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
-    """获取用户的实验提交历史"""
-    from app.models import LabSubmission
-    
-    submissions = db.query(LabSubmission).filter(
+    """Get user's submission history for a lab.
+
+    When `page` is provided, returns a paginated response with metadata.
+    When `page` is omitted, returns the full list (backward compatible).
+    """
+    base_query = db.query(LabSubmission).filter(
         LabSubmission.lab_id == lab_id,
-        LabSubmission.user_id == current_user.id
-    ).order_by(LabSubmission.created_at.desc()).all()
-    
-    return submissions
+        LabSubmission.user_id == current_user.id,
+    )
+
+    if page is not None:
+        total = base_query.count()
+        _per_page = min(per_page or 20, 100)
+        offset = (page - 1) * _per_page
+        submissions = (
+            base_query.order_by(LabSubmission.created_at.desc())
+            .offset(offset)
+            .limit(_per_page)
+            .all()
+        )
+        _pages = ceil(total / _per_page) if total > 0 else 0
+        return {
+            "items": submissions,
+            "total": total,
+            "page": page,
+            "per_page": _per_page,
+            "pages": _pages,
+        }
+
+    # Backward compatible: return plain list
+    return base_query.order_by(LabSubmission.created_at.desc()).all()
 
 
 @router.get("/submissions/{submission_id}", response_model=LabSubmissionResponse)
 def get_submission_detail(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
-    """获取提交详情"""
-    from app.models import LabSubmission
-    
-    submission = db.query(LabSubmission).filter(
-        LabSubmission.id == submission_id,
-        LabSubmission.user_id == current_user.id
-    ).first()
-    
+    """Get submission detail."""
+    submission = (
+        db.query(LabSubmission)
+        .filter(
+            LabSubmission.id == submission_id,
+            LabSubmission.user_id == current_user.id,
+        )
+        .first()
+    )
     if not submission:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="提交记录不存在"
+            detail="提交记录不存在",
         )
-    
     return submission

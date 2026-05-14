@@ -3,6 +3,9 @@ from typing import List, Optional
 from datetime import datetime
 
 
+# ── Chapter ──────────────────────────────────────────────
+
+
 class ChapterBase(BaseModel):
     title: str
     content: str
@@ -19,21 +22,44 @@ class ChapterResponse(ChapterBase):
     id: int
     course_id: int
     created_at: datetime
-    
+    has_lab: bool = False
+    lab: Optional["LabPublicResponse"] = None
+
     class Config:
         from_attributes = True
 
 
-class LabBase(BaseModel):
+# ── Lab (public — no solution_code / test_cases) ─────────
+
+
+class LabPublicBase(BaseModel):
+    """Fields safe to expose to the frontend."""
     title: str
     description: Optional[str] = None
     starter_code: Optional[str] = None
-    solution_code: Optional[str] = None
-    test_cases: List[dict] = []
-    requirements: Optional[str] = None
     hints: List[str] = []
     time_limit_seconds: int = 30
     memory_limit_mb: int = 256
+
+
+class LabPublicResponse(LabPublicBase):
+    """Returned by all API endpoints — NEVER exposes solution_code or test_cases."""
+    id: int
+    chapter_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# ── Lab (internal — includes sensitive fields) ───────────
+
+
+class LabBase(LabPublicBase):
+    """Full lab definition including sensitive fields — for internal use only."""
+    solution_code: Optional[str] = None
+    test_cases: List[dict] = []
+    requirements: Optional[str] = None
 
 
 class LabCreate(LabBase):
@@ -41,19 +67,23 @@ class LabCreate(LabBase):
 
 
 class LabResponse(LabBase):
+    """Full lab — only used internally by services, NEVER in API response_model."""
     id: int
     chapter_id: int
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
+
+
+# ── Course ────────────────────────────────────────────────
 
 
 class CourseBase(BaseModel):
     title: str
     description: Optional[str] = None
     cover_image: Optional[str] = None
-    level: str  # beginner, intermediate, advanced, expert
+    level: str
     category: str
     duration_hours: int = 0
     is_published: bool = False
@@ -79,7 +109,7 @@ class CourseResponse(CourseBase):
     created_at: datetime
     updated_at: datetime
     chapters: List[ChapterResponse] = []
-    
+
     class Config:
         from_attributes = True
 
@@ -87,38 +117,18 @@ class CourseResponse(CourseBase):
 class CourseListResponse(CourseBase):
     id: int
     order_index: int
-    chapter_count: int = 0
-    
+    chapters_count: int = 0
+    created_at: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 
 
-class LearningProgressBase(BaseModel):
-    chapter_id: int
-    status: str = "not_started"
+# ── LabSubmission ────────────────────────────────────────
 
 
-class LearningProgressCreate(LearningProgressBase):
-    pass
-
-
-class LearningProgressResponse(LearningProgressBase):
-    id: int
-    user_id: int
-    completed_at: Optional[datetime]
-    last_accessed_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-
-class LabSubmissionBase(BaseModel):
-    lab_id: int
+class LabSubmissionCreate(BaseModel):
     code: str
-
-
-class LabSubmissionCreate(LabSubmissionBase):
-    pass
 
 
 class LabSubmissionResponse(BaseModel):
@@ -126,27 +136,30 @@ class LabSubmissionResponse(BaseModel):
     user_id: int
     lab_id: int
     code: str
-    output: Optional[str]
+    output: Optional[str] = None
     status: str
-    execution_time_ms: Optional[int]
-    error_message: Optional[str]
+    execution_time_ms: Optional[int] = None
+    error_message: Optional[str] = None
+    score: Optional[float] = None
+    passed: Optional[bool] = None
+    test_results: Optional[list] = None
+    feedback: Optional[str] = None
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
 
-# ========== 代码执行相关 ==========
+# ── Code Execution ───────────────────────────────────────
+
 
 class CodeExecutionRequest(BaseModel):
-    """代码执行请求"""
     code: str
     language: str = "python"
     timeout: Optional[int] = 30
 
 
 class CodeExecutionResponse(BaseModel):
-    """代码执行响应"""
     success: bool
     output: str
     error: Optional[str] = None

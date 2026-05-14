@@ -2,8 +2,11 @@
  * 首页视图
  */
 
+import { AuthService } from '../services/auth.js';
+
 export default async function Home() {
   const store = window.$store;
+  const isAuthenticated = AuthService.isAuthenticated();
   const courses = store?.state?.courses || [];
   
   if (courses.length === 0) {
@@ -44,14 +47,16 @@ export default async function Home() {
         <ul class="navbar-nav">
           <li><a href="#/">首页</a></li>
           <li><a href="#/courses">课程</a></li>
-          ${store?.state?.user ? `
+          ${isAuthenticated ? `
             <li><a href="#/progress">进度</a></li>
           ` : ''}
         </ul>
         <div class="navbar-right">
-          ${store?.state?.user ? `
+          ${isAuthenticated && store?.state?.user ? `
             <span class="user-name">${store.state.user.email}</span>
-            <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); return false;">退出</a>
+            <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); window.location.hash = '#/'; return false;">退出</a>
+          ` : isAuthenticated ? `
+            <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); window.location.hash = '#/'; return false;">退出</a>
           ` : `
             <a href="#/login" class="btn btn-secondary btn-sm">登录</a>
             <a href="#/register" class="btn btn-primary btn-sm">注册</a>

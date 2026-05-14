@@ -44,7 +44,8 @@
         </div>
     </div>
 
-    <!-- 脚本 -->
+    <!-- 脚本 (storage.js must load first) -->
+    <script src="js/storage.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/app.js"></script>
@@ -76,8 +77,13 @@
             try {
                 const result = await api.auth.login(email, password);
                 
-                // 保存认证信息
-                auth.setAuth(result.access_token, result.user);
+                // 保存认证信息 (access_token + refresh_token + user)
+                // Fetch user info after login
+                storage.setToken(result.access_token, result.refresh_token);
+                try {
+                    const user = await api.auth.me();
+                    storage.setUser(user);
+                } catch {}
                 
                 app.toast('登录成功!', 'success');
                 

@@ -33,8 +33,17 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    user_id: Optional[int] = payload.get("sub")
-    if user_id is None:
+    user_id_str: Optional[str] = payload.get("sub")
+    if user_id_str is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的认证凭证",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    try:
+        user_id: int = int(user_id_str)
+    except (ValueError, TypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="无效的认证凭证",
@@ -62,3 +71,27 @@ def get_current_active_user(
     current_user: User = Depends(get_current_user)
 ) -> User:
     return current_user
+
+
+def get_optional_current_user(
+    db: Session = Depends(get_db),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+) -> Optional[User]:
+    """Like get_current_user but returns None instead of 401 when no auth provided."""
+    if not credentials:
+        return None
+    try:
+        token = credentials.credentials
+        payload = decode_token(token)
+        if payload is None:
+            return None
+        user_id_str: Optional[str] = payload.get("sub")
+        if user_id_str is None:
+            return None
+        user_id: int = int(user_id_str)
+        user = user_service.get_by_id(db, user_id)
+        if user is None or not user.is_active:
+            return None
+        return user
+    except (ValueError, TypeError, JWTError):
+        return None

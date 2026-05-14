@@ -31,7 +31,7 @@ class APIClient {
 
   // 获取Token
   getToken() {
-    return localStorage.getItem('token');
+    return localStorage.getItem('access_token');
   }
 
   // 构建请求配置
@@ -72,7 +72,7 @@ class APIClient {
       
       // 处理特定错误
       if (response.status === 401) {
-        localStorage.removeItem('token');
+        localStorage.removeItem('access_token');
         window.location.hash = '#/login';
       }
       
@@ -89,7 +89,7 @@ class APIClient {
 
   // GET请求
   async get(endpoint, params = {}) {
-    const url = new URL(this.baseURL + endpoint);
+    const url = new URL(this.baseURL + endpoint, window.location.origin);
     
     // 添加查询参数
     Object.keys(params).forEach(key => {
@@ -171,8 +171,10 @@ export const API = {
   auth: {
     login: (credentials) => client.post('/auth/login', credentials),
     register: (data) => client.post('/auth/register', data),
+    me: () => client.get('/auth/me'),
     logout: () => {
-      localStorage.removeItem('token');
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     }
   },
 

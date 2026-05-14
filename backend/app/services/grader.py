@@ -1,198 +1,208 @@
+"""Code grading system — sandbox-based evaluation.
+
+CRITICAL: Never exec() user code in the main process. All test execution
+happens inside the Docker sandbox via code_executor.
+"""
+
 import ast
-import re
-from typing import List, Dict, Any, Optional
+import json
+from typing import Any, Dict, List, Optional
+
+from app.services.code_executor import execute_code_docker
+
 
 class CodeGrader:
-    """代码自动评测系统"""
+    """Grade user code submissions inside the sandbox."""
 
     @staticmethod
-    def grade_submission(
+    def grade_in_sandbox(
         code: str,
         test_cases: List[Dict[str, Any]],
-        solution_code: Optional[str] = None
+        timeout: int = 30,
     ) -> Dict[str, Any]:
-        """
-        评测代码提交
-        
+        """Execute grading inside the Docker sandbox.
+
         Returns:
             {
                 "passed": bool,
-                "score": int,  # 0-100
-                "total_tests": int,
-                "passed_tests": int,
-                "test_results": List[dict],
-                "style_score": int,
-                "feedback": List[str]
+                "score": float,       # 0-100
+                "test_results": list, # per-test details
+                "feedback": str,      # human-readable summary
             }
         """
-        result = {
-            "passed": False,
-            "score": 0,
-            "total_tests": len(test_cases),
-            "passed_tests": 0,
-            "test_results": [],
-            "style_score": 100,
-            "feedback": []
+        # 1. Syntax check (cheap, can run locally)
+        syntax_ok, syntax_err = CodeGrader.check_syntax(code)
+        if not syntax_ok:
+            return {
+                "passed": False,
+                "score": 0.0,
+                "test_results": [],
+                "feedback": f"语法错误: {syntax_err}",
+            }
+
+        if not test_cases:
+            return {
+                "passed": True,
+                "score": 100.0,
+                "test_results": [],
+                "feedback": "无测试用例，自动通过。",
+            }
+
+        # 2. Build grading script that runs inside the sandbox
+        grading_code = CodeGrader._build_grading_script(code, test_cases)
+
+        # 3. Execute in sandbox
+        import asyncio
+
+        try:
+            result = asyncio.get_event_loop().run_until_complete(
+                execute_code_docker(grading_code, timeout=timeout)
+            )
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            result = loop.run_until_complete(execute_code_docker(grading_code, timeout=timeout))
+            loop.close()
+
+        if not result.get("success"):
+            return {
+                "passed": False,
+                "score": 0.0,
+                "test_results": [],
+                "feedback": f"评测执行失败: {result.get('error', '未知错误')}",
+            }
+
+        # 4. Parse structured output from sandbox
+        test_results = CodeGrader._parse_results(result.get("output", ""))
+        if test_results is None:
+            return {
+                "passed": False,
+                "score": 0.0,
+                "test_results": [],
+                "feedback": "评测输出格式异常，无法解析结果。",
+            }
+
+        # 5. Compute score
+        passed_count = sum(1 for t in test_results if t.get("passed"))
+        total = len(test_cases)
+        score = round((passed_count / total) * 100, 1) if total > 0 else 0.0
+        passed = passed_count == total and score >= 60
+
+        # 6. Generate feedback
+        feedback = CodeGrader.generate_feedback(test_results, score)
+
+        return {
+            "passed": passed,
+            "score": score,
+            "test_results": test_results,
+            "feedback": feedback,
         }
-
-        # 1. 语法检查
-        syntax_valid, syntax_error = CodeGrader.check_syntax(code)
-        if not syntax_valid:
-            result["feedback"].append(f"语法错误: {syntax_error}")
-            return result
-
-        # 2. 执行测试用例
-        for test in test_cases:
-            test_result = CodeGrader.run_test_case(code, test)
-            result["test_results"].append(test_result)
-            if test_result["passed"]:
-                result["passed_tests"] += 1
-
-        # 3. 代码风格检查
-        style_issues = CodeGrader.check_style(code)
-        result["style_score"] = max(0, 100 - len(style_issues) * 5)
-        result["feedback"].extend(style_issues)
-
-        # 4. 计算总分
-        if result["total_tests"] > 0:
-            test_score = (result["passed_tests"] / result["total_tests"]) * 80
-        else:
-            test_score = 80
-
-        result["score"] = int(test_score + result["style_score"] * 0.2)
-        result["passed"] = result["passed_tests"] == result["total_tests"] and result["score"] >= 60
-
-        return result
 
     @staticmethod
     def check_syntax(code: str) -> tuple[bool, Optional[str]]:
-        """检查代码语法"""
+        """Check code syntax via ast.parse — safe to run locally."""
         try:
             ast.parse(code)
             return True, None
         except SyntaxError as e:
-            return False, f"第{e.lineno}行: {e.msg}"
+            return False, f"行{e.lineno}: {e.msg}"
         except Exception as e:
             return False, str(e)
 
     @staticmethod
-    def run_test_case(code: str, test: Dict[str, Any]) -> Dict[str, Any]:
-        """执行单个测试用例"""
-        import sys
-        import io
+    def generate_feedback(test_results: list, score: float) -> str:
+        """Generate human-readable grading feedback."""
+        passed = sum(1 for t in test_results if t.get("passed"))
+        total = len(test_results)
+        lines = [f"测试通过: {passed}/{total}"]
 
-        test_result = {
-            "name": test.get("name", "未命名测试"),
-            "passed": False,
-            "actual_output": "",
-            "expected_output": test.get("expected", ""),
-            "error": None
-        }
+        for t in test_results:
+            icon = "✅" if t.get("passed") else "❌"
+            name = t.get("name", "未命名")
+            lines.append(f"  {icon} {name}: 期望 '{t.get('expected', '')}', 实际 '{t.get('actual', 'N/A')}'")
 
-        try:
-            # 创建受限执行环境
-            namespace = {"__builtins__": __builtins__}
-            exec(code, namespace)
-
-            # 获取测试输入
-            test_input = test.get("input", "")
-
-            # 重定向输入输出
-            old_stdout = sys.stdout
-            old_stdin = sys.stdin
-
-            sys.stdout = io.StringIO()
-            sys.stdin = io.StringIO(test_input)
-
-            try:
-                # 执行测试代码
-                if "function" in test:
-                    func_name = test["function"]
-                    if func_name in namespace:
-                        func = namespace[func_name]
-                        args = test.get("args", [])
-                        actual = func(*args)
-                        sys.stdout.write(str(actual))
-                    else:
-                        test_result["error"] = f"函数 '{func_name}' 未定义"
-
-                output = sys.stdout.getvalue().strip()
-                test_result["actual_output"] = output
-
-                # 对比结果
-                expected = str(test.get("expected", "")).strip()
-                if output == expected or re.match(expected, output):
-                    test_result["passed"] = True
-
-            finally:
-                sys.stdout = old_stdout
-                sys.stdin = old_stdin
-
-        except Exception as e:
-            test_result["error"] = str(e)
-
-        return test_result
-
-    @staticmethod
-    def check_style(code: str) -> List[str]:
-        """检查代码风格"""
-        issues = []
-
-        # 1. 行长度检查
-        lines = code.split('\n')
-        for i, line in enumerate(lines, 1):
-            if len(line) > 100:
-                issues.append(f"第{i}行: 行长度超过100字符")
-
-        # 2. 检查是否有文档字符串
-        if not re.search(r'""".*?"""', code, re.DOTALL):
-            issues.append("建议添加函数/模块文档字符串")
-
-        # 3. 检查变量命名
-        snake_case_pattern = r'^[a-z][a-z0-9_]*$'
-        for match in re.finditer(r'def\s+(\w+)', code):
-            func_name = match.group(1)
-            if not re.match(snake_case_pattern, func_name):
-                issues.append(f"函数名 '{func_name}' 建议使用snake_case命名")
-
-        # 4. 检查是否有过多的全局变量
-        global_vars = re.findall(r'^[a-zA-Z_]\w*\s*=', code, re.MULTILINE)
-        if len(global_vars) > 10:
-            issues.append("全局变量过多，建议使用类或函数封装")
-
-        # 5. 检查是否有未使用的导入
-        imports = re.findall(r'^import\s+(\w+)|^from\s+\S+\s+import\s+(.+)$', code, re.MULTILINE)
-        for imp in imports:
-            module = imp[0] or imp[1].split(',')[0].strip()
-            if module and module not in code.split('import')[-1]:
-                pass  # 简化检查
-
-        return issues
-
-    @staticmethod
-    def generate_feedback(result: Dict[str, Any]) -> str:
-        """生成评测反馈"""
-        lines = []
-        lines.append(f"📊 得分: {result['score']}/100")
-        lines.append(f"✅ 通过测试: {result['passed_tests']}/{result['total_tests']}")
-        lines.append(f"🎨 代码风格: {result['style_score']}/100")
-        lines.append("")
-
-        if result["test_results"]:
-            lines.append("📋 测试结果:")
-            for test in result["test_results"]:
-                status = "✅" if test["passed"] else "❌"
-                lines.append(f"  {status} {test['name']}")
-                if not test["passed"]:
-                    lines.append(f"     期望: {test['expected_output']}")
-                    lines.append(f"     实际: {test['actual_output']}")
-                    if test.get("error"):
-                        lines.append(f"     错误: {test['error']}")
-
-        if result["feedback"]:
-            lines.append("")
-            lines.append("💡 改进建议:")
-            for fb in result["feedback"]:
-                lines.append(f"  • {fb}")
+        if score >= 80:
+            lines.append("评测通过！")
+        elif score >= 60:
+            lines.append("部分通过，继续加油。")
+        else:
+            lines.append("未通过，请检查代码逻辑。")
 
         return "\n".join(lines)
+
+    # ── Private helpers ────────────────────────────────────
+
+    @staticmethod
+    def _build_grading_script(user_code: str, test_cases: List[Dict]) -> str:
+        """Build a self-contained Python script that runs tests and prints JSON results."""
+        test_cases_json = json.dumps(test_cases, ensure_ascii=False)
+
+        return f"""{user_code}
+
+import json as _json
+
+_results = []
+for _i, _test in enumerate({test_cases_json}):
+    _name = _test.get("name", f"test_{{_i}}")
+    _ttype = _test.get("type", "output_match")
+    _expected = str(_test.get("expected", ""))
+    _actual = ""
+    _passed = False
+    _error = None
+    try:
+        if _ttype == "output_match":
+            _func = _test.get("function")
+            _args = _test.get("args", [])
+            if _func:
+                _fn = eval(_func)
+                _raw = _fn(*_args)
+                _actual = str(_raw)
+            else:
+                # capture print output
+                import io, sys as _sys
+                _old = _sys.stdout
+                _buf = io.StringIO()
+                _sys.stdout = _buf
+                try:
+                    exec(_test.get("call", ""))
+                finally:
+                    _sys.stdout = _old
+                _actual = _buf.getvalue().strip()
+            _passed = _actual == _expected
+        elif _ttype == "exception":
+            _func = _test.get("function")
+            _args = _test.get("args", [])
+            try:
+                _fn = eval(_func)
+                _fn(*_args)
+                _actual = "no exception"
+            except Exception as _e:
+                _actual = type(_e).__name__
+                _passed = _actual == _expected
+    except Exception as _e:
+        _error = str(_e)
+        _actual = f"ERROR: {{type(_e).__name__}}"
+
+    _results.append({{"name": _name, "passed": _passed, "expected": _expected, "actual": _actual, "error": _error}})
+
+print("===RESULT_START===")
+print(_json.dumps(_results, ensure_ascii=False))
+print("===RESULT_END===")
+"""
+
+    @staticmethod
+    def _parse_results(output: str) -> Optional[List[Dict]]:
+        """Extract test results JSON from sandbox output."""
+        marker_start = "===RESULT_START==="
+        marker_end = "===RESULT_END==="
+
+        idx_start = output.find(marker_start)
+        idx_end = output.find(marker_end)
+
+        if idx_start == -1 or idx_end == -1 or idx_end <= idx_start:
+            return None
+
+        json_str = output[idx_start + len(marker_start) : idx_end].strip()
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            return None

@@ -40,7 +40,7 @@ const developmentConfig = {
 // 生产环境配置
 const productionConfig = {
   ...defaultConfig,
-  API_BASE_URL: window.ENV?.VITE_API_BASE_URL || '/api/v1',
+  API_BASE_URL: window.ENV?.VITE_API_BASE_URL || `${window.location.origin}/api/v1`,
   ENABLE_DEBUG: false,
   ENABLE_MOCK: false
 };

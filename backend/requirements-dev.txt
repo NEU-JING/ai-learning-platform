@@ -1,0 +1,9 @@
+# Dev/Test dependencies
+black>=24.0
+isort>=5.13
+flake8>=7.0
+mypy>=1.8
+pytest>=8.0
+pytest-cov>=5.0
+pytest-asyncio>=0.24
+pre-commit>=3.6
