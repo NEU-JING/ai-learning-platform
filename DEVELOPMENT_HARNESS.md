@@ -284,6 +284,7 @@ repos:
 - [ ] 数据库变更有Alembic迁移脚本
 - [ ] **🚨 前后端契约同步**：修改Pydantic schema后，前端消费端字段名已同步更新（见§4.7）
 - [ ] **🚨 response_model一致性**：FastAPI端点的`response_model`声明与函数实际返回类型一致（见§4.8）
+- [ ] **🚨 编码后评审通过**：已执行post-coding-review三阶段评审，无BLOCKER/CRITICAL问题
 
 ### 4.7 前后端契约同步规范 🚨
 

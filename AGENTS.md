@@ -18,6 +18,12 @@ pytest tests/ -v                                     # 跑测试（62个）
 
 ## 🚨 红线规则（违反即视为bug）
 
+### 0. 编码后必须评审（post-coding-review skill）
+- 编码agent完成代码+单元测试后，**提交前必须执行标准化评审**
+- 评审流程：Phase 1 自动化检查 → Phase 2 独立评审 → Phase 3 复审验证
+- 没有通过评审的代码**禁止commit**
+- 详见 `skill_view(name='post-coding-review')`
+
 ### 1. 前后端契约同步（DEVELOPMENT_HARNESS.md §4.7）
 - **后端Pydantic schema字段名 = 前端消费的字段名**，必须完全一致（包括单复数）
 - 修改schema字段名时，**同一commit**中必须 `grep -rn "old_field_name" frontend/` 并同步更新
