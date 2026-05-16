@@ -6,7 +6,7 @@
     <title>章节内容 - AI学习平台</title>
     <link rel="stylesheet" href="css/style.css">
     <!-- Highlight.js -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
     <!-- Marked.js -->
     <script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
@@ -14,14 +14,13 @@
 <body>
     <!-- 导航栏 -->
     <nav class="navbar">
-        <a href="index.html" class="navbar-brand">
+        <a href="spa.html" class="navbar-brand">
             <div class="navbar-logo">AI</div>
             <span>AI学习平台</span>
         </a>
         <ul class="navbar-nav">
-            <li><a href="index.html">课程</a></li>
-            <li><a href="progress.html">学习进度</a></li>
-            
+            <li><a href="spa.html#/courses" class="nav-link">课程</a></li>
+            <li><a href="spa.html#/progress" class="nav-link">学习进度</a></li>
         </ul>
         <div class="navbar-right">
             <div data-guest>
@@ -98,7 +97,7 @@
                 
                 // 面包屑导航
                 app.renderBreadcrumb([
-                  { label: '课程', href: 'index.html' },
+                  { label: '课程', href: 'spa.html#/courses' },
                   ...(course ? [{ label: course.title, href: `course.html?id=${courseId}` }] : []),
                   { label: chapter.title },
                 ]);
@@ -165,21 +164,21 @@
                 </div>
                 <h1 style="margin-bottom: 1.5rem;">${escapeHtml(chapter.title)}</h1>
                 
-                ${hasLab ? `
-                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.25rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
-                        <div>
-                            <h3 style="margin: 0 0 0.25rem 0;">💻 代码实验室</h3>
-                            <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">动手实践，巩固所学知识</p>
-                        </div>
-                        <a href="lab.html?chapter_id=${chapter.id}&course_id=${courseId}" class="btn btn-primary" style="background: white; color: var(--primary-color);">
-                            进入实验
-                        </a>
-                    </div>
-                ` : ''}
-                
                 <div class="markdown-content">
                     ${app.renderMarkdown(chapter.content || '暂无内容')}
                 </div>
+
+                ${hasLab ? `
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.25rem; border-radius: var(--radius-lg); margin-top: 2rem; display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h3 style="margin: 0 0 0.25rem 0;">💻 动手实验</h3>
+                            <p style="margin: 0; opacity: 0.9; font-size: 0.875rem;">学完了？动手实践巩固所学知识</p>
+                        </div>
+                        <a href="lab.html?chapter_id=${chapter.id}&course_id=${courseId}" class="btn btn-primary" style="background: white; color: var(--primary-color);">
+                            进入实验 →
+                        </a>
+                    </div>
+                ` : ''}
                 
                 <!-- 章节导航 -->
                 <div style="margin-top: 3rem; padding-top: 2rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between;">

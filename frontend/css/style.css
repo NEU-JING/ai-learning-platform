@@ -275,6 +275,9 @@ body {
     border-right: 1px solid var(--border-color);
     padding: 1.5rem;
     overflow-y: auto;
+    position: sticky;
+    top: 64px;
+    height: calc(100vh - 64px);
 }
 
 .sidebar-header {
@@ -388,8 +391,8 @@ body {
 }
 
 .markdown-content pre {
-    background: #1e293b;
-    color: #e2e8f0;
+    background: #282c34;
+    color: #abb2bf;
     padding: 1rem;
     border-radius: var(--radius);
     overflow-x: auto;
@@ -757,9 +760,9 @@ body {
     }
 }
 
-/* 代码块高亮覆盖 */
+/* 代码块高亮覆盖 — atom-one-dark主题已自带背景，微调即可 */
 .hljs {
-    background: transparent !important;
+    background: #282c34 !important;
     padding: 0 !important;
 }
 
