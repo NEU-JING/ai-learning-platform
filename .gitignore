@@ -50,3 +50,5 @@ scripts/*.sh
 *.key
 secrets/
 *.secret
+*.db.bak*
+update_lab_solutions.py
