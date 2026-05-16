@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel, field_validator
 from typing import List, Optional
 from datetime import datetime
 
@@ -25,8 +25,7 @@ class ChapterResponse(ChapterBase):
     has_lab: bool = False
     lab: Optional["LabPublicResponse"] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Lab (public — no solution_code / test_cases) ─────────
@@ -41,6 +40,23 @@ class LabPublicBase(BaseModel):
     time_limit_seconds: int = 30
     memory_limit_mb: int = 256
 
+    @field_validator('hints', mode='before')
+    @classmethod
+    def parse_hints(cls, v):
+        # SQLite stores JSON as string; deserialize if needed
+        if isinstance(v, str):
+            import json
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+            return [v] if v else []
+        if v is None:
+            return []
+        return v
+
 
 class LabPublicResponse(LabPublicBase):
     """Returned by all API endpoints — NEVER exposes solution_code or test_cases."""
@@ -48,8 +64,7 @@ class LabPublicResponse(LabPublicBase):
     chapter_id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Lab (internal — includes sensitive fields) ───────────
@@ -60,6 +75,23 @@ class LabBase(LabPublicBase):
     solution_code: Optional[str] = None
     test_cases: List[dict] = []
     requirements: Optional[str] = None
+
+    @field_validator('test_cases', mode='before')
+    @classmethod
+    def parse_test_cases(cls, v):
+        # SQLite stores JSON as string; deserialize if needed
+        if isinstance(v, str):
+            import json
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+            return []
+        if v is None:
+            return []
+        return v
 
 
 class LabCreate(LabBase):
@@ -72,8 +104,7 @@ class LabResponse(LabBase):
     chapter_id: int
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Course ────────────────────────────────────────────────
@@ -110,8 +141,7 @@ class CourseResponse(CourseBase):
     updated_at: datetime
     chapters: List[ChapterResponse] = []
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CourseListResponse(CourseBase):
@@ -120,8 +150,7 @@ class CourseListResponse(CourseBase):
     chapters_count: int = 0
     created_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── LabSubmission ────────────────────────────────────────
@@ -146,8 +175,21 @@ class LabSubmissionResponse(BaseModel):
     feedback: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    @field_validator('test_results', mode='before')
+    @classmethod
+    def parse_test_results(cls, v):
+        if isinstance(v, str):
+            import json
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, list):
+                    return parsed
+            except (json.JSONDecodeError, TypeError):
+                pass
+            return None
+        return v
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ── Code Execution ───────────────────────────────────────

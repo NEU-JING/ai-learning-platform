@@ -5,6 +5,8 @@
  */
 
 import { ENV } from '../config/env.js';
+import { showToast } from '../components/Toast.js';
+import { showLoading, hideLoading } from '../components/Loading.js';
 
 // 使用环境配置中的API基础URL，支持开发/生产环境自动切换
 const API_BASE_URL = ENV.API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -73,7 +75,11 @@ class APIClient {
       // 处理特定错误
       if (response.status === 401) {
         localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        showToast('登录已过期，请重新登录', 'warning');
         window.location.hash = '#/login';
+      } else {
+        showToast(error.detail || '请求失败', 'error');
       }
       
       throw new Error(error.detail || error.message || '请求失败');
@@ -89,64 +95,105 @@ class APIClient {
 
   // GET请求
   async get(endpoint, params = {}) {
-    const url = new URL(this.baseURL + endpoint, window.location.origin);
-    
-    // 添加查询参数
-    Object.keys(params).forEach(key => {
-      if (params[key] !== undefined && params[key] !== null) {
-        url.searchParams.append(key, params[key]);
+    showLoading();
+    try {
+      const url = new URL(this.baseURL + endpoint, window.location.origin);
+      
+      // 添加查询参数
+      Object.keys(params).forEach(key => {
+        if (params[key] !== undefined && params[key] !== null) {
+          url.searchParams.append(key, params[key]);
+        }
+      });
+
+      const config = await this.buildConfig({
+        method: 'GET'
+      });
+
+      const response = await fetch(url.toString(), config);
+      return this.handleResponse(response);
+    } catch (e) {
+      if (e.name === 'TypeError') {
+        showToast('网络异常，请检查连接', 'error');
       }
-    });
-
-    const config = await this.buildConfig({
-      method: 'GET'
-    });
-
-    const response = await fetch(url.toString(), config);
-    return this.handleResponse(response);
+      throw e;
+    } finally {
+      hideLoading();
+    }
   }
 
   // POST请求
   async post(endpoint, data = {}) {
-    const config = await this.buildConfig({
-      method: 'POST',
-      body: JSON.stringify(data)
-    });
+    showLoading();
+    try {
+      const config = await this.buildConfig({
+        method: 'POST',
+        body: JSON.stringify(data)
+      });
 
-    const response = await fetch(this.baseURL + endpoint, config);
-    return this.handleResponse(response);
+      const response = await fetch(this.baseURL + endpoint, config);
+      return this.handleResponse(response);
+    } catch (e) {
+      if (e.name === 'TypeError') {
+        showToast('网络异常，请检查连接', 'error');
+      }
+      throw e;
+    } finally {
+      hideLoading();
+    }
   }
 
   // PUT请求
   async put(endpoint, data = {}) {
-    const config = await this.buildConfig({
-      method: 'PUT',
-      body: JSON.stringify(data)
-    });
-
-    const response = await fetch(this.baseURL + endpoint, config);
-    return this.handleResponse(response);
+    showLoading();
+    try {
+      const config = await this.buildConfig({
+        method: 'PUT',
+        body: JSON.stringify(data)
+      });
+      const response = await fetch(this.baseURL + endpoint, config);
+      return this.handleResponse(response);
+    } catch (e) {
+      if (e.name === 'TypeError') showToast('网络异常，请检查连接', 'error');
+      throw e;
+    } finally {
+      hideLoading();
+    }
   }
 
   // DELETE请求
   async delete(endpoint) {
-    const config = await this.buildConfig({
-      method: 'DELETE'
-    });
-
-    const response = await fetch(this.baseURL + endpoint, config);
-    return this.handleResponse(response);
+    showLoading();
+    try {
+      const config = await this.buildConfig({
+        method: 'DELETE'
+      });
+      const response = await fetch(this.baseURL + endpoint, config);
+      return this.handleResponse(response);
+    } catch (e) {
+      if (e.name === 'TypeError') showToast('网络异常，请检查连接', 'error');
+      throw e;
+    } finally {
+      hideLoading();
+    }
   }
 
   // PATCH请求
   async patch(endpoint, data = {}) {
-    const config = await this.buildConfig({
-      method: 'PATCH',
-      body: JSON.stringify(data)
-    });
-
-    const response = await fetch(this.baseURL + endpoint, config);
-    return this.handleResponse(response);
+    showLoading();
+    try {
+      const config = await this.buildConfig({
+        method: 'PATCH',
+        body: JSON.stringify(data)
+      });
+      const response = await fetch(this.baseURL + endpoint, config);
+      return this.handleResponse(response);
+    } catch (e) {
+      if (e.name === 'TypeError') showToast('网络异常，请检查连接', 'error');
+      throw e;
+    } finally {
+      hideLoading();
+    }
   }
 }
 

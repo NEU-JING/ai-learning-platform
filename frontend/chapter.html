@@ -20,8 +20,8 @@
         </a>
         <ul class="navbar-nav">
             <li><a href="index.html">课程</a></li>
-            <li><a href="#">学习路径</a></li>
-            <li><a href="#">社区</a></li>
+            <li><a href="progress.html">学习进度</a></li>
+            
         </ul>
         <div class="navbar-right">
             <div data-guest>
@@ -95,6 +95,13 @@
                 
                 // 更新页面标题
                 app.setTitle(chapter.title);
+                
+                // 面包屑导航
+                app.renderBreadcrumb([
+                  { label: '课程', href: 'index.html' },
+                  ...(course ? [{ label: course.title, href: `course.html?id=${courseId}` }] : []),
+                  { label: chapter.title },
+                ]);
                 
                 // 渲染侧边栏
                 renderSidebar(course, chapter);

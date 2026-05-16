@@ -681,6 +681,15 @@ body {
         display: none;
     }
     
+    .navbar-brand span {
+        display: none;
+    }
+    
+    /* Hamburger toggle for mobile */
+    .navbar-right {
+        gap: 0.5rem;
+    }
+    
     .courses-grid {
         grid-template-columns: 1fr;
     }
@@ -695,6 +704,56 @@ body {
     
     .auth-card {
         padding: 1.5rem;
+    }
+    
+    /* Breadcrumb compact */
+    #breadcrumb {
+        padding: 0.5rem 1rem !important;
+        font-size: 0.75rem !important;
+        white-space: nowrap;
+        overflow-x: auto;
+    }
+    
+    /* Course cards compact */
+    .course-card {
+        padding: 1rem;
+    }
+    
+    .course-card h3 {
+        font-size: 1rem;
+    }
+    
+    /* Sidebar auto-hide on mobile */
+    .sidebar {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .sidebar-header {
+        position: sticky;
+        top: 0;
+        background: var(--card-bg);
+        z-index: 1;
+    }
+    
+    /* Lab page: editor and output stacked */
+    .lab-container {
+        grid-template-columns: 1fr !important;
+        height: auto !important;
+    }
+    
+    .editor-panel {
+        height: 300px !important;
+    }
+    
+    .output-panel {
+        height: 250px !important;
+    }
+    
+    /* Panel headers compact */
+    .panel-header {
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
 }
 

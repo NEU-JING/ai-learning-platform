@@ -32,6 +32,7 @@ def test_db():
     try:
         yield db
     finally:
+        db.expire_all()  # Clear session identity map before drop
         db.close()
         Base.metadata.drop_all(bind=_test_engine)
 
@@ -56,7 +57,8 @@ def client(test_db):
     # so lifespan seeding writes to the same test DB
     with patch("app.core.database.init_db"), \
          patch("app.core.database.SessionLocal", _TestSessionLocal), \
-         patch("app.main.SessionLocal", _TestSessionLocal):
+         patch("app.main.SessionLocal", _TestSessionLocal), \
+         patch("app.main._assert_data_contract"):
         with TestClient(app) as c:
             yield c
 

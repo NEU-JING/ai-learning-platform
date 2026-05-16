@@ -1,5 +1,6 @@
 /**
  * Discussion View — List discussions for a course
+ * V1.0: inline modal for creating discussions (replacing prompt())
  */
 
 import { API } from '../services/api.js';
@@ -14,7 +15,8 @@ export default async function Discussion() {
 
   // Load courses
   try {
-    courses = await API.courses.list();
+    const resp = await API.courses.list();
+    courses = resp.items || resp;
   } catch (e) {
     courses = [];
   }
@@ -34,17 +36,34 @@ export default async function Discussion() {
     if (!selectedCourseId || !isLoggedIn) return;
     try {
       await API.discussions.create(selectedCourseId, { title, content });
+      closeModal();
       await loadDiscussions(selectedCourseId, sort);
     } catch (e) {
-      alert('创建失败: ' + e.message);
+      const errEl = document.getElementById('create-error');
+      if (errEl) errEl.textContent = '创建失败: ' + (e.message || '未知错误');
     }
+  }
+
+  function openModal() {
+    const modal = document.getElementById('create-discussion-modal');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('create-discussion-modal');
+    if (modal) modal.style.display = 'none';
+    const titleInput = document.getElementById('new-discussion-title');
+    const contentInput = document.getElementById('new-discussion-content');
+    const errEl = document.getElementById('create-error');
+    if (titleInput) titleInput.value = '';
+    if (contentInput) contentInput.value = '';
+    if (errEl) errEl.textContent = '';
   }
 
   function formatTime(dt) {
     if (!dt) return '';
     const d = new Date(dt);
-    const now = new Date();
-    const diffMs = now - d;
+    const diffMs = Date.now() - d;
     const diffMin = Math.floor(diffMs / 60000);
     if (diffMin < 1) return '刚刚';
     if (diffMin < 60) return `${diffMin}分钟前`;
@@ -60,16 +79,16 @@ export default async function Discussion() {
     if (!container) return;
 
     const courseSelector = courses.map(c =>
-      `<button class="btn ${selectedCourseId === c.id ? 'btn-primary' : ''}" 
-        onclick="window.__discussSelect(${c.id})" 
+      `<button class="btn ${selectedCourseId === c.id ? 'btn-primary' : ''}"
+        onclick="window.__discussSelect(${c.id})"
         style="margin:0 4px 4px 0;font-size:0.85rem;">
         ${c.title}
       </button>`
     ).join('');
 
     const sortBtns = ['newest', 'popular', 'pinned'].map(s =>
-      `<button class="btn ${sort === s ? 'btn-primary' : ''}" 
-        onclick="window.__discussSort('${s}')" 
+      `<button class="btn ${sort === s ? 'btn-primary' : ''}"
+        onclick="window.__discussSort('${s}')"
         style="font-size:0.8rem;margin-right:4px;">
         ${{newest:'最新',popular:'最热',pinned:'置顶'}[s]}
       </button>`
@@ -112,6 +131,31 @@ export default async function Discussion() {
         </div>
         ${discussionList}
       ` : ''}
+
+      <!-- Create Discussion Modal -->
+      <div id="create-discussion-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:12px;padding:24px;width:90%;max-width:500px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <h2 style="margin:0;font-size:1.2rem;">发起讨论</h2>
+            <button onclick="window.__discussCloseModal()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:#999;">&times;</button>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="display:block;font-size:0.85rem;color:#666;margin-bottom:4px;">标题</label>
+            <input id="new-discussion-title" type="text" placeholder="输入讨论标题..."
+              style="width:100%;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:0.95rem;box-sizing:border-box;">
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="display:block;font-size:0.85rem;color:#666;margin-bottom:4px;">内容</label>
+            <textarea id="new-discussion-content" placeholder="详细描述你的问题或想法..."
+              style="width:100%;min-height:120px;padding:10px 12px;border:1px solid #ddd;border-radius:8px;font-size:0.95rem;resize:vertical;box-sizing:border-box;"></textarea>
+          </div>
+          <div id="create-error" style="color:#e53e3e;font-size:0.85rem;margin-bottom:8px;"></div>
+          <div style="display:flex;justify-content:flex-end;gap:8px;">
+            <button class="btn" onclick="window.__discussCloseModal()">取消</button>
+            <button class="btn btn-primary" onclick="window.__discussSubmitCreate()">发布</button>
+          </div>
+        </div>
+      </div>
     `;
   }
 
@@ -119,11 +163,16 @@ export default async function Discussion() {
   window.__discussSelect = (id) => loadDiscussions(id, sort);
   window.__discussSort = (s) => { if (selectedCourseId) loadDiscussions(selectedCourseId, s); };
   window.__discussDetail = (id) => { window.location.hash = `#/discussions/${id}`; };
-  window.__discussCreate = () => {
-    const title = prompt('讨论标题:');
-    if (!title) return;
-    const content = prompt('讨论内容:');
-    if (!content) return;
+  window.__discussCreate = () => openModal();
+  window.__discussCloseModal = () => closeModal();
+  window.__discussSubmitCreate = () => {
+    const title = document.getElementById('new-discussion-title')?.value?.trim();
+    const content = document.getElementById('new-discussion-content')?.value?.trim();
+    if (!title || !content) {
+      const errEl = document.getElementById('create-error');
+      if (errEl) errEl.textContent = '标题和内容不能为空';
+      return;
+    }
     handleCreate(title, content);
   };
 

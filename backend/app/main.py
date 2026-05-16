@@ -8,10 +8,69 @@ import asyncio
 
 from app.core.config import settings
 from app.core.database import init_db, SessionLocal
-from app.data.courses import init_courses_data
+from app.data.courses import init_courses_data, PHASE_TITLES
 from app.data.courses_phase1 import init_phase1_data
 from app.data.courses_phase2 import init_phase2_data
+from app.data.courses_phase3_6 import init_phase3_6_data
 from app.api.v1 import auth, courses, labs, progress, certificates, discussions
+
+
+def _assert_data_contract(db):
+    """Data contract assertion — fail-fast if seed data is corrupt.
+
+    This is the FIRST line of defense: the server refuses to start
+    if the database does not match the expected 6-phase course system.
+
+    Philosophy: a crashed server is better than a server serving wrong data.
+    """
+    from app.models import Course, Chapter, Lab
+
+    errors = []
+
+    # 1. Exactly 6 published courses
+    published = db.query(Course).filter(Course.is_published == True).all()
+    if len(published) != 6:
+        errors.append(f"Expected 6 published courses, got {len(published)}")
+
+    # 2. All published courses must belong to our 6-phase system
+    valid_titles = set(PHASE_TITLES.values())
+    for c in published:
+        if c.title not in valid_titles:
+            errors.append(f"Unknown published course: '{c.title}' (valid: {sorted(valid_titles)})")
+
+    # 3. Each course must have ≥ 1 chapter (seed data minimum)
+    for c in published:
+        ch_count = db.query(Chapter).filter(Chapter.course_id == c.id).count()
+        if ch_count < 1:
+            errors.append(f"{c.title}: 0 chapters (minimum 1)")
+
+    # 4. Each course must have ≥ 1 lab
+    for c in published:
+        lab_count = db.query(Lab).filter(
+            Lab.chapter_id.in_(
+                db.query(Chapter.id).filter(Chapter.course_id == c.id)
+            )
+        ).count()
+        if lab_count < 1:
+            errors.append(f"{c.title}: 0 labs (minimum 1)")
+
+    # 5. No duplicate titles
+    all_titles = db.query(Course.title).all()
+    title_list = [t[0] for t in all_titles]
+    if len(title_list) != len(set(title_list)):
+        dupes = [t for t in title_list if title_list.count(t) > 1]
+        errors.append(f"Duplicate course titles: {set(dupes)}")
+
+    # 6. No orphan courses (courses not in our system)
+    orphans = db.query(Course).filter(Course.title.notin_(valid_titles)).all()
+    if orphans:
+        errors.append(f"Orphan courses: {[o.title for o in orphans]}")
+
+    if errors:
+        print("❌ 数据契约校验失败:")
+        for e in errors:
+            print(f"   • {e}")
+        raise RuntimeError(f"Data contract violated: {len(errors)} error(s). Server refused to start.")
 
 
 def _format_size(size_bytes: int) -> str:
@@ -28,17 +87,37 @@ def _format_size(size_bytes: int) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 启动时确保数据库schema就绪
-    # 开发环境: init_db() 创建缺失表 (Alembic未跑时的fallback)
-    # 生产环境: 应使用 `alembic upgrade head` 管理迁移
-    init_db()
+    # V1.0: Use Alembic migration as primary schema management
+    # Fallback to init_db() only if Alembic is not available (e.g. tests)
+    try:
+        from alembic.config import Config as AlembicConfig
+        from alembic import command as alembic_command
+        alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), '..', 'alembic.ini'))
+        alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+        alembic_command.upgrade(alembic_cfg, "head")
+    except Exception:
+        # Fallback for test/dev environments without Alembic setup
+        init_db()
     db = SessionLocal()
     try:
+        # Step 1: Create course shells + clean up orphan courses
         init_courses_data(db)
+        # Step 2: Load Phase 1/2 from high-quality JSON files
         init_phase1_data(db)
         init_phase2_data(db)
+        # Step 3: Load Phase 3-6 from extended data
+        init_phase3_6_data(db)
+        # Step 4: Invalidate all course caches after seed data refresh
+        from app.core.cache import cache_manager
+        try:
+            cache_manager.delete_pattern("courses:*")
+        except Exception:
+            pass
+        # Step 5: Assert data contract — refuse to start if violated
+        _assert_data_contract(db)
     finally:
         db.close()
-    print("✅ 数据库初始化完成")
+    print("✅ 数据库初始化完成（数据契约校验通过）")
     
     # 异步检查沙箱镜像（不阻塞启动）
     async def check_sandbox_image():
@@ -120,6 +199,13 @@ if SERVE_STATIC and os.path.exists(STATIC_DIR):
     # 挂载静态文件目录
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     print(f"✅ 静态文件服务已启用: {STATIC_DIR}")
+
+
+# Health check endpoint (used by CI/Docker smoke test)
+@app.get("/health")
+def health_check():
+    """Liveness probe — confirms the app process is responsive."""
+    return {"status": "ok"}
 
 
 # 注册API路由

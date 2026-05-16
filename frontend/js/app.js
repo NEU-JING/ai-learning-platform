@@ -158,6 +158,37 @@ const app = {
 
   // ── Navbar & Markdown ─────────────────────────────────
 
+  /**
+   * Render breadcrumb navigation.
+   * @param {Array<{label:string, href?:string}>} items — last item is current page (no link)
+   */
+  renderBreadcrumb(items) {
+    const existing = document.getElementById('breadcrumb');
+    if (existing) existing.remove();
+
+    const nav = document.createElement('nav');
+    nav.id = 'breadcrumb';
+    nav.setAttribute('aria-label', 'breadcrumb');
+    nav.style.cssText = 'padding:0.75rem 1.5rem;font-size:0.875rem;color:#6b7280;border-bottom:1px solid #e5e7eb;';
+
+    const links = items.map((item, i) => {
+      const isLast = i === items.length - 1;
+      if (isLast) {
+        return `<span style="color:#111827;font-weight:500;">${item.label}</span>`;
+      }
+      return `<a href="${item.href || '#'}" style="color:#3b82f6;text-decoration:none;">${item.label}</a><span style="margin:0 0.5rem;">/</span>`;
+    });
+
+    nav.innerHTML = links.join('');
+    // Insert after navbar
+    const navbar = document.querySelector('.navbar');
+    if (navbar && navbar.nextSibling) {
+      navbar.parentNode.insertBefore(nav, navbar.nextSibling);
+    } else if (navbar) {
+      navbar.after(nav);
+    }
+  },
+
   initNavbar() {
     const page = window.location.pathname.split('/').pop() || 'index.html';
     document.querySelectorAll('.navbar-nav a').forEach(link => {

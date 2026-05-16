@@ -34,6 +34,7 @@ export default async function Courses() {
       <ul class="navbar-nav">
         <li><a href="#" data-nav="/">首页</a></li>
         <li><a href="#" data-nav="/courses">课程</a></li>
+        <li><a href="#" data-nav="/discussions">讨论区</a></li>
       </ul>
       <div class="navbar-right">
         ${isAuthenticated && store?.state?.user ? `

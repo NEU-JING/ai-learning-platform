@@ -164,7 +164,7 @@ class CourseService:
         chapter_id: int,
         status: str
     ):
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         progress = db.query(LearningProgress).filter(
             LearningProgress.user_id == user_id,
@@ -173,9 +173,9 @@ class CourseService:
 
         if progress:
             progress.status = status
-            progress.last_accessed_at = datetime.utcnow()
+            progress.last_accessed_at = datetime.now(timezone.utc)
             if status == "completed":
-                progress.completed_at = datetime.utcnow()
+                progress.completed_at = datetime.now(timezone.utc)
         else:
             progress = LearningProgress(
                 user_id=user_id,
@@ -183,7 +183,7 @@ class CourseService:
                 status=status
             )
             if status == "completed":
-                progress.completed_at = datetime.utcnow()
+                progress.completed_at = datetime.now(timezone.utc)
             db.add(progress)
 
         db.commit()

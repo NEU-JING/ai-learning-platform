@@ -43,17 +43,29 @@ def load_phase1_data():
     return course_data
 
 
-def init_phase1_data(db):
-    """初始化Phase 1课程数据到数据库"""
+def init_phase1_data(db, behavior="upsert"):
+    """Initialize Phase 1 course data from JSON files.
+
+    BEHAVIOR: upsert (default)
+      - Phase 1 JSON files are the SINGLE SOURCE OF TRUTH.
+      - If course exists, deletes old chapters/labs and recreates from JSON.
+      - This ensures DB always matches the authoritative JSON content.
+
+    Use behavior="create_only" to skip if course already exists.
+    """
     from app.models import Course, Chapter, Lab
-    
+
     course_data = load_phase1_data()
     chapters_data = course_data.pop("chapters", [])
-    
+
     # Check if course already exists
     existing = db.query(Course).filter(Course.title == course_data["title"]).first()
     if existing:
-        # Update existing course fields
+        if behavior == "create_only":
+            # Skip — existing data may be better
+            print(f"Phase 1: skipped (create_only, course exists)")
+            return existing
+        # upsert: update course fields and rebuild chapters
         for key, value in course_data.items():
             if key != "id":
                 setattr(existing, key, value)
@@ -61,7 +73,7 @@ def init_phase1_data(db):
         course = existing
         # Delete old chapters and labs
         for ch in db.query(Chapter).filter(Chapter.course_id == course.id).all():
-            db.query(Lab).filter(Lab.chapter_id == ch.id).delete()
+            db.query(Lab).filter(Lab.chapter_id == ch.id).delete(synchronize_session=False)
             db.delete(ch)
         db.flush()
     else:

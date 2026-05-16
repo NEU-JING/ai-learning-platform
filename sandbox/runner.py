@@ -34,7 +34,7 @@ FORBIDDEN_MODULES = {
     'httplib', 'ftplib', 'poplib', 'imaplib', 'smtplib',
     'requests', 'wget', 'curl', 'pty', 'tty', 'signal',
     'multiprocessing', 'threading', 'asyncio', 'concurrent',
-    'ssl', 'hashlib'  # hashlib允许，但需要检查使用方式
+    'ssl'  # hashlib is allowed (needed for crypto exercises)
 }
 
 # ========== 安全限制 ==========

@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from sqlalchemy.orm import Session
 
@@ -199,7 +199,7 @@ class CertificateService:
             }
 
         # 生成证书ID
-        cert_id = f"AI-{course_id}-{user_id}-{datetime.utcnow().strftime('%Y%m%d')}"
+        cert_id = f"AI-{course_id}-{user_id}-{datetime.now(timezone.utc).strftime('%Y%m%d')}"
 
         # 级别徽章
         level_badges = {
@@ -215,7 +215,7 @@ class CertificateService:
             username=user.username or user.email.split('@')[0],
             course_title=course.title,
             level_badge=level_badge,
-            issue_date=datetime.utcnow().strftime('%Y年%m月%d日'),
+            issue_date=datetime.now(timezone.utc).strftime('%Y年%m月%d日'),
             cert_id=cert_id
         )
 
@@ -226,7 +226,7 @@ class CertificateService:
             "user_id": user_id,
             "course_id": course_id,
             "course_title": course.title,
-            "issue_date": datetime.utcnow().isoformat(),
+            "issue_date": datetime.now(timezone.utc).isoformat(),
             "level": course.level
         }
 

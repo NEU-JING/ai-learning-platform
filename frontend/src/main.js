@@ -164,12 +164,12 @@ const routes = [
     requiresAuth: true
   },
   {
-    path: '/courses/:id/discussions',
+    path: '/discussions',
     component: () => import('./views/Discussion.js'),
     title: '讨论区'
   },
   {
-    path: '/courses/:courseId/discussions/:id',
+    path: '/discussions/:id',
     component: () => import('./views/DiscussionDetail.js'),
     title: '讨论详情'
   },

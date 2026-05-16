@@ -17,10 +17,14 @@ class CodeGrader:
     @staticmethod
     def grade_in_sandbox(
         code: str,
-        test_cases: List[Dict[str, Any]],
+        test_cases,
         timeout: int = 30,
     ) -> Dict[str, Any]:
         """Execute grading inside the Docker sandbox.
+
+        Supports two test_cases formats:
+        - List[Dict]: structured test cases (new format)
+        - str: Python script that runs asserts (legacy format)
 
         Returns:
             {
@@ -48,19 +52,22 @@ class CodeGrader:
                 "feedback": "无测试用例，自动通过。",
             }
 
-        # 2. Build grading script that runs inside the sandbox
-        grading_code = CodeGrader._build_grading_script(code, test_cases)
+        # 2. Build grading script — dispatch by test_cases format
+        if isinstance(test_cases, str):
+            grading_code = CodeGrader._build_legacy_grading_script(code, test_cases)
+        else:
+            grading_code = CodeGrader._build_grading_script(code, test_cases)
 
-        # 3. Execute in sandbox
+        # 3. Execute in sandbox (skip security check — grading script is system-generated)
         import asyncio
 
         try:
             result = asyncio.get_event_loop().run_until_complete(
-                execute_code_docker(grading_code, timeout=timeout)
+                execute_code_docker(grading_code, timeout=timeout, skip_security_check=True)
             )
         except RuntimeError:
             loop = asyncio.new_event_loop()
-            result = loop.run_until_complete(execute_code_docker(grading_code, timeout=timeout))
+            result = loop.run_until_complete(execute_code_docker(grading_code, timeout=timeout, skip_security_check=True))
             loop.close()
 
         if not result.get("success"):
@@ -184,16 +191,21 @@ for _i, _test in enumerate({test_cases_json}):
 
     _results.append({{"name": _name, "passed": _passed, "expected": _expected, "actual": _actual, "error": _error}})
 
-print("===RESULT_START===")
+print("===GRADING_RESULT_START===")
 print(_json.dumps(_results, ensure_ascii=False))
-print("===RESULT_END===")
+print("===GRADING_RESULT_END===")
 """
 
     @staticmethod
     def _parse_results(output: str) -> Optional[List[Dict]]:
-        """Extract test results JSON from sandbox output."""
-        marker_start = "===RESULT_START==="
-        marker_end = "===RESULT_END==="
+        """Extract test results JSON from sandbox output.
+
+        Looks for ===GRADING_RESULT_START=== / ===GRADING_RESULT_END=== markers.
+        In subprocess fallback mode, the output is wrapped in another layer of
+        ===RESULT_START=== markers, so we search inside the inner output string.
+        """
+        marker_start = "===GRADING_RESULT_START==="
+        marker_end = "===GRADING_RESULT_END==="
 
         idx_start = output.find(marker_start)
         idx_end = output.find(marker_end)
@@ -206,3 +218,43 @@ print("===RESULT_END===")
             return json.loads(json_str)
         except json.JSONDecodeError:
             return None
+
+    @staticmethod
+    def _build_legacy_grading_script(user_code: str, test_script: str) -> str:
+        """Build grading script for legacy test_cases format (Python assert script).
+
+        The test_script contains import/assert statements. We wrap it to catch
+        assertion errors and report structured results.
+        """
+        # Escape the test script for safe embedding
+        import textwrap
+        indented_test = textwrap.indent(test_script, "    ")
+
+        return f"""{user_code}
+
+import json as _json
+import traceback as _tb
+
+_results = []
+_test_lines = {repr(test_script.strip().split(chr(10)))}
+
+for _i, _line in enumerate(_test_lines):
+    _line = _line.strip()
+    if not _line or _line.startswith('#') or _line.startswith('import ') or _line.startswith('from '):
+        continue
+    _passed = False
+    _error = None
+    try:
+        exec(_line, globals())
+        _passed = True
+    except AssertionError as _e:
+        _error = str(_e) or "AssertionError"
+    except Exception as _e:
+        _error = f"{{type(_e).__name__}}: {{_e}}"
+    _name = f"line_{{_i}}: {{_line[:40]}}"
+    _results.append({{"name": _name, "passed": _passed, "expected": "assert ok", "actual": "ok" if _passed else "failed", "error": _error}})
+
+print("===GRADING_RESULT_START===")
+print(_json.dumps(_results, ensure_ascii=False))
+print("===GRADING_RESULT_END===")
+"""

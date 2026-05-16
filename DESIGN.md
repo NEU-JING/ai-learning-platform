@@ -35,15 +35,16 @@
 | 维度 | 现状 | MVP要求 | 差距 |
 |------|------|---------|------|
 | 用户系统 | 注册/登录/JWT | ✅ 已有 | token刷新未实现 |
-| 课程系统 | 课程列表/章节/导航 | ✅ 已有 | 无 |
+| 课程系统 | 6阶段60章43实验 | ✅ 已有 | 无 |
 | 实验系统 | 代码编辑+执行+提交 | ⚠️ 部分可用 | 评测未接入、安全漏洞 |
 | 进度系统 | 章节进度追踪 | ⚠️ 部分可用 | 两个重叠端点需合并 |
 | 证书系统 | 基础实现 | ❌ MVP不需要 | P2再做 |
 | 讨论区 | 基础CRUD | ❌ MVP不需要 | P1再做 |
 | 安全 | 多个已知漏洞 | 🚨 必须修复 | 5个高危 |
-| 测试 | 覆盖率10% | ≥40% | 差距大 |
+| 测试 | 78个测试（含16项数据契约） | ≥40% | 有提升 |
 | 数据库 | SQLite硬编码 | 需支持PostgreSQL | 配置BUG |
 | 前端 | Vanilla JS SPA | ✅ 可用 | 缺Toast/Loading |
+| 数据契约 | 三道防线（启动断言+契约测试+init行为声明） | ✅ 已有 | 无 |
 
 ### 1.4 技术栈（实际，非幻想）
 
@@ -127,8 +128,15 @@ ai-learning-platform/
 │   │   │   ├── certificate.py      # 证书生成/验证
 │   │   │   └── discussion_service.py # DiscussionService
 │   │   └── data/
-│   │       └── courses/            # 内置课程数据（JSON）
-│   ├── tests/                      # ⚠️ 覆盖率10%
+│   │       ├── courses.py            # PHASE_TITLES + 课程壳 + 孤例清理
+│   │       ├── courses_phase1.py     # Phase 1 加载器（upsert, JSON为真相源）
+│   │       ├── courses_phase2.py     # Phase 2 加载器（upsert, JSON为真相源）
+│   │       ├── courses_phase3_6.py   # Phase 3-6 加载器（create_only, DB为真相源）
+│   │       ├── courses_extended_fixed.py  # Phase 3-6 种子数据
+│   │       ├── phase1/               # Phase 1 JSON内容（10章2实验）
+│   │       ├── phase2/               # Phase 2 JSON内容（10章2实验）
+│   │       └── phase3/               # Phase 3 内容草稿
+│   ├── tests/                      # 78个测试（含16项数据契约测试）
 │   ├── Dockerfile
 │   └── requirements.txt
 ├── frontend/
@@ -219,7 +227,7 @@ POST /api/v1/labs/execute
 | description | Text | nullable | |
 | cover_image | String(500) | nullable | |
 | level | String(20) | NOT NULL | beginner/intermediate/advanced/expert |
-| category | String(50) | NOT NULL | python/math/ml/dl/langchain/agent/leadership |
+| category | String(50) | NOT NULL | python/math/ml/dl/llm/engineering |
 | duration_hours | Integer | default=0 | |
 | is_published | Boolean | default=False | |
 | order_index | Integer | default=0 | 学习路径排序 |
@@ -469,7 +477,7 @@ ALTER TABLE lab_submissions ADD COLUMN feedback TEXT;
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | level | string | 否 | 按难度筛选: beginner/intermediate/advanced/expert |
-| category | string | 否 | 按分类筛选: python/math/ml/dl/langchain/agent/leadership |
+| category | string | 否 | 按分类筛选: python/math/ml/dl/llm/engineering |
 
 **认证**: 不需要
 
@@ -478,12 +486,12 @@ ALTER TABLE lab_submissions ADD COLUMN feedback TEXT;
 [
   {
     "id": 1,
-    "title": "Python for AI",
+    "title": "Phase 1: Python快速通道",
     "description": "...",
     "cover_image": null,
     "level": "beginner",
     "category": "python",
-    "duration_hours": 14,
+    "duration_hours": 28,
     "is_published": true,
     "order_index": 1,
     "chapters_count": 14,

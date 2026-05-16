@@ -20,7 +20,7 @@
 ## 🎯 项目概述
 
 AI学习平台提供：
-- 📚 **课程学习**：从Python基础到Agent全栈的结构化学习路径
+- 📚 **课程学习**：6阶段体系（Python→数学→ML→DL→LLM→工程化），60章43实验
 - 💻 **在线实验**：浏览器内编写和运行Python代码，零环境配置
 - ✅ **自动评测**：代码提交后自动评分，立即知道对不对
 - 📊 **学习追踪**：进度可视，跨设备同步
@@ -34,28 +34,28 @@ AI学习平台提供：
 
 ### 环境要求
 - Python 3.11+
-- Docker（沙箱执行需要）
+- 2核4G最低配置（推荐4核8G+80GB，Phase 3+实验需要更多RAM）
+- Docker（生产环境沙箱执行需要；开发环境可用subprocess回退）
 
 ### 启动后端
 ```bash
 cd backend
-python -m venv venv
-source venv/bin/activate
+source /tmp/ailp-venv/bin/activate   # 或 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-python -m app.main
+SERVE_STATIC=True uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 后端运行在 http://localhost:8000，API文档：http://localhost:8000/docs
 
-### 启动前端
+> **注意**：`SERVE_STATIC=True` 让后端直接服务前端文件，无需单独启动前端。
+
+### 启动前端（独立模式）
 ```bash
 cd frontend
 python -m http.server 3000
 ```
 
-前端运行在 http://localhost:3000
-
-### Docker Compose（推荐）
+### Docker Compose（生产环境推荐）
 ```bash
 docker-compose up --build
 ```
@@ -69,17 +69,30 @@ ai-learning-platform/
 ├── PRD.md                      # 产品需求文档
 ├── DESIGN.md                   # 架构设计文档（核心）
 ├── DEVELOPMENT_HARNESS.md      # 开发流程规范
+├── AGENTS.md                   # AI Agent开发指引
 ├── README.md                   # 本文档
 ├── backend/
 │   ├── app/
-│   │   ├── main.py             # FastAPI入口
-│   │   ├── core/               # 配置/数据库/安全/代码安全
+│   │   ├── main.py             # FastAPI入口（含数据契约启动断言）
+│   │   ├── core/               # 配置/数据库/安全/缓存
 │   │   ├── models/             # ORM模型
 │   │   ├── schemas/            # Pydantic验证
 │   │   ├── api/v1/             # API路由
 │   │   ├── services/           # 业务逻辑
-│   │   └── data/courses/       # 内置课程数据
-│   ├── tests/                  # 测试
+│   │   └── data/               # 种子数据（6阶段课程体系）
+│   │       ├── courses.py              # 课程壳定义 + PHASE_TITLES
+│   │       ├── courses_phase1.py       # Phase 1 加载器（upsert）
+│   │       ├── courses_phase2.py       # Phase 2 加载器（upsert）
+│   │       ├── courses_phase3_6.py     # Phase 3-6 加载器（create_only）
+│   │       ├── courses_extended_fixed.py  # Phase 3-6 种子数据
+│   │       ├── phase1/                 # Phase 1 JSON内容
+│   │       └── phase2/                 # Phase 2 JSON内容
+│   ├── tests/                  # 测试（78个）
+│   │   ├── test_data_contract.py   # 🚨 数据契约测试（16项）
+│   │   ├── test_auth.py
+│   │   ├── test_code_security.py
+│   │   ├── test_courses.py
+│   │   └── test_code_execution.py
 │   └── requirements.txt
 ├── frontend/
 │   ├── src/                    # SPA（Vanilla JS + ES Modules）
@@ -90,11 +103,11 @@ ai-learning-platform/
 │   ├── css/                    # 样式
 │   └── spa.html                # SPA入口
 ├── sandbox/
-│   ├── Dockerfile              # 沙箱镜像
+│   ├── Dockerfile              # Docker沙箱镜像
 │   └── runner.py               # 沙箱内代码执行器
 ├── docs/
 │   ├── archive/                # 归档的旧版文档
-│   └── CURRICULUM_DESIGN_*.md  # 课程设计文档
+│   └── OPERATIONS.md           # 运维手册
 ├── docker-compose.yml
 └── nginx.conf
 ```
@@ -121,24 +134,38 @@ ai-learning-platform/
 - ✅ 代码安全检查（AST分析+正则匹配）
 - ✅ Docker沙箱隔离（CPU/内存/网络/超时限制）
 - ✅ 输入验证（Pydantic）
+- ✅ 数据契约三道防线（启动断言+契约测试+init行为声明）
 
 已知安全问题和修复计划见 [DESIGN.md §6](DESIGN.md#六安全设计)
 
 ---
 
-## 📝 MVP开发状态
+## 🛡️ 数据契约三道防线
 
-详见 [DESIGN.md §8](DESIGN.md#八开发任务拆解)
+为防止数据不一致问题再次发生，系统实现了三道防线：
 
-| 任务 | 说明 | 状态 |
+| 防线 | 机制 | 检查时机 |
+|------|------|---------|
+| 第一道 | `_assert_data_contract()` 启动断言 | 服务启动时，违反则拒绝启动 |
+| 第二道 | `test_data_contract.py` 契约测试（16项） | CI/CD流水线 |
+| 第三道 | init函数`behavior`参数声明 | 代码层约束 |
+
+**契约规则**：6门发布课程、标题属于6阶段体系、无孤例/重复、每课≥1章、solution_code不可通过公开API获取。
+
+---
+
+## 📝 开发状态
+
+| 模块 | 状态 | 说明 |
 |------|------|------|
-| T1 | 安全与基础设施修复 | 🔲 待开始 |
-| T2 | 评测系统安全重构 | 🔲 待开始 |
-| T3 | 进度API统一 | 🔲 待开始 |
-| T4 | 前端基础增强 | 🔲 待开始 |
-| T5 | 评测系统集成前端 | 🔲 待开始 |
-| T6 | 测试基础设施建设 | 🔲 待开始 |
-| T7 | 端到端验证 | 🔲 待开始 |
+| 6阶段课程体系 | ✅ 已完成 | 60章43实验，6门课程全部发布 |
+| 用户认证系统 | ✅ 已完成 | JWT注册/登录/刷新 |
+| 代码执行沙箱 | ⚠️ 部分可用 | Docker模式需4核8G+服务器，当前subprocess回退 |
+| 数据契约防护 | ✅ 已完成 | 三道防线，78测试全绿 |
+| 前端SPA | ✅ 已完成 | Vanilla JS，后端SERVE_STATIC |
+| 评测系统集成 | 🔲 待完善 | 评测逻辑存在但前端集成未完成 |
+| Alembic迁移 | 🔲 待开始 | 仍用init_db()建表 |
+| CI/CD流水线 | 🔲 待开始 | 无GitHub Actions |
 
 ---
 

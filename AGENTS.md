@@ -8,13 +8,15 @@
 ```bash
 cd /root/workspace/ai-learning-platform/backend
 source /tmp/ailp-venv/bin/activate
-uvicorn app.main:app --host 0.0.0.0 --port 8000   # 启动后端
-pytest tests/ -v                                     # 跑测试（62个）
+SERVE_STATIC=True uvicorn app.main:app --host 0.0.0.0 --port 8000   # 启动后端
+pytest tests/ -v                                                     # 跑测试（78个）
+pytest tests/test_data_contract.py -v                                # 跑数据契约测试（16项）
 ```
 
 - venv: `/tmp/ailp-venv` (Python 3.11)
 - 前端: 静态文件由后端 `SERVE_STATIC=True` 直接服务
 - 数据库: MVP用SQLite，Schema兼容PostgreSQL
+- 服务器: 当前2核4G（推荐升级4核8G+80GB以支持Docker沙箱）
 
 ## 🚨 红线规则（违反即视为bug）
 
@@ -47,6 +49,12 @@ pytest tests/ -v                                     # 跑测试（62个）
 4. 是否Breaking Change
 5. 契约测试已更新
 
+### 5. 数据契约不可违反 🚨
+- **启动断言**：`_assert_data_contract(db)` 在lifespan中执行，违反则服务拒绝启动
+- **契约测试**：`tests/test_data_contract.py` 16项断言，CI门禁
+- **init行为**：Phase 1/2 用 `upsert`（JSON为真相源），Phase 3-6 用 `create_only`（DB为真相源）
+- 修改种子数据时，必须确保 `_assert_data_contract()` 和 `test_data_contract.py` 通过
+
 ## 项目结构
 
 ```
@@ -56,11 +64,21 @@ backend/app/
 ├── models/          # SQLAlchemy ORM模型
 ├── schemas/         # Pydantic请求/响应模型（唯一真相源）
 ├── services/        # 业务逻辑
-└── data/            # 种子数据（Phase1课程）
+└── data/            # 种子数据（6阶段课程体系）
+    ├── courses.py            # PHASE_TITLES + 课程壳 + 孤例清理
+    ├── courses_phase1.py     # Phase 1 (upsert, JSON为真相源)
+    ├── courses_phase2.py     # Phase 2 (upsert, JSON为真相源)
+    ├── courses_phase3_6.py   # Phase 3-6 (create_only, DB为真相源)
+    ├── courses_extended_fixed.py  # Phase 3-6 种子数据
+    ├── phase1/               # Phase 1 JSON内容
+    └── phase2/               # Phase 2 JSON内容
 frontend/
 ├── src/             # SPA版（ES Modules, Router, Store）
 ├── js/              # 传统版（多页面）
 └── *.html           # 页面
+sandbox/
+├── Dockerfile       # Docker沙箱镜像
+└── runner.py        # 沙箱内代码执行器
 ```
 
 ## 已知Quirk
@@ -71,6 +89,9 @@ frontend/
 - **登录用email**: UserLogin schema要求email字段，不是username
 - **注册不返token**: 返回UserResponse，前端需走登录流程
 - **课程列表返回PaginatedResponse**: 统一结构 `{items, total, page, ...}`，前端取 `.items`
+- **courses_extended_fixed.py不可直接pop**: `init_phase3_6_data` 用 `copy.deepcopy()` 防止 `pop("chapters")` 破坏模块级数据
+- **Phase 3-6 DB为真相源**: 种子文件 `courses_extended_fixed.py` 内容可能落后于DB中的手动深化数据，`create_only`行为保护DB内容
+- **Redis缓存需手动清理**: 修改种子数据后可能需要 `redis-cli FLUSHDB`，lifespan中已有自动清理但Redis不可用时不报错
 
 ## 关键文档索引
 

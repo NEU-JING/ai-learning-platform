@@ -1,5 +1,6 @@
 /**
  * Discussion Detail View — Show discussion content, comments, like
+ * V1.0: inline reply form replacing prompt()
  */
 
 import { API } from '../services/api.js';
@@ -14,6 +15,7 @@ export default async function DiscussionDetail({ params }) {
   const isLoggedIn = AuthService.isAuthenticated();
   let discussion = null;
   let liked = false;
+  let replyingTo = null; // track which comment is being replied to
 
   try {
     discussion = await API.discussions.get(discussionId);
@@ -44,7 +46,6 @@ export default async function DiscussionDetail({ params }) {
     try {
       const result = await API.discussions.like(discussionId);
       liked = result.liked;
-      // Update UI
       const likeBtn = document.getElementById('like-btn');
       const likeCount = document.getElementById('like-count');
       if (likeBtn) likeBtn.textContent = liked ? '❤️ 已赞' : '🤍 点赞';
@@ -55,13 +56,33 @@ export default async function DiscussionDetail({ params }) {
   async function handleComment(content, parentId = null) {
     if (!isLoggedIn) { alert('请先登录'); return; }
     try {
-      await API.discussions.createComment(discussionId, content);
-      // Reload discussion
+      await API.discussions.createComment(discussionId, content, parentId);
       discussion = await API.discussions.get(discussionId);
+      replyingTo = null;
       renderComments();
     } catch (e) {
-      alert('评论失败: ' + e.message);
+      alert('评论失败: ' + (e.message || '未知错误'));
     }
+  }
+
+  function setReplyTo(commentId, username) {
+    replyingTo = commentId;
+    const replyBox = document.getElementById('reply-box');
+    const replyHint = document.getElementById('reply-hint');
+    const replyInput = document.getElementById('reply-input');
+    if (replyBox && replyInput) {
+      replyBox.style.display = 'block';
+      if (replyHint) replyHint.textContent = `回复 @${username}`;
+      replyInput.focus();
+    }
+  }
+
+  function cancelReply() {
+    replyingTo = null;
+    const replyBox = document.getElementById('reply-box');
+    const replyInput = document.getElementById('reply-input');
+    if (replyBox) replyBox.style.display = 'none';
+    if (replyInput) replyInput.value = '';
   }
 
   function renderComments() {
@@ -77,7 +98,7 @@ export default async function DiscussionDetail({ params }) {
         <p style="margin:0;font-size:0.9rem;white-space:pre-wrap;">${escapeHtml(c.content)}</p>
         <div style="margin-top:6px;font-size:0.8rem;color:#999;">
           ❤️ ${c.likes_count}
-          ${isLoggedIn ? ` | <a href="javascript:void(0)" onclick="window.__replyComment(${c.id})">回复</a>` : ''}
+          ${isLoggedIn && !discussion.is_locked ? ` | <a href="javascript:void(0)" onclick="window.__setReplyTo(${c.id}, '${escapeHtml(c.user?.username || '匿名')}')" style="color:var(--primary,#4F46E5);">回复</a>` : ''}
           ${c.is_solution ? ' | ✅ 最佳答案' : ''}
         </div>
         ${(c.replies || []).map(r => `
@@ -101,10 +122,12 @@ export default async function DiscussionDetail({ params }) {
     handleComment(input.value.trim());
     input.value = '';
   };
-  window.__replyComment = (parentId) => {
-    const content = prompt('回复内容:');
-    if (!content) return;
-    handleComment(content, parentId);
+  window.__setReplyTo = (commentId, username) => setReplyTo(commentId, username);
+  window.__cancelReply = () => cancelReply();
+  window.__submitReply = () => {
+    const input = document.getElementById('reply-input');
+    if (!input || !input.value.trim()) return;
+    handleComment(input.value.trim(), replyingTo);
   };
 
   const html = `
@@ -132,12 +155,29 @@ export default async function DiscussionDetail({ params }) {
         <h2 style="font-size:1.1rem;margin:20px 0 12px;">评论</h2>
         ${isLoggedIn && !discussion.is_locked ? `
           <div class="card" style="margin-bottom:16px;padding:12px;">
-            <textarea id="comment-input" placeholder="写下你的评论..." 
-              style="width:100%;min-height:60px;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:0.9rem;resize:vertical;"></textarea>
-            <button class="btn btn-primary" onclick="window.__submitComment()" 
-              style="margin-top:8px;font-size:0.85rem;">发表评论</button>
+            <textarea id="comment-input" placeholder="写下你的评论..."
+              style="width:100%;min-height:60px;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:0.9rem;resize:vertical;box-sizing:border-box;"></textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+              <button class="btn btn-primary" onclick="window.__submitComment()"
+                style="font-size:0.85rem;">发表评论</button>
+            </div>
           </div>
         ` : ''}
+        <!-- Inline reply box (shown when clicking "回复") -->
+        <div id="reply-box" style="display:none;margin-bottom:16px;">
+          <div class="card" style="padding:12px;border-left:3px solid var(--primary,#4F46E5);">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <span id="reply-hint" style="font-size:0.85rem;color:var(--primary,#4F46E5);"></span>
+              <button onclick="window.__cancelReply()" style="background:none;border:none;cursor:pointer;color:#999;font-size:0.85rem;">取消</button>
+            </div>
+            <textarea id="reply-input" placeholder="写下你的回复..."
+              style="width:100%;min-height:50px;border:1px solid #ddd;border-radius:6px;padding:8px;font-size:0.9rem;resize:vertical;box-sizing:border-box;"></textarea>
+            <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+              <button class="btn btn-primary" onclick="window.__submitReply()"
+                style="font-size:0.85rem;">回复</button>
+            </div>
+          </div>
+        </div>
         <div id="comments-container"></div>
       </div>
     </div>

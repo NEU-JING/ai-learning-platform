@@ -47,6 +47,7 @@ export default async function Home() {
         <ul class="navbar-nav">
           <li><a href="#/">首页</a></li>
           <li><a href="#/courses">课程</a></li>
+          <li><a href="#/discussions">讨论区</a></li>
           ${isAuthenticated ? `
             <li><a href="#/progress">进度</a></li>
           ` : ''}

@@ -2,7 +2,13 @@
 
 ## 概述
 
-安全的Python代码执行环境，使用Docker容器隔离和资源限制，防止恶意代码执行。
+安全的Python代码执行环境，支持两种模式：
+1. **Docker模式**（生产推荐）：容器隔离和资源限制，防止恶意代码执行
+2. **Subprocess回退模式**（开发环境）：Docker不可用时自动降级，无隔离但可执行代码
+
+> **当前服务器限制**：2核4G，Docker不可用，仅使用subprocess回退模式。
+> Phase 3+实验需要numpy/pandas/scikit-learn等数据科学库，已安装到venv中。
+> **推荐升级至4核8G+80GB磁盘**以支持Docker沙箱。
 
 ## 文件结构
 
@@ -13,7 +19,27 @@ sandbox/
 └── README.md       # 本文档
 ```
 
-## 安全特性
+## 双模式执行架构
+
+```
+POST /api/v1/labs/{id}/execute
+  → LabService
+  → code_executor.execute_code()
+      → check_docker_available()
+      ├── Docker可用 → execute_code_docker()
+      │     → 拉取/构建镜像
+      │     → 创建容器（资源限制）
+      │     → 运行runner.py
+      │     → 收集输出
+      │     └── 清理容器
+      └── Docker不可用 → execute_code_subprocess_fallback()
+            → check_code_security() [AST+正则安全检查]
+            → subprocess.run() [本地执行]
+            → 资源限制（仅超时）
+            └── 返回结果
+```
+
+## Docker模式安全特性
 
 ### 1. 容器隔离
 - 基于 `python:3.11-slim` 镜像
@@ -28,7 +54,7 @@ sandbox/
 - **输出大小**: 1MB
 - **进程数**: 50个
 
-### 3. 代码安全检测
+### 3. 代码安全检测（双模式共用）
 - 危险模块导入检测 (os, sys, subprocess等)
 - 危险函数调用检测 (eval, exec, open等)
 - AST静态分析
@@ -37,6 +63,20 @@ sandbox/
 ### 4. 文件系统限制
 - 仅允许写入 `/home/sandbox/tmp`
 - 禁止访问 `/proc`, `/sys`, `/dev`, `/etc` 等敏感目录
+
+## Subprocess回退模式
+
+当Docker不可用时，系统自动降级到subprocess模式：
+
+**限制**：
+- 无容器隔离（代码在主进程中运行）
+- 无内存限制（依赖OS级OOM）
+- 无文件系统限制（依赖代码安全检测）
+- 有超时限制（默认30秒）
+- Phase 1/2纯Python代码可正常执行
+- Phase 3+需要数据科学库（numpy/pandas/scikit-learn/scipy/matplotlib），需在venv中预装
+
+**⚠️ 安全警告**：subprocess模式仅适用于开发和受信任环境，**生产环境必须使用Docker模式**。
 
 ## 使用方法
 
@@ -47,28 +87,11 @@ cd /path/to/sandbox
 docker build -t ai-learning-platform-sandbox .
 ```
 
-### 运行代码
-
-```python
-from app.services.code_executor import execute_code_sandbox
-import asyncio
-
-async def main():
-    result = await execute_code_sandbox('''
-import numpy as np
-arr = np.array([1, 2, 3])
-print(f"数组: {arr}")
-print(f"平均值: {np.mean(arr)}")
-''')
-    print(result)
-
-asyncio.run(main())
-```
-
 ### API接口
 
 ```python
-POST /api/code/execute
+POST /api/v1/labs/{lab_id}/execute
+Authorization: Bearer <token>
 Content-Type: application/json
 
 {
@@ -86,6 +109,8 @@ Content-Type: application/json
     "execution_time_ms": 123
 }
 ```
+
+> **注意**：旧API路径 `/api/code/execute` 已废弃，请使用 `/api/v1/labs/{id}/execute`。
 
 ## 允许的模块
 
@@ -126,15 +151,13 @@ Content-Type: application/json
 ### 多线程/进程
 - 使用 `threading`, `multiprocessing`, `asyncio`
 
-## 回退模式
-
-当Docker不可用时，系统会自动回退到本地subprocess模式执行代码，并应用资源限制。
-
 ## 测试
 
 ```bash
-# 运行沙箱测试
-python3 test_sandbox.py
+# 运行沙箱相关测试
+cd backend && source /tmp/ailp-venv/bin/activate
+pytest tests/test_code_execution.py -v
+pytest tests/test_code_security.py -v
 ```
 
 ## 注意事项
@@ -143,3 +166,5 @@ python3 test_sandbox.py
 2. 定期清理已停止的容器: `docker container prune`
 3. 监控资源使用情况
 4. 定期更新基础镜像以获取安全补丁
+5. subprocess模式下Phase 3+实验需要venv中预装数据科学库
+6. `runner.py` 中 `hashlib` 同时出现在白名单和 `FORBIDDEN_MODULES` 中（已知矛盾，待修）

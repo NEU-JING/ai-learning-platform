@@ -19,6 +19,7 @@
         </a>
         <ul class="navbar-nav">
             <li><a href="index.html">课程</a></li>
+            <li><a href="progress.html">学习进度</a></li>
         </ul>
         <div class="navbar-right">
             <a href="chapter.html" class="btn btn-secondary btn-sm" id="back-btn">← 返回章节</a>
@@ -111,6 +112,26 @@
 
         document.getElementById('back-btn').href =
             `chapter.html?id=${chapterId}&course_id=${courseId}`;
+
+        // ── Breadcrumb ─────────────────────────────────
+        async function initBreadcrumb() {
+            const items = [{ label: '课程', href: 'index.html' }];
+            if (courseId) {
+                try {
+                    const course = await api.courses.get(courseId);
+                    items.push({ label: course.title, href: `course.html?id=${courseId}` });
+                } catch {}
+            }
+            if (chapterId) {
+                try {
+                    const chapter = await api.courses.getChapter(chapterId);
+                    items.push({ label: chapter.title, href: `chapter.html?id=${chapterId}&course_id=${courseId}` });
+                } catch {}
+            }
+            items.push({ label: '代码实验室' });
+            app.renderBreadcrumb(items);
+        }
+        initBreadcrumb();
 
         // ── State ──────────────────────────────────────────
         let editor = null;

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import ConfigDict, BaseModel
 from typing import List, Optional
 from datetime import datetime
 
@@ -9,8 +9,7 @@ class UserBrief(BaseModel):
     username: str
     avatar_url: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CommentBase(BaseModel):
@@ -34,8 +33,7 @@ class CommentResponse(CommentBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CommentWithReplies(CommentResponse):
@@ -74,8 +72,7 @@ class DiscussionListResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DiscussionResponse(DiscussionBase):
@@ -90,8 +87,7 @@ class DiscussionResponse(DiscussionBase):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DiscussionDetailResponse(DiscussionResponse):

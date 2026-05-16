@@ -28,11 +28,31 @@ export class AuthService {
   }
 
   static isAuthenticated() {
-    return !!this.getToken();
+    return !!this.getToken() && !this.isTokenExpired();
   }
 
   static getAuthHeader() {
+    if (this.isTokenExpired()) {
+      this.clearToken();
+      return {};
+    }
     const token = this.getToken();
     return token ? { 'Authorization': `Bearer ${token}` } : {};
+  }
+
+  /**
+   * Check if the access token has expired by decoding JWT exp claim.
+   * Returns true if token is missing, malformed, or expired.
+   */
+  static isTokenExpired() {
+    const token = this.getToken();
+    if (!token) return true;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      // exp is in seconds since epoch
+      return payload.exp * 1000 < Date.now();
+    } catch {
+      return true;
+    }
   }
 }

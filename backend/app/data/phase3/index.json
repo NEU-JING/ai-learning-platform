@@ -1,0 +1,85 @@
+{
+  "title": "Phase 3: ML工程化",
+  "description": "从sklearn调用者到理解ML Pipeline的工程师。不教'哪个模型效果好'，教'为什么这个模型适合这个问题、如何让模型在生产中可靠运行'。覆盖数据预处理、特征工程、模型选择、评估策略、Pipeline构建——用工程思维重构你的ML工作流。",
+  "level": "intermediate",
+  "category": "ml-engineering",
+  "duration_hours": 16,
+  "order_index": 3,
+  "is_published": true,
+  "chapters": [
+    {
+      "title": "Day 1 - ML不是调参：问题建模与数据思维",
+      "chapter_type": "code",
+      "order_index": 1,
+      "content_file": "ch01_problem_framing.md",
+      "duration_minutes": 50
+    },
+    {
+      "title": "Day 2 - 数据预处理：垃圾进垃圾出的防线",
+      "chapter_type": "code",
+      "order_index": 2,
+      "content_file": "ch02_data_preprocessing.md",
+      "duration_minutes": 50
+    },
+    {
+      "title": "Day 3 - 特征工程：从原始数据到模型输入",
+      "chapter_type": "code",
+      "order_index": 3,
+      "content_file": "ch03_feature_engineering.md",
+      "duration_minutes": 50
+    },
+    {
+      "title": "实验1 - 端到端ML Pipeline：从CSV到预测",
+      "chapter_type": "lab",
+      "order_index": 4,
+      "content_file": "lab01_ml_pipeline.md",
+      "starter_code_file": "lab01_starter.py",
+      "test_cases_file": "lab01_tests.py",
+      "duration_minutes": 120
+    },
+    {
+      "title": "Day 4 - 模型选择：没有银弹，只有权衡",
+      "chapter_type": "code",
+      "order_index": 5,
+      "content_file": "ch04_model_selection.md",
+      "duration_minutes": 50
+    },
+    {
+      "title": "Day 5 - 评估策略：准确率欺骗了你",
+      "chapter_type": "code",
+      "order_index": 6,
+      "content_file": "ch05_evaluation.md",
+      "duration_minutes": 50
+    },
+    {
+      "title": "Day 6 - sklearn Pipeline：让ML工作流可复现",
+      "chapter_type": "code",
+      "order_index": 7,
+      "content_file": "ch06_sklearn_pipeline.md",
+      "duration_minutes": 50
+    },
+    {
+      "title": "Day 7 - 模型持久化与版本管理：从Notebook到生产",
+      "chapter_type": "code",
+      "order_index": 8,
+      "content_file": "ch07_production.md",
+      "duration_minutes": 50
+    },
+    {
+      "title": "实验2 - 特征工程挑战：泰坦尼克号生存预测",
+      "chapter_type": "lab",
+      "order_index": 9,
+      "content_file": "lab02_feature_engineering.md",
+      "starter_code_file": "lab02_starter.py",
+      "test_cases_file": "lab02_tests.py",
+      "duration_minutes": 120
+    },
+    {
+      "title": "Day 8 - Phase 3 总结：ML工程师的思维模型",
+      "chapter_type": "text",
+      "order_index": 10,
+      "content_file": "ch08_summary.md",
+      "duration_minutes": 30
+    }
+  ]
+}
