@@ -11,6 +11,7 @@ import { progressBar } from './components/ProgressBar.js';
 import { lazyImage } from './components/LazyImage.js';
 import { themeManager } from './services/theme.js';
 import { initGlobalErrorHandler, showGlobalError } from './components/ErrorBoundary.js';
+import { initAnalytics } from './services/analytics.js';
 import { MobileNav, BottomNav } from './components/MobileNav.js';
 
 // 全局状态管理
@@ -123,8 +124,14 @@ const store = new Store({
       }
     },
     
-    async updateProgress({ dispatch }, { chapterId, status }) {
+    async updateProgress({ dispatch }, { chapterId, status, courseId }) {
       await API.progress.update(chapterId, { status });
+      // Analytics tracking
+      try {
+        const { trackChapterStart, trackChapterComplete } = await import('../services/analytics.js');
+        if (status === 'in_progress') trackChapterStart(chapterId, courseId);
+        if (status === 'completed') trackChapterComplete(chapterId, courseId);
+      } catch (e) { /* analytics should never break the app */ }
       await dispatch('fetchProgress');
     }
   }
@@ -245,6 +252,9 @@ async function initApp() {
   
   // 初始化主题管理器
   themeManager.init();
+  
+  // 初始化用户行为分析
+  initAnalytics();
   
   // 初始化懒加载
   lazyImage.observeAll('img[data-src]');

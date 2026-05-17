@@ -219,3 +219,22 @@ class CommentLike(Base):
     # relationships
     user = relationship("User")
     comment = relationship("Comment", back_populates="likes")
+
+
+class AnalyticsEvent(Base):
+    """User behavior tracking — lightweight event log."""
+    __tablename__ = "analytics_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)  # nullable for anonymous
+    event_type = Column(String(50), nullable=False, index=True)  # page_view, chapter_start, etc.
+    event_data = Column(JSON, nullable=True)  # flexible payload
+    path = Column(String(500), nullable=True)  # URL path
+    referrer = Column(String(500), nullable=True)  # previous page
+    user_agent = Column(String(500), nullable=True)
+    ip_address = Column(String(45), nullable=True)  # IPv6 compatible
+    session_id = Column(String(64), nullable=True, index=True)  # browser session
+    created_at = Column(DateTime, default=_utcnow, index=True)
+
+    # relationships
+    user = relationship("User")

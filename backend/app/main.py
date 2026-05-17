@@ -12,7 +12,7 @@ from app.data.courses import init_courses_data, PHASE_TITLES
 from app.data.courses_phase1 import init_phase1_data
 from app.data.courses_phase2 import init_phase2_data
 from app.data.courses_phase3_6 import init_phase3_6_data
-from app.api.v1 import auth, courses, labs, progress, certificates, discussions
+from app.api.v1 import auth, courses, labs, progress, certificates, discussions, analytics
 
 
 def _assert_data_contract(db):
@@ -209,6 +209,7 @@ app.include_router(labs.router, prefix="/api/v1/labs", tags=["实验"])
 app.include_router(progress.router, prefix="/api/v1/progress", tags=["学习进度"])
 app.include_router(certificates.router, prefix="/api/v1/certificates", tags=["证书"])
 app.include_router(discussions.router, prefix="/api/v1", tags=["讨论区"])
+app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["数据分析"])
 
 
 @app.get("/", response_class=HTMLResponse)
