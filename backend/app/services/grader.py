@@ -234,9 +234,6 @@ print("===GRADING_RESULT_END===")
         assertion errors and report structured results.
         """
         # Escape the test script for safe embedding
-        import textwrap
-
-        indented_test = textwrap.indent(test_script, "    ")
 
         return f"""{user_code}
 

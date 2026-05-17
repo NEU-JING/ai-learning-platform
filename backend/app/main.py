@@ -24,12 +24,12 @@ def _assert_data_contract(db):
 
     Philosophy: a crashed server is better than a server serving wrong data.
     """
-    from app.models import Chapter, Course, Lab
+    from app.models import Chapter, Course
 
     errors = []
 
     # 1. Exactly 6 published courses
-    published = db.query(Course).filter(Course.is_published == True).all()
+    published = db.query(Course).filter(Course.is_published).all()
     if len(published) != 6:
         errors.append(f"Expected 6 published courses, got {len(published)}")
 
@@ -121,7 +121,7 @@ async def lifespan(app: FastAPI):
     async def check_sandbox_image():
         """后台检查沙箱镜像，避免阻塞启动"""
         try:
-            from app.services.code_executor import ensure_sandbox_image, get_sandbox_image_info
+            from app.services.code_executor import get_sandbox_image_info
 
             print("🔍 正在检查 Docker 沙箱镜像...")
             image_info = get_sandbox_image_info()
@@ -198,13 +198,6 @@ if SERVE_STATIC and os.path.exists(STATIC_DIR):
     # 挂载静态文件目录
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     print(f"✅ 静态文件服务已启用: {STATIC_DIR}")
-
-
-# Health check endpoint (used by CI/Docker smoke test)
-@app.get("/health")
-def health_check():
-    """Liveness probe — confirms the app process is responsive."""
-    return {"status": "ok"}
 
 
 # 注册API路由
