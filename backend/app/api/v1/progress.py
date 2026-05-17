@@ -1,17 +1,17 @@
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
 
-from app.core.database import get_db
 from app.api.deps import get_current_active_user
-from app.models import User, LearningProgress, Course, Chapter
+from app.core.database import get_db
+from app.models import Chapter, Course, LearningProgress, User
 from app.schemas.progress import (
-    ProgressUpdate,
-    ProgressResponse,
     CourseProgressResponse,
     LearningStatsResponse,
+    ProgressResponse,
+    ProgressUpdate,
 )
 
 router = APIRouter()
@@ -71,10 +71,14 @@ def get_course_progress(
         )
 
     chapter_ids = [c.id for c in chapters]
-    progress_records = db.query(LearningProgress).filter(
-        LearningProgress.user_id == current_user.id,
-        LearningProgress.chapter_id.in_(chapter_ids),
-    ).all()
+    progress_records = (
+        db.query(LearningProgress)
+        .filter(
+            LearningProgress.user_id == current_user.id,
+            LearningProgress.chapter_id.in_(chapter_ids),
+        )
+        .all()
+    )
 
     completed = sum(1 for p in progress_records if p.status == "completed")
     in_progress = sum(1 for p in progress_records if p.status == "in_progress")
@@ -112,10 +116,14 @@ def update_progress(
         )
 
     # Find or create progress record
-    progress = db.query(LearningProgress).filter(
-        LearningProgress.user_id == current_user.id,
-        LearningProgress.chapter_id == chapter_id,
-    ).first()
+    progress = (
+        db.query(LearningProgress)
+        .filter(
+            LearningProgress.user_id == current_user.id,
+            LearningProgress.chapter_id == chapter_id,
+        )
+        .first()
+    )
 
     now = datetime.now(timezone.utc)
 
@@ -153,9 +161,9 @@ def get_learning_stats(
     current_user: User = Depends(get_current_active_user),
 ):
     """Get learning statistics summary."""
-    progress_list = db.query(LearningProgress).filter(
-        LearningProgress.user_id == current_user.id
-    ).all()
+    progress_list = (
+        db.query(LearningProgress).filter(LearningProgress.user_id == current_user.id).all()
+    )
 
     total = len(progress_list)
     completed = sum(1 for p in progress_list if p.status == "completed")
@@ -188,7 +196,7 @@ def get_learning_path(
 ):
     """Get full learning path with per-course progress."""
     courses = (
-        db.query(Course).filter(Course.is_published == True).order_by(Course.order_index).all()
+        db.query(Course).filter(Course.is_published.is_(True)).order_by(Course.order_index).all()
     )
 
     result = []

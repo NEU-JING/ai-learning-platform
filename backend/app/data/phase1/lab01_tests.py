@@ -1,10 +1,13 @@
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
+
 
 # === 测试1: 基础类型检查 ===
-@validate_types(name=str, age=int, returns=str)
+@validate_types(name=str, age=int, returns=str)  # noqa: F821
 def greet(name, age):
     return f"{name}今年{age}岁"
+
 
 # 正常调用
 result = greet("Alice", 25)
@@ -18,13 +21,12 @@ try:
 except TypeError:
     print("测试1.2: 基础类型检查-参数类型错误 PASSED")
 
+
 # === 测试2: 自定义验证器 ===
-@validate_types(
-    email=lambda x: "@" in x,
-    age=lambda x: 0 < x < 150
-)
+@validate_types(email=lambda x: "@" in x, age=lambda x: 0 < x < 150)  # noqa: F821
 def register(email, age):
     return "registered"
+
 
 result = register("a@b.com", 25)
 assert result == "registered"
@@ -42,10 +44,12 @@ try:
 except ValueError:
     print("测试2.3: 自定义验证器-age验证失败 PASSED")
 
+
 # === 测试3: 可选参数 ===
-@validate_types(name=str, age=int, _optional=["age"])
+@validate_types(name=str, age=int, _optional=["age"])  # noqa: F821
 def greet_optional(name, age=None):
     return f"Hello {name}"
+
 
 result = greet_optional("Alice")
 assert "Alice" in result
@@ -55,10 +59,12 @@ result = greet_optional("Alice", 25)
 assert "Alice" in result
 print("测试3.2: 可选参数-传入可选参数 PASSED")
 
+
 # === 测试4: 返回值检查 ===
-@validate_types(x=int, returns=int)
+@validate_types(x=int, returns=int)  # noqa: F821
 def bad_return(x):
     return "not an int"
+
 
 try:
     bad_return(42)

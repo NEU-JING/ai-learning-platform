@@ -30,6 +30,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
+
 def create_refresh_token(data: dict) -> str:
     to_encode = data.copy()
     if "sub" in to_encode and not isinstance(to_encode["sub"], str):

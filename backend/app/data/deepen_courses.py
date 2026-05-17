@@ -3,20 +3,22 @@
 Batch deepen AILP course content for Phase 3-6.
 Strategy: modify COURSES_DATA in memory, write back as Python source.
 """
-import sys
-import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from app.data.courses_extended_fixed import COURSES_DATA
 
 # Deep content for each chapter, keyed by chapter title
+# fmt: off
 DEEPENED = {}
 
 # ============================================================
 # Phase 3: 机器学习 (chapters 12-23)
 # ============================================================
 
-DEEPENED["第12章：机器学习概述与Scikit-Learn入门"] = """# 机器学习概述与Scikit-Learn入门
+DEEPENED["第12章：机器学习概述与Scikit-Learn入门"] = '''# 机器学习概述与Scikit-Learn入门
 
 ## 🎯 学习目标
 - 理解机器学习三大范式的本质区别，能判断一个业务场景该用哪种范式
@@ -207,9 +209,8 @@ for name, p in zip(iris.target_names, proba[0]):
 - [ ] 理解sklearn的fit/predict/transform统一接口
 - [ ] 能独立完成：加载数据→预处理→训练→评估→预测的完整流程
 - [ ] 理解为什么测试集不能fit，以及数据泄露的危害
-"""
-
-DEEPENED["第13章：特征工程"] = """# 特征工程
+'''
+DEEPENED["第13章：特征工程"] = '''# 特征工程
 
 ## 🎯 学习目标
 - 理解特征工程在ML中的决定性地位："数据和特征决定了ML的上限，模型只是逼近这个上限"
@@ -400,9 +401,8 @@ print(f"CV准确率: {scores.mean():.4f} +/- {scores.std():.4f}")
 - [ ] 能构造有效的衍生特征
 - [ ] 掌握三种特征选择方法的特点
 - [ ] 理解Pipeline如何防止数据泄露
-"""
-
-DEEPENED["第14章：线性回归与正则化"] = """# 线性回归与正则化
+'''
+DEEPENED["第14章：线性回归与正则化"] = '''# 线性回归与正则化
 
 ## 🎯 学习目标
 - 理解线性回归的数学原理：从最小二乘法到闭式解
@@ -532,9 +532,8 @@ print(f"最佳alpha: {ridge_cv.alpha_}, 测试R2: {ridge_cv.score(X_test_s, y_te
 - [ ] 知道什么场景用Ridge，什么场景用Lasso
 - [ ] 能解释MSE/MAE/R2的含义和选择依据
 - [ ] 会用RidgeCV/LassoCV自动选择正则化强度
-"""
-
-DEEPENED["第15章：逻辑回归与分类算法"] = """# 逻辑回归与分类算法
+'''
+DEEPENED["第15章：逻辑回归与分类算法"] = '''# 逻辑回归与分类算法
 
 ## 🎯 学习目标
 - 理解逻辑回归的数学本质：从线性回归到Sigmoid的转换
@@ -658,10 +657,9 @@ tree.fit(X_train_s, y_train)
 - [ ] 能根据业务场景选择正确的评估指标
 - [ ] 理解混淆矩阵中TP/FP/FN/TN的含义
 - [ ] 知道AUC指标的优势和适用场景
-"""
-
+'''
 # Phase 3 remaining chapters (16-23)
-DEEPENED["第16章：集成学习 - Random Forest"] = """# 集成学习 - Random Forest
+DEEPENED["第16章：集成学习 - Random Forest"] = '''# 集成学习 - Random Forest
 
 ## 🎯 学习目标
 - 理解集成学习的核心思想：三个臭皮匠顶个诸葛亮
@@ -737,9 +735,8 @@ print(f"OOB准确率: {rf_oob.oob_score_:.4f}")
 - [ ] 知道Random Forest比单棵Decision Tree好在哪里
 - [ ] 能解释特征重要性的含义
 - [ ] 知道RF的适用场景和局限性
-"""
-
-DEEPENED["第17章：XGBoost与LightGBM"] = """# XGBoost与LightGBM
+'''
+DEEPENED["第17章：XGBoost与LightGBM"] = '''# XGBoost与LightGBM
 
 ## 🎯 学习目标
 - 理解Boosting与Bagging的本质区别
@@ -816,9 +813,8 @@ lgbm.fit(X_train, y_train,
 - [ ] 知道XGBoost的关键参数含义
 - [ ] 会使用early_stopping防止过拟合
 - [ ] 能根据数据特点选择RF/XGB/LGBM
-"""
-
-DEEPENED["第18章：模型评估与超参数调优"] = """# 模型评估与超参数调优
+'''
+DEEPENED["第18章：模型评估与超参数调优"] = '''# 模型评估与超参数调优
 
 ## 🎯 学习目标
 - 掌握交叉验证的正确用法，避免评估偏差
@@ -885,9 +881,8 @@ random_search.fit(X, y)
 - [ ] 理解为什么交叉验证比单次划分更可靠
 - [ ] 会用GridSearchCV和RandomizedSearchCV调参
 - [ ] 能根据训练/测试分数判断过拟合还是欠拟合
-"""
-
-DEEPENED["第19章：K-Means聚类与客户分群"] = """# K-Means聚类与客户分群
+'''
+DEEPENED["第19章：K-Means聚类与客户分群"] = '''# K-Means聚类与客户分群
 
 ## 🎯 学习目标
 - 理解K-Means算法原理与迭代过程
@@ -959,9 +954,8 @@ print(rfm.groupby('segment').mean())
 - [ ] 能描述K-Means的迭代过程
 - [ ] 知道如何选择合适的K值
 - [ ] 能用聚类做客户分群分析
-"""
-
-DEEPENED["第20章：机器学习项目实战"] = """# 机器学习项目实战
+'''
+DEEPENED["第20章：机器学习项目实战"] = '''# 机器学习项目实战
 
 ## 🎯 学习目标
 - 掌握ML项目的完整流程：从业务理解到模型部署
@@ -1041,9 +1035,8 @@ for name, clf in [('RF', RandomForestClassifier(n_estimators=100)),
 - [ ] 能按照完整流程执行一个ML项目
 - [ ] 知道先建baseline再优化的重要性
 - [ ] 建立了ML项目的检查清单思维
-"""
-
-DEEPENED["第21章：时间序列分析基础"] = """# 时间序列分析基础
+'''
+DEEPENED["第21章：时间序列分析基础"] = '''# 时间序列分析基础
 
 ## 🎯 学习目标
 - 理解时间序列的核心组成：趋势、季节性、残差
@@ -1100,9 +1093,8 @@ forecast = m.predict(future)
 - [ ] 能分解时间序列的趋势、季节性、残差
 - [ ] 知道移动平均和指数平滑的区别
 - [ ] 会用Prophet做基础预测
-"""
-
-DEEPENED["第22章：ML工程化基础"] = """# ML工程化基础
+'''
+DEEPENED["第22章：ML工程化基础"] = '''# ML工程化基础
 
 ## 🎯 学习目标
 - 理解ML工程化的核心挑战：数据漂移、模型衰退、可复现性
@@ -1133,13 +1125,13 @@ mlflow.set_experiment("customer_churn")
 with mlflow.start_run():
     # 记录参数
     mlflow.log_params({"n_estimators": 100, "max_depth": 5})
-    
+
     # 训练模型
     model.fit(X_train, y_train)
-    
+
     # 记录指标
     mlflow.log_metrics({"auc": roc_auc, "f1": f1})
-    
+
     # 保存模型
     mlflow.sklearn.log_model(model, "model")
 ```
@@ -1160,9 +1152,8 @@ with mlflow.start_run():
 - [ ] 理解ML系统需要工程化的原因
 - [ ] 会用MLflow记录实验参数和指标
 - [ ] 知道模型上线后需要监控什么
-"""
-
-DEEPENED["第23章：Phase 3 复习与总结"] = """# Phase 3 复习与总结
+'''
+DEEPENED["第23章：Phase 3 复习与总结"] = '''# Phase 3 复习与总结
 
 ## 🎯 学习目标
 - 梳理机器学习全流程的知识框架
@@ -1216,13 +1207,12 @@ Phase 4 将学习神经网络和PyTorch → 从"人工设计特征"到"自动学
 - [ ] 能画出ML全流程的知识框架
 - [ ] 能根据问题类型快速选择模型
 - [ ] 理解ML到DL的演进逻辑
-"""
-
+'''
 # ============================================================
 # Phase 4: 深度学习 (chapters 24-29)
 # ============================================================
 
-DEEPENED["第24章：神经网络基础与PyTorch入门"] = """# 神经网络基础与PyTorch入门
+DEEPENED["第24章：神经网络基础与PyTorch入门"] = '''# 神经网络基础与PyTorch入门
 
 ## 🎯 学习目标
 - 理解神经网络的基本单元：感知器、激活函数、层
@@ -1268,7 +1258,7 @@ class SimpleNet(nn.Module):
         self.fc1 = nn.Linear(input_dim, hidden_dim)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(hidden_dim, output_dim)
-    
+
     def forward(self, x):
         x = self.relu(self.fc1(x))
         x = self.fc2(x)
@@ -1297,9 +1287,8 @@ for epoch in range(100):
 - [ ] 理解激活函数为什么是神经网络的关键
 - [ ] 会用PyTorch定义一个nn.Module
 - [ ] 能写出完整的训练循环(forward→loss→backward→step)
-"""
-
-DEEPENED["第25章：MNIST手写字识别实战"] = """# MNIST手写字识别实战
+'''
+DEEPENED["第25章：MNIST手写字识别实战"] = '''# MNIST手写字识别实战
 
 ## 🎯 学习目标
 - 完成一个端到端的图像分类项目
@@ -1342,7 +1331,7 @@ class MNISTNet(nn.Module):
             nn.Dropout(0.2),
             nn.Linear(128, 10)  # 10个数字
         )
-    
+
     def forward(self, x):
         return self.net(x)
 
@@ -1361,7 +1350,7 @@ for epoch in range(10):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    
+
     # 评估
     model.eval()
     correct = 0
@@ -1381,9 +1370,8 @@ for epoch in range(10):
 - [ ] 能用DataLoader加载MNIST数据
 - [ ] 理解Dropout如何防止过拟合
 - [ ] 知道model.train()和model.eval()的区别
-"""
-
-DEEPENED["第26章：卷积神经网络CNN"] = """# 卷积神经网络CNN
+'''
+DEEPENED["第26章：卷积神经网络CNN"] = '''# 卷积神经网络CNN
 
 ## 🎯 学习目标
 - 理解卷积操作的本质：局部感受野+参数共享
@@ -1422,7 +1410,7 @@ class SimpleCNN(nn.Module):
             nn.ReLU(),
             nn.Linear(128, 10)
         )
-    
+
     def forward(self, x):
         x = self.features(x)
         x = self.classifier(x)
@@ -1445,9 +1433,8 @@ class SimpleCNN(nn.Module):
 - [ ] 理解卷积的局部感受野和参数共享
 - [ ] 知道池化层的作用
 - [ ] 能搭建一个基本的CNN模型
-"""
-
-DEEPENED["第27章：循环神经网络RNN与LSTM"] = """# 循环神经网络RNN与LSTM
+'''
+DEEPENED["第27章：循环神经网络RNN与LSTM"] = '''# 循环神经网络RNN与LSTM
 
 ## 🎯 学习目标
 - 理解RNN处理序列数据的原理
@@ -1471,7 +1458,7 @@ class SimpleRNN(nn.Module):
         super().__init__()
         self.rnn = nn.RNN(input_size, hidden_size, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)
-    
+
     def forward(self, x):
         out, _ = self.rnn(x)
         return self.fc(out[:, -1, :])  # 取最后时刻的输出
@@ -1483,7 +1470,7 @@ class SimpleRNN(nn.Module):
 RNN问题: 长序列中梯度消失/爆炸 → 记不住很久之前的信息
 LSTM解法: 三个门控机制
 - 遗忘门: 决定忘掉哪些旧信息
-- 输入门: 决定存入哪些新信息  
+- 输入门: 决定存入哪些新信息
 - 输出门: 决定输出哪些信息
 ```
 
@@ -1494,7 +1481,7 @@ class LSTMModel(nn.Module):
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers,
                            batch_first=True, dropout=0.2)
         self.fc = nn.Linear(hidden_size, 1)
-    
+
     def forward(self, x):
         out, _ = self.lstm(x)
         return self.fc(out[:, -1, :])
@@ -1507,9 +1494,8 @@ class LSTMModel(nn.Module):
 - [ ] 理解RNN的隐状态如何传递信息
 - [ ] 知道LSTM三个门控的作用
 - [ ] 能用LSTM做时间序列预测
-"""
-
-DEEPENED["第28章：深度学习优化与部署"] = """# 深度学习优化与部署
+'''
+DEEPENED["第28章：深度学习优化与部署"] = '''# 深度学习优化与部署
 
 ## 🎯 学习目标
 - 掌握训练优化的核心技巧：学习率调度、梯度裁剪、混合精度
@@ -1557,9 +1543,8 @@ torch.onnx.export(model, dummy_input, "model.onnx")
 - [ ] 知道学习率调度的作用
 - [ ] 理解混合精度训练的原理
 - [ ] 了解模型部署的基本流程
-"""
-
-DEEPENED["第29章：Phase 4 复习与总结"] = """# Phase 4 复习与总结
+'''
+DEEPENED["第29章：Phase 4 复习与总结"] = '''# Phase 4 复习与总结
 
 ## 🎯 学习目标
 - 梳理深度学习的核心知识框架
@@ -1606,13 +1591,12 @@ DEEPENED["第29章：Phase 4 复习与总结"] = """# Phase 4 复习与总结
 - [ ] 能根据数据类型选择合适的网络架构
 - [ ] 理解CNN和RNN各自的设计动机
 - [ ] 知道Transformer是下一阶段的核心
-"""
-
+'''
 # ============================================================
 # Phase 5: LLM大模型 (chapters 30-33)
 # ============================================================
 
-DEEPENED["第30章：NLP基础与Word2Vec"] = """# NLP基础与Word2Vec
+DEEPENED["第30章：NLP基础与Word2Vec"] = '''# NLP基础与Word2Vec
 
 ## 🎯 学习目标
 - 理解词嵌入的核心思想：把词映射到语义空间
@@ -1664,9 +1648,8 @@ print(result)  # queen排在前面
 - [ ] 理解词嵌入相比One-Hot的优势
 - [ ] 知道Skip-gram和CBOW的区别
 - [ ] 能用词向量做语义相似度计算
-"""
-
-DEEPENED["第31章：Transformer架构"] = """# Transformer架构
+'''
+DEEPENED["第31章：Transformer架构"] = '''# Transformer架构
 
 ## 🎯 学习目标
 - 理解自注意力机制：让模型关注输入中的重要部分
@@ -1697,7 +1680,7 @@ class SelfAttention(nn.Module):
         self.W_q = nn.Linear(d_model, d_model)
         self.W_k = nn.Linear(d_model, d_model)
         self.W_v = nn.Linear(d_model, d_model)
-    
+
     def forward(self, x):
         Q, K, V = self.W_q(x), self.W_k(x), self.W_v(x)
         scores = Q @ K.transpose(-2, -1) / math.sqrt(x.size(-1))
@@ -1733,9 +1716,8 @@ class SelfAttention(nn.Module):
 - [ ] 能用代码实现自注意力计算
 - [ ] 理解Q/K/V的含义和注意力分数的计算
 - [ ] 知道Transformer相比RNN的优势
-"""
-
-DEEPENED["第32章：BERT与GPT模型"] = """# BERT与GPT模型
+'''
+DEEPENED["第32章：BERT与GPT模型"] = '''# BERT与GPT模型
 
 ## 🎯 学习目标
 - 理解预训练+微调的范式
@@ -1802,9 +1784,8 @@ pred = outputs.logits.argmax(dim=1)
 - [ ] 理解预训练+微调范式的好处
 - [ ] 知道BERT和GPT的核心区别
 - [ ] 会用HuggingFace加载预训练模型
-"""
-
-DEEPENED["第33章：Prompt Engineering"] = """# Prompt Engineering
+'''
+DEEPENED["第33章：Prompt Engineering"] = '''# Prompt Engineering
 
 ## 🎯 学习目标
 - 掌握Prompt设计的核心原则与常用技巧
@@ -1836,8 +1817,7 @@ DEEPENED["第33章：Prompt Engineering"] = """# Prompt Engineering
 评论: 这个产品很好用 → 正面
 评论: 质量太差了 → 负面
 评论: 物流很快 → 正面
-评论: 这件商品太差了 →"""
-
+评论: 这件商品太差了 →\'\'\'
 # Chain-of-Thought: 引导分步推理
 "请一步步分析：如果公司有100个客户，20%流失，每个客户价值5000元，流失成本是多少？"
 ```
@@ -1857,13 +1837,12 @@ DEEPENED["第33章：Prompt Engineering"] = """# Prompt Engineering
 - [ ] 掌握Prompt设计的四个原则
 - [ ] 知道Zero-shot/Few-shot/CoT的区别和用法
 - [ ] 能为业务场景设计结构化的Prompt
-"""
-
+'''
 # ============================================================
 # Phase 6: AI工程化 (chapters 34-36)
 # ============================================================
 
-DEEPENED["第34章：模型部署与服务化"] = """# 模型部署与服务化
+DEEPENED["第34章：模型部署与服务化"] = '''# 模型部署与服务化
 
 ## 🎯 学习目标
 - 理解模型从Notebook到生产的关键差距
@@ -1922,9 +1901,8 @@ def predict(req: PredictRequest):
 - [ ] 知道三种部署模式的区别
 - [ ] 能用FastAPI部署一个模型服务
 - [ ] 理解生产部署的关键检查项
-"""
-
-DEEPENED["第35章：MLOps与监控"] = """# MLOps与监控
+'''
+DEEPENED["第35章：MLOps与监控"] = '''# MLOps与监控
 
 ## 🎯 学习目标
 - 理解MLOps的核心目标：让ML系统可靠、可复现、可持续
@@ -1979,9 +1957,8 @@ if online_auc < baseline_auc * 0.95:
 - [ ] 理解MLOps三级成熟度的区别
 - [ ] 知道如何检测数据漂移
 - [ ] 理解自动重训练Pipeline的逻辑
-"""
-
-DEEPENED["第36章：AI系统架构设计"] = """# AI系统架构设计
+'''
+DEEPENED["第36章：AI系统架构设计"] = '''# AI系统架构设计
 
 ## 🎯 学习目标
 - 理解AI系统的架构设计原则：可扩展、可观测、可回滚
@@ -2036,8 +2013,7 @@ LLM应用架构:
 - [ ] 能说出AI系统架构的5个设计原则
 - [ ] 理解在线预测和批处理架构的区别
 - [ ] 知道如何为不同组件做技术选型
-"""
-
+'''
 # ============================================================
 # Apply all deepened content to COURSES_DATA
 # ============================================================
@@ -2071,13 +2047,13 @@ for course in COURSES_DATA:
             output_lines.append(f'        {repr(key)}: {repr(val)},\n')
         else:
             output_lines.append(f'        {repr(key)}: {repr(val)},\n')
-    
+
     is_published = course.get('is_published', True)
     output_lines.append(f'        "is_published": {is_published},\n')
-    
+
     chapters = course.get('chapters', [])
     output_lines.append('        "chapters": [\n')
-    
+
     for chapter in chapters:
         output_lines.append('            {\n')
         for key, val in chapter.items():
@@ -2097,7 +2073,7 @@ for course in COURSES_DATA:
             else:
                 output_lines.append(f'                {repr(key)}: {repr(val)},\n')
         output_lines.append('            },\n')
-    
+
     output_lines.append('        ],\n')
     output_lines.append('    },\n')
 
@@ -2109,8 +2085,12 @@ with open(output_path, 'w', encoding='utf-8') as f:
 
 print(f"✅ Written to {output_path}")
 
+# fmt: on
+
 # Verify the new file can be imported
 import importlib
-import app.data.courses_extended_fixed as cef
-importlib.reload(cef)
+
+import app.data.courses_extended_fixed as cef  # noqa: E402
+
+importlib.reload(cef)  # noqa: E402
 print(f"✅ Verified: {len(cef.COURSES_DATA)} courses load successfully")

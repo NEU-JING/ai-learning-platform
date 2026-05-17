@@ -1,11 +1,22 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, Float, UniqueConstraint
-from sqlalchemy.orm import DeclarativeBase, relationship
 from datetime import datetime, timezone
+
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import DeclarativeBase, relationship
 
 
 class Base(DeclarativeBase):
     """SQLAlchemy 2.0 declarative base — replaces deprecated declarative_base()."""
-    pass
 
 
 def _utcnow():
@@ -101,9 +112,7 @@ class Lab(Base):
 
 class LearningProgress(Base):
     __tablename__ = "learning_progress"
-    __table_args__ = (
-        UniqueConstraint("user_id", "chapter_id", name="uq_user_chapter_progress"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "chapter_id", name="uq_user_chapter_progress"),)
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -191,9 +200,7 @@ class Comment(Base):
 
 class DiscussionLike(Base):
     __tablename__ = "discussion_likes"
-    __table_args__ = (
-        UniqueConstraint("user_id", "discussion_id", name="uq_user_discussion_like"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "discussion_id", name="uq_user_discussion_like"),)
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -207,9 +214,7 @@ class DiscussionLike(Base):
 
 class CommentLike(Base):
     __tablename__ = "comment_likes"
-    __table_args__ = (
-        UniqueConstraint("user_id", "comment_id", name="uq_user_comment_like"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "comment_id", name="uq_user_comment_like"),)
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -223,6 +228,7 @@ class CommentLike(Base):
 
 class AnalyticsEvent(Base):
     """User behavior tracking — lightweight event log."""
+
     __tablename__ = "analytics_events"
 
     id = Column(Integer, primary_key=True, index=True)

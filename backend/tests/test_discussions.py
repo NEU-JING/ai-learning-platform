@@ -1,23 +1,21 @@
 """Discussion API tests — covers CRUD, comments, and like-toggle (S6 fix)."""
-import pytest
-from fastapi.testclient import TestClient
-
-from app.models import DiscussionLike
 
 
 class TestDiscussionCRUD:
     """Basic discussion create / list / get / update / delete."""
 
     def _register_and_login(self, client, suffix="disc"):
-        client.post("/api/v1/auth/register", json={
-            "email": f"{suffix}@test.com",
-            "username": f"user_{suffix}",
-            "password": "Test123456"
-        })
-        resp = client.post("/api/v1/auth/login", json={
-            "email": f"{suffix}@test.com",
-            "password": "Test123456"
-        })
+        client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": f"{suffix}@test.com",
+                "username": f"user_{suffix}",
+                "password": "Test123456",
+            },
+        )
+        resp = client.post(
+            "/api/v1/auth/login", json={"email": f"{suffix}@test.com", "password": "Test123456"}
+        )
         token = resp.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
 
@@ -27,7 +25,7 @@ class TestDiscussionCRUD:
         resp = client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "Test Discussion", "content": "Hello world!"},
-            headers=headers
+            headers=headers,
         )
         assert resp.status_code == 201
         data = resp.json()
@@ -40,7 +38,7 @@ class TestDiscussionCRUD:
         client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "List Test", "content": "content"},
-            headers=headers
+            headers=headers,
         )
         resp = client.get(f"/api/v1/courses/{course_id}/discussions")
         assert resp.status_code == 200
@@ -54,7 +52,7 @@ class TestDiscussionCRUD:
         create = client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "Detail Test", "content": "Full content here"},
-            headers=headers
+            headers=headers,
         )
         assert create.status_code == 201
         disc_id = create.json()["id"]
@@ -70,13 +68,11 @@ class TestDiscussionCRUD:
         create = client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "Old Title", "content": "Old content"},
-            headers=headers
+            headers=headers,
         )
         disc_id = create.json()["id"]
         resp = client.put(
-            f"/api/v1/discussions/{disc_id}",
-            json={"title": "New Title"},
-            headers=headers
+            f"/api/v1/discussions/{disc_id}", json={"title": "New Title"}, headers=headers
         )
         assert resp.status_code == 200
         assert resp.json()["title"] == "New Title"
@@ -87,13 +83,10 @@ class TestDiscussionCRUD:
         create = client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "To Delete", "content": "bye"},
-            headers=headers
+            headers=headers,
         )
         disc_id = create.json()["id"]
-        resp = client.delete(
-            f"/api/v1/discussions/{disc_id}",
-            headers=headers
-        )
+        resp = client.delete(f"/api/v1/discussions/{disc_id}", headers=headers)
         assert resp.status_code == 204
 
     def test_create_comment(self, client, test_course):
@@ -102,13 +95,13 @@ class TestDiscussionCRUD:
         create = client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "Comment Test", "content": "discuss"},
-            headers=headers
+            headers=headers,
         )
         disc_id = create.json()["id"]
         resp = client.post(
             f"/api/v1/discussions/{disc_id}/comments",
             json={"content": "Great post!"},
-            headers=headers
+            headers=headers,
         )
         assert resp.status_code == 201
         assert resp.json()["content"] == "Great post!"
@@ -118,15 +111,17 @@ class TestDiscussionLikeToggle:
     """Like toggle — prevent duplicate likes (S6 fix)."""
 
     def _register_and_login(self, client, suffix):
-        client.post("/api/v1/auth/register", json={
-            "email": f"{suffix}@test.com",
-            "username": f"user_{suffix}",
-            "password": "Test123456"
-        })
-        resp = client.post("/api/v1/auth/login", json={
-            "email": f"{suffix}@test.com",
-            "password": "Test123456"
-        })
+        client.post(
+            "/api/v1/auth/register",
+            json={
+                "email": f"{suffix}@test.com",
+                "username": f"user_{suffix}",
+                "password": "Test123456",
+            },
+        )
+        resp = client.post(
+            "/api/v1/auth/login", json={"email": f"{suffix}@test.com", "password": "Test123456"}
+        )
         token = resp.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
 
@@ -136,7 +131,7 @@ class TestDiscussionLikeToggle:
         create = client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "Like Toggle", "content": "test"},
-            headers=headers
+            headers=headers,
         )
         disc_id = create.json()["id"]
 
@@ -157,7 +152,7 @@ class TestDiscussionLikeToggle:
         create = client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "Dup Like", "content": "test"},
-            headers=headers
+            headers=headers,
         )
         disc_id = create.json()["id"]
 
@@ -173,7 +168,7 @@ class TestDiscussionLikeToggle:
         create = client.post(
             f"/api/v1/courses/{course_id}/discussions",
             json={"title": "Two Likes", "content": "test"},
-            headers=headers1
+            headers=headers1,
         )
         disc_id = create.json()["id"]
         client.post(f"/api/v1/discussions/{disc_id}/like", headers=headers1)

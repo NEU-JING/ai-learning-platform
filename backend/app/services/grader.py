@@ -67,7 +67,9 @@ class CodeGrader:
             )
         except RuntimeError:
             loop = asyncio.new_event_loop()
-            result = loop.run_until_complete(execute_code_docker(grading_code, timeout=timeout, skip_security_check=True))
+            result = loop.run_until_complete(
+                execute_code_docker(grading_code, timeout=timeout, skip_security_check=True)
+            )  # noqa: E501
             loop.close()
 
         if not result.get("success"):
@@ -125,7 +127,9 @@ class CodeGrader:
         for t in test_results:
             icon = "✅" if t.get("passed") else "❌"
             name = t.get("name", "未命名")
-            lines.append(f"  {icon} {name}: 期望 '{t.get('expected', '')}', 实际 '{t.get('actual', 'N/A')}'")
+            lines.append(
+                f"  {icon} {name}: 期望 '{t.get('expected', '')}', 实际 '{t.get('actual', 'N/A')}'"
+            )  # noqa: E501
 
         if score >= 80:
             lines.append("评测通过！")
@@ -189,7 +193,10 @@ for _i, _test in enumerate({test_cases_json}):
         _error = str(_e)
         _actual = f"ERROR: {{type(_e).__name__}}"
 
-    _results.append({{"name": _name, "passed": _passed, "expected": _expected, "actual": _actual, "error": _error}})
+    _results.append(
+        {{"name": _name, "passed": _passed,
+          "expected": _expected, "actual": _actual,
+          "error": _error}})
 
 print("===GRADING_RESULT_START===")
 print(_json.dumps(_results, ensure_ascii=False))
@@ -228,6 +235,7 @@ print("===GRADING_RESULT_END===")
         """
         # Escape the test script for safe embedding
         import textwrap
+
         indented_test = textwrap.indent(test_script, "    ")
 
         return f"""{user_code}
@@ -240,7 +248,9 @@ _test_lines = {repr(test_script.strip().split(chr(10)))}
 
 for _i, _line in enumerate(_test_lines):
     _line = _line.strip()
-    if not _line or _line.startswith('#') or _line.startswith('import ') or _line.startswith('from '):
+    if (not _line or _line.startswith('#')
+            or _line.startswith('import ')
+            or _line.startswith('from ')):
         continue
     _passed = False
     _error = None
@@ -252,7 +262,11 @@ for _i, _line in enumerate(_test_lines):
     except Exception as _e:
         _error = f"{{type(_e).__name__}}: {{_e}}"
     _name = f"line_{{_i}}: {{_line[:40]}}"
-    _results.append({{"name": _name, "passed": _passed, "expected": "assert ok", "actual": "ok" if _passed else "failed", "error": _error}})
+    _results.append(
+        {{"name": _name, "passed": _passed,
+          "expected": "assert ok",
+          "actual": "ok" if _passed else "failed",
+          "error": _error}})
 
 print("===GRADING_RESULT_START===")
 print(_json.dumps(_results, ensure_ascii=False))

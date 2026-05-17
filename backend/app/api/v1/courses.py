@@ -1,16 +1,16 @@
-from typing import List, Optional, Union
+from math import ceil
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from math import ceil
 
-from app.core.database import get_db
 from app.api.deps import get_current_active_user
+from app.core.database import get_db
 from app.models import User
 from app.schemas.course import (
-    CourseResponse,
-    CourseListResponse,
     ChapterResponse,
+    CourseListResponse,
+    CourseResponse,
     LabPublicResponse,
     LabSubmissionCreate,
     LabSubmissionResponse,
@@ -35,7 +35,9 @@ def list_courses(
     Always returns a PaginatedResponse. When `page` is omitted, returns all
     items in a single page (backward compatible wrapper).
     """
-    courses, total = course_service.list_courses(db, level=level, category=category, page=page, per_page=per_page)
+    courses, total = course_service.list_courses(
+        db, level=level, category=category, page=page, per_page=per_page
+    )
 
     if page is not None:
         _per_page = min(per_page or 20, 100)

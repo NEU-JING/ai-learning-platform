@@ -1,7 +1,7 @@
-from pydantic import ConfigDict, BaseModel, field_validator
-from typing import List, Optional
 from datetime import datetime
+from typing import List, Optional
 
+from pydantic import BaseModel, ConfigDict, field_validator
 
 # ── Chapter ──────────────────────────────────────────────
 
@@ -33,6 +33,7 @@ class ChapterResponse(ChapterBase):
 
 class LabPublicBase(BaseModel):
     """Fields safe to expose to the frontend."""
+
     title: str
     description: Optional[str] = None
     starter_code: Optional[str] = None
@@ -40,12 +41,13 @@ class LabPublicBase(BaseModel):
     time_limit_seconds: int = 30
     memory_limit_mb: int = 256
 
-    @field_validator('hints', mode='before')
+    @field_validator("hints", mode="before")
     @classmethod
     def parse_hints(cls, v):
         # SQLite stores JSON as string; deserialize if needed
         if isinstance(v, str):
             import json
+
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
@@ -60,6 +62,7 @@ class LabPublicBase(BaseModel):
 
 class LabPublicResponse(LabPublicBase):
     """Returned by all API endpoints — NEVER exposes solution_code or test_cases."""
+
     id: int
     chapter_id: int
     created_at: datetime
@@ -72,16 +75,18 @@ class LabPublicResponse(LabPublicBase):
 
 class LabBase(LabPublicBase):
     """Full lab definition including sensitive fields — for internal use only."""
+
     solution_code: Optional[str] = None
     test_cases: List[dict] = []
     requirements: Optional[str] = None
 
-    @field_validator('test_cases', mode='before')
+    @field_validator("test_cases", mode="before")
     @classmethod
     def parse_test_cases(cls, v):
         # SQLite stores JSON as string; deserialize if needed
         if isinstance(v, str):
             import json
+
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):
@@ -100,6 +105,7 @@ class LabCreate(LabBase):
 
 class LabResponse(LabBase):
     """Full lab — only used internally by services, NEVER in API response_model."""
+
     id: int
     chapter_id: int
     created_at: datetime
@@ -175,11 +181,12 @@ class LabSubmissionResponse(BaseModel):
     feedback: Optional[str] = None
     created_at: datetime
 
-    @field_validator('test_results', mode='before')
+    @field_validator("test_results", mode="before")
     @classmethod
     def parse_test_results(cls, v):
         if isinstance(v, str):
             import json
+
             try:
                 parsed = json.loads(v)
                 if isinstance(parsed, list):

@@ -8,11 +8,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.models import Base
 from app.core.database import get_db
+from app.core.security import create_access_token, get_password_hash
 from app.main import app
-from app.models import User, Course, Chapter, Lab, LearningProgress
-from app.core.security import get_password_hash, create_access_token
+from app.models import Base, Chapter, Course, Lab, User
 
 # In-memory SQLite shared across all connections via StaticPool.
 # Without StaticPool, each SQLite connection gets its own empty DB.
@@ -45,6 +44,7 @@ def client(test_db):
     - SessionLocal patched so lifespan seeding uses test DB too
     - get_db overridden to yield the test session
     """
+
     def _override_get_db():
         try:
             yield test_db
@@ -55,10 +55,12 @@ def client(test_db):
 
     # Patch both database.SessionLocal AND the module-level imports in main.py
     # so lifespan seeding writes to the same test DB
-    with patch("app.core.database.init_db"), \
-         patch("app.core.database.SessionLocal", _TestSessionLocal), \
-         patch("app.main.SessionLocal", _TestSessionLocal), \
-         patch("app.main._assert_data_contract"):
+    with (
+        patch("app.core.database.init_db"),
+        patch("app.core.database.SessionLocal", _TestSessionLocal),
+        patch("app.main.SessionLocal", _TestSessionLocal),
+        patch("app.main._assert_data_contract"),
+    ):
         with TestClient(app) as c:
             yield c
 

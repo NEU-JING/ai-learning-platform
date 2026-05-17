@@ -1,6 +1,7 @@
-from pydantic import ConfigDict, BaseModel
-from typing import List, Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
 
 
 class ProgressBase(BaseModel):
@@ -23,12 +24,13 @@ class ProgressResponse(BaseModel):
     completed_at: Optional[datetime]
     last_accessed_at: datetime
     created_at: datetime
-    
+
     model_config = ConfigDict(from_attributes=True)
 
 
 class CourseProgressResponse(BaseModel):
     """课程进度统计响应"""
+
     course_id: int
     course_title: str
     total_chapters: int
@@ -40,6 +42,7 @@ class CourseProgressResponse(BaseModel):
 
 class LearningStatsResponse(BaseModel):
     """学习统计概览"""
+
     total_chapters_accessed: int
     completed_chapters: int
     in_progress_chapters: int

@@ -8,8 +8,6 @@ See DEVELOPMENT_HARNESS.md §5.6 for contract test specification.
 See DEVELOPMENT_HARNESS.md §4.7.3 for the API contract registry.
 """
 
-import pytest
-
 
 class TestCourseListContract:
     """GET /api/v1/courses/ response contract.
@@ -54,9 +52,7 @@ class TestCourseDetailContract:
         resp = client.get(f"/api/v1/courses/{course_id}")
         assert resp.status_code == 200
         data = resp.json()
-        assert "chapters" in data, (
-            "Frontend uses 'chapters', backend must return this field name."
-        )
+        assert "chapters" in data, "Frontend uses 'chapters', backend must return this field name."
 
     def test_chapter_has_has_lab(self, client, test_course):
         """Frontend uses has_lab to show/hide lab entry."""
@@ -64,9 +60,7 @@ class TestCourseDetailContract:
         resp = client.get(f"/api/v1/courses/{course_id}")
         data = resp.json()
         if len(data["chapters"]) > 0:
-            assert "has_lab" in data["chapters"][0], (
-                "Frontend uses 'has_lab' on chapter objects."
-            )
+            assert "has_lab" in data["chapters"][0], "Frontend uses 'has_lab' on chapter objects."
 
 
 class TestAuthContract:
@@ -76,7 +70,7 @@ class TestAuthContract:
     """
 
     def test_register_returns_user_no_token(self, client):
-        """Register endpoint returns user info, NOT tokens — frontend must call login after register."""
+        """Register returns user info, NOT tokens — frontend must call login after register."""  # noqa: E501
         resp = client.post(
             "/api/v1/auth/register",
             json={

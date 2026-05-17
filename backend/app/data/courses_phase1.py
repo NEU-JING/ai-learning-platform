@@ -2,6 +2,7 @@
 Phase 1 课程数据加载器
 从 JSON + Markdown 文件加载课程内容到数据库
 """
+
 import json
 from pathlib import Path
 
@@ -11,10 +12,10 @@ PHASE1_DIR = Path(__file__).parent / "phase1"
 def load_phase1_data():
     """加载Phase 1课程数据(从JSON索引+Markdown内容文件)"""
     index_path = PHASE1_DIR / "index.json"
-    
+
     with open(index_path, "r", encoding="utf-8") as f:
         course_data = json.load(f)
-    
+
     # Load content from markdown files
     for chapter in course_data["chapters"]:
         content_file = chapter.pop("content_file", None)
@@ -24,7 +25,7 @@ def load_phase1_data():
                 chapter["content"] = md_path.read_text(encoding="utf-8")
             else:
                 chapter["content"] = f"# {chapter['title']}\n\n内容加载中..."
-        
+
         # Load lab starter_code and test_cases from files
         lab = chapter.get("lab")
         if lab:
@@ -33,13 +34,13 @@ def load_phase1_data():
                 starter_path = PHASE1_DIR / starter_file
                 if starter_path.exists():
                     lab["starter_code"] = starter_path.read_text(encoding="utf-8")
-            
+
             test_file = lab.pop("test_cases_file", None)
             if test_file:
                 test_path = PHASE1_DIR / test_file
                 if test_path.exists():
                     lab["test_cases"] = test_path.read_text(encoding="utf-8")
-    
+
     return course_data
 
 
@@ -53,7 +54,7 @@ def init_phase1_data(db, behavior="upsert"):
 
     Use behavior="create_only" to skip if course already exists.
     """
-    from app.models import Course, Chapter, Lab
+    from app.models import Chapter, Course, Lab
 
     course_data = load_phase1_data()
     chapters_data = course_data.pop("chapters", [])
@@ -63,7 +64,7 @@ def init_phase1_data(db, behavior="upsert"):
     if existing:
         if behavior == "create_only":
             # Skip — existing data may be better
-            print(f"Phase 1: skipped (create_only, course exists)")
+            print("Phase 1: skipped (create_only, course exists)")
             return existing
         # upsert: update course fields and rebuild chapters
         for key, value in course_data.items():
@@ -80,23 +81,25 @@ def init_phase1_data(db, behavior="upsert"):
         course = Course(**course_data)
         db.add(course)
         db.flush()
-    
+
     # Create chapters and labs
     for chapter_data in chapters_data:
         lab_data = chapter_data.pop("lab", None)
-        
+
         chapter = Chapter(course_id=course.id, **chapter_data)
         db.add(chapter)
         db.flush()
-        
+
         if lab_data:
             lab = Lab(chapter_id=chapter.id, **lab_data)
             db.add(lab)
-    
+
     db.commit()
-    
+
     chapter_count = len(chapters_data)
-    lab_count = sum(1 for c in chapters_data if "lab" in str(c.get("chapter_type", "")) or c.get("lab"))
+    lab_count = sum(
+        1 for c in chapters_data if "lab" in str(c.get("chapter_type", "")) or c.get("lab")
+    )
     print(f"Phase 1 loaded: {course_data['title']} ({chapter_count} chapters, {lab_count} labs)")
-    
+
     return course

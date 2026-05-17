@@ -14,6 +14,7 @@ BEHAVIOR: create_only (default)
 
   Use behavior="upsert" to force a full rebuild from seed file (⚠️ data loss).
 """
+
 import sys
 from pathlib import Path
 
@@ -24,6 +25,7 @@ def load_extended_courses():
     backend_dir = Path(__file__).parent.parent.parent
     sys.path.insert(0, str(backend_dir))
     from app.data.courses_extended_fixed import COURSES_DATA
+
     return COURSES_DATA
 
 
@@ -44,8 +46,8 @@ def init_phase3_6_data(db, behavior="create_only"):
     - Always sets is_published=True
     - Invalidates cache after data changes
     """
-    from app.models import Course, Chapter, Lab
     from app.core.cache import cache_manager
+    from app.models import Chapter, Course, Lab
 
     all_courses = load_extended_courses()
 
@@ -53,6 +55,7 @@ def init_phase3_6_data(db, behavior="create_only"):
     # courses_extended_fixed has titles like "Phase 1: Python基础与AI工具链（2周/14天）"
     # which differ from our canonical titles. Skip by checking title prefix.
     import copy
+
     skip_prefixes = ("Phase 1:", "Phase 2:")
     courses_to_load = []
     for c in all_courses:
@@ -87,14 +90,18 @@ def init_phase3_6_data(db, behavior="create_only"):
 
         if existing:
             # Check if course is an empty shell (0 chapters)
-            existing_ch_count = db.query(Chapter).filter(
-                Chapter.course_id == existing.id
-            ).count()
+            existing_ch_count = db.query(Chapter).filter(Chapter.course_id == existing.id).count()
 
             if existing_ch_count > 0 and behavior == "create_only":
                 # SKIP: Course has real content — protect it
                 updated += 1
-                update_fields = {"description", "level", "category", "duration_hours", "is_published"}
+                update_fields = {
+                    "description",
+                    "level",
+                    "category",
+                    "duration_hours",
+                    "is_published",
+                }
                 for key in update_fields:
                     if key in course_data:
                         setattr(existing, key, course_data[key])
@@ -131,12 +138,14 @@ def init_phase3_6_data(db, behavior="create_only"):
                 # Ensure hints and test_cases are properly typed
                 if "hints" in lab_data and isinstance(lab_data["hints"], str):
                     import json
+
                     try:
                         lab_data["hints"] = json.loads(lab_data["hints"])
                     except (json.JSONDecodeError, TypeError):
                         lab_data["hints"] = [lab_data["hints"]] if lab_data["hints"] else []
                 if "test_cases" in lab_data and isinstance(lab_data["test_cases"], str):
                     import json
+
                     try:
                         lab_data["test_cases"] = json.loads(lab_data["test_cases"])
                     except (json.JSONDecodeError, TypeError):
@@ -155,7 +164,9 @@ def init_phase3_6_data(db, behavior="create_only"):
 
     total_chapters = sum(len(c.get("chapters", [])) for c in courses_to_load)
     total_labs = sum(
-        sum(1 for ch in c.get("chapters", []) if ch.get("lab"))
-        for c in courses_to_load
+        sum(1 for ch in c.get("chapters", []) if ch.get("lab")) for c in courses_to_load
     )
-    print(f"✅ Phase 3-6 loaded: {created} created, {updated} updated ({total_chapters} chapters, {total_labs} labs)")
+    print(
+        f"✅ Phase 3-6 loaded: {created} created, {updated} updated "
+        f"({total_chapters} chapters, {total_labs} labs)"
+    )

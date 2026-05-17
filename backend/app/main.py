@@ -1,18 +1,19 @@
+import asyncio
+import os
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
-from contextlib import asynccontextmanager
-import os
-import asyncio
+from fastapi.staticfiles import StaticFiles
 
+from app.api.v1 import analytics, auth, certificates, courses, discussions, labs, progress
 from app.core.config import settings
-from app.core.database import init_db, SessionLocal
-from app.data.courses import init_courses_data, PHASE_TITLES
+from app.core.database import SessionLocal, init_db
+from app.data.courses import PHASE_TITLES, init_courses_data
 from app.data.courses_phase1 import init_phase1_data
 from app.data.courses_phase2 import init_phase2_data
 from app.data.courses_phase3_6 import init_phase3_6_data
-from app.api.v1 import auth, courses, labs, progress, certificates, discussions, analytics
 
 
 def _assert_data_contract(db):
@@ -23,7 +24,7 @@ def _assert_data_contract(db):
 
     Philosophy: a crashed server is better than a server serving wrong data.
     """
-    from app.models import Course, Chapter, Lab
+    from app.models import Chapter, Course, Lab
 
     errors = []
 
@@ -64,14 +65,15 @@ def _assert_data_contract(db):
         print("❌ 数据契约校验失败:")
         for e in errors:
             print(f"   • {e}")
-        raise RuntimeError(f"Data contract violated: {len(errors)} error(s). Server refused to start.")
+        msg = f"Data contract violated: {len(errors)} error(s). Server refused to start."
+        raise RuntimeError(msg)
 
 
 def _format_size(size_bytes: int) -> str:
     """格式化字节大小为人类可读格式"""
     if size_bytes == 0:
         return "0 B"
-    for unit in ['B', 'KB', 'MB', 'GB']:
+    for unit in ["B", "KB", "MB", "GB"]:
         if abs(size_bytes) < 1024:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024
@@ -84,9 +86,10 @@ async def lifespan(app: FastAPI):
     # V1.0: Use Alembic migration as primary schema management
     # Fallback to init_db() only if Alembic is not available (e.g. tests)
     try:
-        from alembic.config import Config as AlembicConfig
         from alembic import command as alembic_command
-        alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), '..', 'alembic.ini'))
+        from alembic.config import Config as AlembicConfig
+
+        alembic_cfg = AlembicConfig(os.path.join(os.path.dirname(__file__), "..", "alembic.ini"))
         alembic_cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
         alembic_command.upgrade(alembic_cfg, "head")
     except Exception:
@@ -103,6 +106,7 @@ async def lifespan(app: FastAPI):
         init_phase3_6_data(db)
         # Step 4: Invalidate all course caches after seed data refresh
         from app.core.cache import cache_manager
+
         try:
             cache_manager.delete_pattern("courses:*")
         except Exception:
@@ -112,24 +116,25 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
     print("✅ 数据库初始化完成（数据契约校验通过）")
-    
+
     # 异步检查沙箱镜像（不阻塞启动）
     async def check_sandbox_image():
         """后台检查沙箱镜像，避免阻塞启动"""
         try:
-            from app.services.code_executor import get_sandbox_image_info, ensure_sandbox_image
-            
+            from app.services.code_executor import ensure_sandbox_image, get_sandbox_image_info
+
             print("🔍 正在检查 Docker 沙箱镜像...")
             image_info = get_sandbox_image_info()
-            
-            if not image_info['docker_available']:
+
+            if not image_info["docker_available"]:
                 print("⚠️ Docker 不可用，代码执行将使用本地回退模式")
                 print("   如需使用 Docker 沙箱，请确保 Docker 服务已启动")
                 return
-            
-            if image_info['image_exists']:
+
+            if image_info["image_exists"]:
                 print(f"✅ 沙箱镜像已存在: {image_info['image_tag']}")
-                print(f"   镜像版本: {image_info['image_details']['labels'].get('sandbox.version', 'unknown')}")
+                ver = image_info["image_details"]["labels"].get("sandbox.version", "unknown")
+                print(f"   镜像版本: {ver}")
                 print(f"   镜像大小: {_format_size(image_info['image_details'].get('size', 0))}")
             else:
                 print(f"⏳ 沙箱镜像未找到，正在后台构建: {image_info['image_tag']}")
@@ -138,12 +143,12 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"⚠️ 沙箱镜像检查失败: {e}")
             print("   代码执行将使用本地回退模式")
-    
+
     async def _build_sandbox_image_async():
         """后台异步构建沙箱镜像"""
         try:
             from app.services.code_executor import ensure_sandbox_image
-            
+
             success = await ensure_sandbox_image()
             if success:
                 print("✅ 沙箱镜像后台构建完成")
@@ -151,10 +156,10 @@ async def lifespan(app: FastAPI):
                 print("⚠️ 沙箱镜像构建失败，代码执行将使用本地回退模式")
         except Exception as e:
             print(f"❌ 沙箱镜像后台构建异常: {e}")
-    
+
     # 启动后台检查任务
     asyncio.create_task(check_sandbox_image())
-    
+
     yield
     # 关闭时的清理
     print("👋 应用关闭")
@@ -164,7 +169,7 @@ app = FastAPI(
     title=settings.APP_NAME,
     description="AI学习平台 - 从入门到AI团队Leader",
     version=settings.VERSION,
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # CORS配置 - 从配置文件中读取
@@ -230,7 +235,7 @@ def health_check():
     return {
         "status": "healthy",
         "version": settings.VERSION,
-        "environment": os.getenv("ENVIRONMENT", "development")
+        "environment": os.getenv("ENVIRONMENT", "development"),
     }
 
 
@@ -240,7 +245,7 @@ def health_check():
 async def spa_fallback(request: Request, full_path: str):
     """
     SPA路由回退处理
-    
+
     所有未匹配的静态路径都将返回spa.html，由前端路由处理。
     排除的路径:
     - /api/* - API路由
@@ -252,8 +257,22 @@ async def spa_fallback(request: Request, full_path: str):
     # under STATIC_DIR. This handles relative paths like js/api.js, css/style.css,
     # src/main.js that HTML pages reference without the /static/ prefix.
     static_extensions = (
-        ".js", ".mjs", ".css", ".map", ".png", ".jpg", ".jpeg", ".gif",
-        ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".json", ".webp",
+        ".js",
+        ".mjs",
+        ".css",
+        ".map",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+        ".ico",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+        ".json",
+        ".webp",
     )
     if full_path and any(full_path.endswith(ext) for ext in static_extensions):
         file_path = os.path.normpath(os.path.join(STATIC_DIR, full_path))
@@ -276,20 +295,13 @@ async def spa_fallback(request: Request, full_path: str):
             return FileResponse(direct_file)
 
     # 排除API和文档路径
-    excluded_paths = [
-        "/api/",
-        "/docs",
-        "/redoc",
-        "/openapi.json",
-        "/static/",
-        "/health"
-    ]
-    
+    excluded_paths = ["/api/", "/docs", "/redoc", "/openapi.json", "/static/", "/health"]
+
     # 检查是否是排除路径
     for excluded in excluded_paths:
         if full_path.startswith(excluded.lstrip("/")) or full_path == excluded.lstrip("/"):
             return HTMLResponse(content="Not Found", status_code=404)
-    
+
     # 尝试返回具体的HTML文件 (bare paths like /login → login.html)
     page_mapping = {
         "": "index.html",
@@ -304,26 +316,26 @@ async def spa_fallback(request: Request, full_path: str):
         "profile": "index.html",
         "certificates": "index.html",
     }
-    
+
     # 获取请求路径的第一部分
     path_first = full_path.split("/")[0] if full_path else ""
-    
+
     # 如果存在具体页面，返回对应页面
     if path_first in page_mapping:
         page_file = os.path.join(STATIC_DIR, page_mapping[path_first])
         if os.path.exists(page_file):
             return FileResponse(page_file)
-    
+
     # SPA路由回退 (only for unknown paths without file extension)
     spa_file = os.path.join(STATIC_DIR, "spa.html")
     if os.path.exists(spa_file):
         return FileResponse(spa_file)
-    
+
     # 如果连spa.html都没有，返回index.html
     index_file = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
-    
+
     # 最后的回退
     return HTMLResponse(
         content="""<!DOCTYPE html>
@@ -335,10 +347,11 @@ async def spa_fallback(request: Request, full_path: str):
     <p>API Documentation: <a href="/docs">/docs</a></p>
 </body>
 </html>""",
-        status_code=200
+        status_code=200,
     )
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

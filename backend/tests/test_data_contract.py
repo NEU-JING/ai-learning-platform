@@ -14,10 +14,9 @@ Rules enforced:
 """
 
 import pytest
-from sqlalchemy.orm import Session
 
-from app.models import Course, Chapter, Lab, LabSubmission, LearningProgress
-from app.data.courses import init_courses_data, PHASE_TITLES
+from app.data.courses import PHASE_TITLES, init_courses_data
+from app.models import Chapter, Course, Lab
 
 
 @pytest.fixture
@@ -39,7 +38,7 @@ class TestCourseSystemIntegrity:
     """Core data contract: the 6-phase system must be complete and clean."""
 
     def test_exactly_six_published_courses(self, seeded_db):
-        published = seeded_db.query(Course).filter(Course.is_published == True).all()
+        published = seeded_db.query(Course).filter(Course.is_published.is_(True)).all()
         assert len(published) == 6, (
             f"Expected 6 published courses, got {len(published)}: "
             f"{[c.title for c in published]}"
@@ -47,7 +46,7 @@ class TestCourseSystemIntegrity:
 
     def test_all_courses_match_phase_titles(self, seeded_db):
         valid_titles = set(PHASE_TITLES.values())
-        published = seeded_db.query(Course).filter(Course.is_published == True).all()
+        published = seeded_db.query(Course).filter(Course.is_published.is_(True)).all()
         for c in published:
             assert c.title in valid_titles, (
                 f"Course '{c.title}' is not in the 6-phase system. "
@@ -56,12 +55,8 @@ class TestCourseSystemIntegrity:
 
     def test_no_orphan_courses(self, seeded_db):
         valid_titles = set(PHASE_TITLES.values())
-        orphans = seeded_db.query(Course).filter(
-            Course.title.notin_(valid_titles)
-        ).all()
-        assert orphans == [], (
-            f"Orphan courses found: {[o.title for o in orphans]}"
-        )
+        orphans = seeded_db.query(Course).filter(Course.title.notin_(valid_titles)).all()
+        assert orphans == [], f"Orphan courses found: {[o.title for o in orphans]}"
 
     def test_no_duplicate_course_titles(self, seeded_db):
         titles = [t[0] for t in seeded_db.query(Course.title).all()]
@@ -84,13 +79,12 @@ class TestChapterIntegrity:
         Seed files are the baseline — Phase 3-6 seed data is sparse.
         """
         from app.data.courses import PHASE_TITLES
-        courses = seeded_db.query(Course).filter(Course.is_published == True).all()
+
+        courses = seeded_db.query(Course).filter(Course.is_published.is_(True)).all()
         for c in courses:
             # Force fresh read from DB (avoid stale identity map)
             seeded_db.expire(c)
-            ch_count = seeded_db.query(Chapter).filter(
-                Chapter.course_id == c.id
-            ).count()
+            ch_count = seeded_db.query(Chapter).filter(Chapter.course_id == c.id).count()
             # Phase 1/2 loaded from JSON (rich), Phase 3-6 from seed file (sparse)
             # Some Phase 3-6 seed data may have 0 labs but must have chapters
             phase_num = None
@@ -114,13 +108,13 @@ class TestChapterIntegrity:
     def test_chapter_order_index_unique_per_course(self, seeded_db):
         """No two chapters in the same course should share an order_index."""
         from sqlalchemy import func
-        dupes = seeded_db.query(
-            Chapter.course_id, Chapter.order_index, func.count(Chapter.id)
-        ).group_by(
-            Chapter.course_id, Chapter.order_index
-        ).having(
-            func.count(Chapter.id) > 1
-        ).all()
+
+        dupes = (
+            seeded_db.query(Chapter.course_id, Chapter.order_index, func.count(Chapter.id))
+            .group_by(Chapter.course_id, Chapter.order_index)
+            .having(func.count(Chapter.id) > 1)
+            .all()
+        )
         assert dupes == [], f"Duplicate order_index found: {dupes}"
 
 
@@ -134,36 +128,39 @@ class TestLabIntegrity:
         (labs were added manually in production). At least the system
         must not have 0 labs across ALL courses.
         """
-        courses = seeded_db.query(Course).filter(Course.is_published == True).all()
+        courses = seeded_db.query(Course).filter(Course.is_published.is_(True)).all()
         total_labs = 0
         for c in courses:
-            lab_count = seeded_db.query(Lab).filter(
-                Lab.chapter_id.in_(
-                    seeded_db.query(Chapter.id).filter(Chapter.course_id == c.id)
+            lab_count = (
+                seeded_db.query(Lab)
+                .filter(
+                    Lab.chapter_id.in_(
+                        seeded_db.query(Chapter.id).filter(Chapter.course_id == c.id)
+                    )
                 )
-            ).count()
+                .count()
+            )
             total_labs += lab_count
         # Across all 6 courses, we must have at least some labs
-        assert total_labs >= 2, (
-            f"Only {total_labs} labs across all courses (expected ≥ 2)"
-        )
+        assert total_labs >= 2, f"Only {total_labs} labs across all courses (expected ≥ 2)"
 
     def test_phase1_phase2_have_labs(self, seeded_db):
         """Phase 1/2 courses must have labs (loaded from JSON)."""
         from app.data.courses import PHASE_TITLES
+
         for phase in [1, 2]:
-            c = seeded_db.query(Course).filter(
-                Course.title == PHASE_TITLES[phase]
-            ).first()
+            c = seeded_db.query(Course).filter(Course.title == PHASE_TITLES[phase]).first()
             if c:
-                lab_count = seeded_db.query(Lab).filter(
-                    Lab.chapter_id.in_(
-                        seeded_db.query(Chapter.id).filter(Chapter.course_id == c.id)
+                lab_count = (
+                    seeded_db.query(Lab)
+                    .filter(
+                        Lab.chapter_id.in_(
+                            seeded_db.query(Chapter.id).filter(Chapter.course_id == c.id)
+                        )
                     )
-                ).count()
-                assert lab_count >= 1, (
-                    f"{PHASE_TITLES[phase]}: 0 labs (Phase 1/2 must have labs)"
+                    .count()
                 )
+                assert lab_count >= 1, f"{PHASE_TITLES[phase]}: 0 labs (Phase 1/2 must have labs)"
 
     def test_lab_hints_are_list(self, seeded_db):
         """Hints must be stored as a Python list, not a JSON string.
@@ -171,6 +168,7 @@ class TestLabIntegrity:
         This catches the SQLite JSON serialization bug we hit before.
         """
         import json
+
         labs = seeded_db.query(Lab).all()
         for lab in labs:
             hints = lab.hints
@@ -180,9 +178,9 @@ class TestLabIntegrity:
                 # If stored as string, must be parseable as list
                 try:
                     parsed = json.loads(hints)
-                    assert isinstance(parsed, list), (
-                        f"Lab {lab.id} hints: JSON string parsed to {type(parsed).__name__}, not list"
-                    )
+                    assert isinstance(
+                        parsed, list
+                    ), f"Lab {lab.id} hints: JSON string parsed to {type(parsed).__name__}, not list"  # noqa: E501
                 except json.JSONDecodeError:
                     assert False, f"Lab {lab.id} hints: invalid JSON string"
 
@@ -196,6 +194,7 @@ class TestLabIntegrity:
         Both must be parseable — either as JSON list or as valid Python syntax.
         """
         import json
+
         labs = seeded_db.query(Lab).all()
         for lab in labs:
             tc = lab.test_cases
@@ -205,26 +204,27 @@ class TestLabIntegrity:
                 # Could be JSON list or Python script — both valid
                 try:
                     parsed = json.loads(tc)
-                    assert isinstance(parsed, list), (
-                        f"Lab {lab.id} test_cases: JSON string parsed to {type(parsed).__name__}, not list"
-                    )
+                    assert isinstance(
+                        parsed, list
+                    ), f"Lab {lab.id} test_cases: JSON string parsed to {type(parsed).__name__}, not list"  # noqa: E501
                 except json.JSONDecodeError:
                     # Not JSON — must be valid Python script string
                     import ast
+
                     try:
                         ast.parse(tc)
                     except SyntaxError as e:
-                        assert False, (
-                            f"Lab {lab.id} test_cases: neither valid JSON list nor valid Python: {e}"
-                        )
+                        assert (
+                            False
+                        ), f"Lab {lab.id} test_cases: neither valid JSON list nor valid Python: {e}"
 
     def test_lab_has_starter_code(self, seeded_db):
         """Every lab should provide starter_code for the student."""
         labs = seeded_db.query(Lab).all()
         empty = [lab for lab in labs if not lab.starter_code]
-        assert len(empty) == 0, (
-            f"{len(empty)} labs have no starter_code: {[lab.id for lab in empty]}"
-        )
+        assert (
+            len(empty) == 0
+        ), f"{len(empty)} labs have no starter_code: {[lab.id for lab in empty]}"
 
     def test_lab_solution_code_not_in_public_api(self, seeded_db):
         """The public course API must NEVER expose solution_code.
@@ -233,8 +233,9 @@ class TestLabIntegrity:
         fetch solutions via the API.
         """
         from fastapi.testclient import TestClient
-        from app.main import app
+
         from app.core.database import get_db
+        from app.main import app
 
         # Override to use seeded test DB
         def _override():
@@ -244,15 +245,21 @@ class TestLabIntegrity:
         client = TestClient(app)
 
         # Register and login
-        client.post("/api/v1/auth/register", json={
-            "username": "contract_tester",
-            "email": "contract@test.com",
-            "password": "testpassword123",
-        })
-        login_resp = client.post("/api/v1/auth/login", json={
-            "email": "contract@test.com",
-            "password": "testpassword123",
-        })
+        client.post(
+            "/api/v1/auth/register",
+            json={
+                "username": "contract_tester",
+                "email": "contract@test.com",
+                "password": "testpassword123",
+            },
+        )
+        login_resp = client.post(
+            "/api/v1/auth/login",
+            json={
+                "email": "contract@test.com",
+                "password": "testpassword123",
+            },
+        )
         token = login_resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {token}"}
 
@@ -261,9 +268,7 @@ class TestLabIntegrity:
         courses = courses_resp.json().get("items", [])
 
         for course in courses:
-            detail_resp = client.get(
-                f"/api/v1/courses/{course['id']}", headers=headers
-            )
+            detail_resp = client.get(f"/api/v1/courses/{course['id']}", headers=headers)
             detail = detail_resp.json()
             for ch in detail.get("chapters", []):
                 lab = ch.get("lab")
@@ -300,27 +305,33 @@ class TestSeedDataIdempotency:
         assert total == 6, f"After double init: {total} courses (expected 6)"
 
         # Must still be exactly 6 published
-        published = seeded_db.query(Course).filter(Course.is_published == True).count()
+        published = seeded_db.query(Course).filter(Course.is_published.is_(True)).count()
         assert published == 6, f"After double init: {published} published (expected 6)"
 
     def test_phase1_chapters_preserved_on_reinit(self, seeded_db):
         """Phase 1 content must survive a second init (upsert behavior)."""
         from app.data.courses_phase1 import init_phase1_data
 
-        ch_count_before = seeded_db.query(Chapter).filter(
-            Chapter.course_id == seeded_db.query(Course).filter(
-                Course.title == PHASE_TITLES[1]
-            ).first().id
-        ).count()
+        ch_count_before = (
+            seeded_db.query(Chapter)
+            .filter(
+                Chapter.course_id
+                == seeded_db.query(Course).filter(Course.title == PHASE_TITLES[1]).first().id
+            )
+            .count()
+        )
 
         init_phase1_data(seeded_db)
 
-        ch_count_after = seeded_db.query(Chapter).filter(
-            Chapter.course_id == seeded_db.query(Course).filter(
-                Course.title == PHASE_TITLES[1]
-            ).first().id
-        ).count()
-
-        assert ch_count_after == ch_count_before, (
-            f"Phase 1 chapters changed after reinit: {ch_count_before} → {ch_count_after}"
+        ch_count_after = (
+            seeded_db.query(Chapter)
+            .filter(
+                Chapter.course_id
+                == seeded_db.query(Course).filter(Course.title == PHASE_TITLES[1]).first().id
+            )
+            .count()
         )
+
+        assert (
+            ch_count_after == ch_count_before
+        ), f"Phase 1 chapters changed after reinit: {ch_count_before} → {ch_count_after}"

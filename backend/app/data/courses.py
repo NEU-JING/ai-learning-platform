@@ -16,7 +16,7 @@ BEHAVIOR: create_only — only creates course shells if they don't exist.
 
 # Seed behavior constants
 BEHAVIOR_CREATE_ONLY = "create_only"  # Only create if not exists; skip existing
-BEHAVIOR_UPSERT = "upsert"            # Delete-and-recreate; seed file is source of truth
+BEHAVIOR_UPSERT = "upsert"  # Delete-and-recreate; seed file is source of truth
 
 # Course titles used for deduplication - must match phase1/index.json, phase2/index.json,
 # and courses_extended_fixed.py exactly
@@ -47,8 +47,14 @@ def init_courses_data(db, behavior=BEHAVIOR_CREATE_ONLY):
     for phase_num, title in PHASE_TITLES.items():
         existing = db.query(Course).filter(Course.title == title).first()
         if not existing:
-            level_map = {1: "beginner", 2: "beginner", 3: "intermediate",
-                         4: "advanced", 5: "advanced", 6: "expert"}
+            level_map = {
+                1: "beginner",
+                2: "beginner",
+                3: "intermediate",
+                4: "advanced",
+                5: "advanced",
+                6: "expert",
+            }
             category_map = {1: "python", 2: "math", 3: "ml", 4: "dl", 5: "llm", 6: "engineering"}
             duration_map = {1: 28, 2: 14, 3: 56, 4: 28, 5: 42, 6: 28}
 
@@ -74,16 +80,21 @@ def init_courses_data(db, behavior=BEHAVIOR_CREATE_ONLY):
     valid_titles = set(PHASE_TITLES.values())
     orphans = db.query(Course).filter(Course.title.notin_(valid_titles)).all()
     if orphans:
-        from app.models import Chapter, Lab, LearningProgress, LabSubmission
+        from app.models import Chapter, Lab, LabSubmission, LearningProgress
+
         for orphan in orphans:
             chapters = db.query(Chapter).filter(Chapter.course_id == orphan.id).all()
             for ch in chapters:
-                db.query(LabSubmission).filter(LabSubmission.lab_id.in_(
-                    db.query(Lab.id).filter(Lab.chapter_id == ch.id)
-                )).delete(synchronize_session=False)
+                db.query(LabSubmission).filter(
+                    LabSubmission.lab_id.in_(db.query(Lab.id).filter(Lab.chapter_id == ch.id))
+                ).delete(synchronize_session=False)
                 db.query(Lab).filter(Lab.chapter_id == ch.id).delete(synchronize_session=False)
-                db.query(LearningProgress).filter(LearningProgress.chapter_id == ch.id).delete(synchronize_session=False)
-            db.query(Chapter).filter(Chapter.course_id == orphan.id).delete(synchronize_session=False)
+                db.query(LearningProgress).filter(LearningProgress.chapter_id == ch.id).delete(
+                    synchronize_session=False
+                )
+            db.query(Chapter).filter(Chapter.course_id == orphan.id).delete(
+                synchronize_session=False
+            )
             db.delete(orphan)
         db.commit()
         print(f"🧹 Cleaned up {len(orphans)} orphan courses: {[o.title for o in orphans]}")
@@ -91,4 +102,4 @@ def init_courses_data(db, behavior=BEHAVIOR_CREATE_ONLY):
     if created:
         print(f"✅ Created {created} course shells for 6-phase system")
     else:
-        print(f"✅ All 6-phase courses already exist")
+        print("✅ All 6-phase courses already exist")

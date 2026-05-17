@@ -93,10 +93,14 @@ class LabService:
 
         # 7. Auto-mark chapter progress as completed if passed
         if grading_result["passed"] and lab.chapter_id:
-            progress = db.query(LearningProgress).filter(
-                LearningProgress.user_id == user_id,
-                LearningProgress.chapter_id == lab.chapter_id,
-            ).first()
+            progress = (
+                db.query(LearningProgress)
+                .filter(
+                    LearningProgress.user_id == user_id,
+                    LearningProgress.chapter_id == lab.chapter_id,
+                )
+                .first()
+            )
 
             now = datetime.now(timezone.utc)
             if progress:

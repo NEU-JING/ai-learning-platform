@@ -23,7 +23,7 @@ class TestCodeSecurity:
     def test_eval_blocked(self):
         from app.core.code_security import check_code_security
 
-        is_safe, msg = check_code_security("eval('__import__(\"os\").system(\"whoami\")')")
+        is_safe, msg = check_code_security('eval(\'__import__("os").system("whoami")\')')
         assert is_safe is False
 
     def test_exec_blocked(self):
@@ -81,6 +81,7 @@ class TestGrader:
     def test_grader_no_exec_in_main_process(self):
         """Verify grader module has no exec() of user code in main process."""
         import inspect
+
         import app.services.grader as grader_module
 
         source = inspect.getsource(grader_module)

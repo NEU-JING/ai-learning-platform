@@ -1,6 +1,5 @@
 """Redis cache manager with graceful degradation."""
 
-import json
 import logging
 from typing import Optional
 

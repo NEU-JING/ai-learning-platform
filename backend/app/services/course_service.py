@@ -1,9 +1,11 @@
 import json
 import logging
 from typing import List, Optional, Tuple
+
 from sqlalchemy.orm import Session
-from app.models import Course, Chapter, LearningProgress
+
 from app.core.cache import cache_manager
+from app.models import Chapter, Course, LearningProgress
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +40,12 @@ class CourseService:
                 course_ids = data.get("course_ids", [])
                 total = data.get("total", 0)
                 if course_ids:
-                    courses = db.query(Course).filter(Course.id.in_(course_ids)).order_by(Course.order_index).all()
+                    courses = (
+                        db.query(Course)
+                        .filter(Course.id.in_(course_ids))
+                        .order_by(Course.order_index)
+                        .all()
+                    )
                     # Preserve order
                     id_order = {cid: idx for idx, cid in enumerate(course_ids)}
                     courses.sort(key=lambda c: id_order.get(c.id, 0))
@@ -49,7 +56,7 @@ class CourseService:
                 logger.debug("Cache decode error for %s, falling back to DB", cache_key)
 
         # Cache miss → query DB
-        query = db.query(Course).filter(Course.is_published == True)
+        query = db.query(Course).filter(Course.is_published.is_(True))
 
         if level:
             query = query.filter(Course.level == level)
@@ -67,10 +74,12 @@ class CourseService:
 
         # Write to cache
         try:
-            cache_data = json.dumps({
-                "course_ids": [c.id for c in courses],
-                "total": total,
-            })
+            cache_data = json.dumps(
+                {
+                    "course_ids": [c.id for c in courses],
+                    "total": total,
+                }
+            )
             cache_manager.set(cache_key, cache_data, ttl=300)
         except Exception:
             pass  # cache write failure is non-critical
@@ -91,10 +100,9 @@ class CourseService:
             except (json.JSONDecodeError, KeyError):
                 logger.debug("Cache decode error for %s, falling back to DB", cache_key)
 
-        course = db.query(Course).filter(
-            Course.id == course_id,
-            Course.is_published == True
-        ).first()
+        course = (
+            db.query(Course).filter(Course.id == course_id, Course.is_published.is_(True)).first()
+        )
 
         if course:
             try:
@@ -106,9 +114,12 @@ class CourseService:
 
     @staticmethod
     def get_chapters(db: Session, course_id: int) -> List[Chapter]:
-        return db.query(Chapter).filter(
-            Chapter.course_id == course_id
-        ).order_by(Chapter.order_index).all()
+        return (
+            db.query(Chapter)
+            .filter(Chapter.course_id == course_id)
+            .order_by(Chapter.order_index)
+            .all()
+        )
 
     @staticmethod
     def get_chapter(db: Session, chapter_id: int) -> Optional[Chapter]:
@@ -143,33 +154,29 @@ class CourseService:
 
     @staticmethod
     def get_user_progress(db: Session, user_id: int) -> List[dict]:
-        progress = db.query(LearningProgress).filter(
-            LearningProgress.user_id == user_id
-        ).all()
+        progress = db.query(LearningProgress).filter(LearningProgress.user_id == user_id).all()
 
         result = []
         for p in progress:
-            result.append({
-                "chapter_id": p.chapter_id,
-                "status": p.status,
-                "completed_at": p.completed_at,
-                "last_accessed_at": p.last_accessed_at
-            })
+            result.append(
+                {
+                    "chapter_id": p.chapter_id,
+                    "status": p.status,
+                    "completed_at": p.completed_at,
+                    "last_accessed_at": p.last_accessed_at,
+                }
+            )
         return result
 
     @staticmethod
-    def update_progress(
-        db: Session,
-        user_id: int,
-        chapter_id: int,
-        status: str
-    ):
+    def update_progress(db: Session, user_id: int, chapter_id: int, status: str):
         from datetime import datetime, timezone
 
-        progress = db.query(LearningProgress).filter(
-            LearningProgress.user_id == user_id,
-            LearningProgress.chapter_id == chapter_id
-        ).first()
+        progress = (
+            db.query(LearningProgress)
+            .filter(LearningProgress.user_id == user_id, LearningProgress.chapter_id == chapter_id)
+            .first()
+        )
 
         if progress:
             progress.status = status
@@ -177,11 +184,7 @@ class CourseService:
             if status == "completed":
                 progress.completed_at = datetime.now(timezone.utc)
         else:
-            progress = LearningProgress(
-                user_id=user_id,
-                chapter_id=chapter_id,
-                status=status
-            )
+            progress = LearningProgress(user_id=user_id, chapter_id=chapter_id, status=status)
             if status == "completed":
                 progress.completed_at = datetime.now(timezone.utc)
             db.add(progress)

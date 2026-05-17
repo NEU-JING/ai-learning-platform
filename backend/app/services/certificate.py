@@ -1,7 +1,8 @@
-import json
 from datetime import datetime, timezone
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
+
 from sqlalchemy.orm import Session
+
 
 class CertificateService:
     """学习证书服务"""
@@ -119,20 +120,20 @@ class CertificateService:
         <div class="logo">🎓</div>
         <div class="title">学习证书</div>
         <div class="subtitle">Certificate of Completion</div>
-        
+
         <div style="font-size: 1rem; color: #666;">兹证明</div>
         <div class="recipient">{username}</div>
-        
+
         <div class="description">
             已完成 <strong>AI学习平台</strong> 的<br>
             <span class="course-name">「{course_title}」</span><br>
             全部课程内容并通过考核
         </div>
-        
+
         <div class="badge">{level_badge}</div>
-        
+
         <div class="date">颁发日期：{issue_date}</div>
-        
+
         <div class="signature">
             <div class="signature-item">
                 <div class="signature-line"></div>
@@ -143,7 +144,7 @@ class CertificateService:
                 <div class="signature-label">平台认证</div>
             </div>
         </div>
-        
+
         <div class="cert-id">证书编号：{cert_id}</div>
     </div>
 </body>
@@ -151,14 +152,10 @@ class CertificateService:
 """
 
     @staticmethod
-    def generate_certificate(
-        db: Session,
-        user_id: int,
-        course_id: int
-    ) -> Optional[Dict[str, Any]]:
+    def generate_certificate(db: Session, user_id: int, course_id: int) -> Optional[Dict[str, Any]]:
         """
         生成课程完成证书
-        
+
         Returns:
             {
                 "cert_id": str,
@@ -166,7 +163,7 @@ class CertificateService:
                 "verified": bool
             }
         """
-        from app.models import User, Course, LearningProgress, Chapter
+        from app.models import Chapter, Course, LearningProgress, User
 
         # 获取用户信息
         user = db.query(User).filter(User.id == user_id).first()
@@ -185,17 +182,21 @@ class CertificateService:
         if not chapter_ids:
             return None
 
-        completed_count = db.query(LearningProgress).filter(
-            LearningProgress.user_id == user_id,
-            LearningProgress.chapter_id.in_(chapter_ids),
-            LearningProgress.status == "completed"
-        ).count()
+        completed_count = (
+            db.query(LearningProgress)
+            .filter(
+                LearningProgress.user_id == user_id,
+                LearningProgress.chapter_id.in_(chapter_ids),
+                LearningProgress.status == "completed",
+            )
+            .count()
+        )
 
         if completed_count < len(chapters):
             return {
                 "verified": False,
                 "message": f"课程未完成 ({completed_count}/{len(chapters)} 章节)",
-                "progress_percentage": round(completed_count / len(chapters) * 100, 2)
+                "progress_percentage": round(completed_count / len(chapters) * 100, 2),
             }
 
         # 生成证书ID
@@ -206,17 +207,17 @@ class CertificateService:
             "beginner": "入门认证",
             "intermediate": "进阶认证",
             "advanced": "高级认证",
-            "expert": "专家认证"
+            "expert": "专家认证",
         }
         level_badge = level_badges.get(course.level, "学习认证")
 
         # 生成HTML
         html = CertificateService.CERTIFICATE_TEMPLATE.format(
-            username=user.username or user.email.split('@')[0],
+            username=user.username or user.email.split("@")[0],
             course_title=course.title,
             level_badge=level_badge,
-            issue_date=datetime.now(timezone.utc).strftime('%Y年%m月%d日'),
-            cert_id=cert_id
+            issue_date=datetime.now(timezone.utc).strftime("%Y年%m月%d日"),
+            cert_id=cert_id,
         )
 
         return {
@@ -227,7 +228,7 @@ class CertificateService:
             "course_id": course_id,
             "course_title": course.title,
             "issue_date": datetime.now(timezone.utc).isoformat(),
-            "level": course.level
+            "level": course.level,
         }
 
     @staticmethod
@@ -235,7 +236,7 @@ class CertificateService:
         """验证证书真伪"""
         try:
             # 解析证书ID
-            parts = cert_id.split('-')
+            parts = cert_id.split("-")
             if len(parts) != 4 or parts[0] != "AI":
                 return {"valid": False, "message": "无效的证书编号格式"}
 
@@ -245,7 +246,7 @@ class CertificateService:
                 "course_id": parts[1],
                 "user_id": parts[2],
                 "issue_date": parts[3],
-                "message": "证书有效"
+                "message": "证书有效",
             }
         except Exception as e:
             return {"valid": False, "message": str(e)}

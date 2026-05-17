@@ -3,20 +3,23 @@ Analytics API — lightweight event tracking.
 No auth required for event ingestion (supports anonymous).
 """
 
-from fastapi import APIRouter, Depends, Request
-from sqlalchemy.orm import Session
-from pydantic import BaseModel
-from typing import Optional, Any
+from typing import Any, Optional
 
+from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_optional_current_user  # nullable auth
 from app.core.database import get_db
 from app.models import AnalyticsEvent
-from app.api.deps import get_optional_current_user  # nullable auth
 
 router = APIRouter()
 
 
 class EventPayload(BaseModel):
-    event_type: str  # page_view, chapter_start, chapter_complete, lab_submit, lab_pass, exercise_attempt
+    event_type: (
+        str  # page_view, chapter_start, chapter_complete, lab_submit, lab_pass, exercise_attempt
+    )
     event_data: Optional[dict[str, Any]] = None
     path: Optional[str] = None
     referrer: Optional[str] = None
@@ -64,16 +67,18 @@ def track_events_batch(
 
     events = []
     for p in payload.events[:50]:  # cap at 50 per batch
-        events.append(AnalyticsEvent(
-            user_id=user_id,
-            event_type=p.event_type,
-            event_data=p.event_data,
-            path=p.path,
-            referrer=p.referrer,
-            session_id=p.session_id,
-            user_agent=user_agent,
-            ip_address=ip_address,
-        ))
+        events.append(
+            AnalyticsEvent(
+                user_id=user_id,
+                event_type=p.event_type,
+                event_data=p.event_data,
+                path=p.path,
+                referrer=p.referrer,
+                session_id=p.session_id,
+                user_agent=user_agent,
+                ip_address=ip_address,
+            )
+        )
     db.add_all(events)
     db.commit()
     return {"status": "ok", "count": len(events)}
@@ -89,6 +94,7 @@ def get_events_summary(
         return {"events": []}
 
     from sqlalchemy import func
+
     results = (
         db.query(AnalyticsEvent.event_type, func.count(AnalyticsEvent.id))
         .filter(AnalyticsEvent.user_id == current_user.id)

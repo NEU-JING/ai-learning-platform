@@ -1,15 +1,14 @@
-from typing import Optional
 from math import ceil
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
-from app.core.code_security import check_code_security
 from app.api.deps import get_current_active_user
-from app.models import User, LabSubmission
+from app.core.code_security import check_code_security
+from app.core.database import get_db
+from app.models import LabSubmission, User
 from app.schemas.course import CodeExecutionRequest, CodeExecutionResponse, LabSubmissionResponse
-from app.schemas.pagination import PaginatedResponse
 from app.services.code_executor import execute_code_docker
 
 router = APIRouter()

@@ -4,6 +4,7 @@ AI学习平台完整课程体系 - 14周98天学习计划
 适合有Java背景的开发者转型AI
 """
 
+# fmt: off
 COURSES_DATA = [
     {
         "title": "Phase 1: Python基础与AI工具链（2周/14天）",
@@ -15,7 +16,7 @@ COURSES_DATA = [
         "chapters": [
             {
                 "title": "第1章：Python快速上手 - 从Java视角入门",
-                "content": """# Python快速上手：Python vs Java语法对比
+                "content": '''# Python快速上手：Python vs Java语法对比
 
 ## 🎯 学习目标
 - 理解Python与Java的核心差异（动态类型、缩进语法、一切皆对象）
@@ -410,14 +411,14 @@ print(sys.path)
 - [ ] 理解动态类型与静态类型的区别
 - [ ] 掌握列表、字典的基本操作
 - [ ] 理解Pythonic的代码风格
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 120,
                 "order_index": 1
             },
             {
                 "title": "第2章：Python函数与面向对象编程",
-                "content": """# Python函数与面向对象编程
+                "content": '''# Python函数与面向对象编程
 
 ## 🎯 学习目标
 - 掌握Python函数高级特性
@@ -517,45 +518,45 @@ def slow_function():
 class Student:
     # 类属性
     school = "AI Academy"
-    
+
     # 构造方法
     def __init__(self, name, age):
         self.name = name      # 实例属性
         self._age = age       # 约定：受保护属性
         self.__id = "S001"    # 名称改编：私有属性
-    
+
     # 实例方法
     def introduce(self):
         return f"我是{self.name}，{self._age}岁"
-    
+
     # 类方法
     @classmethod
     def from_dict(cls, data):
         return cls(data["name"], data["age"])
-    
+
     # 静态方法
     @staticmethod
     def is_adult(age):
         return age >= 18
-    
+
     # 属性装饰器
     @property
     def age(self):
         return self._age
-    
+
     @age.setter
     def age(self, value):
         if value < 0:
             raise ValueError("年龄不能为负数")
         self._age = value
-    
+
     # 魔术方法
     def __str__(self):
         return f"Student(name={self.name}, age={self._age})"
-    
+
     def __repr__(self):
         return self.__str__()
-    
+
     def __eq__(self, other):
         if not isinstance(other, Student):
             return False
@@ -572,7 +573,7 @@ print(stu.introduce())
 class Person:
     def __init__(self, name):
         self.name = name
-    
+
     def speak(self):
         raise NotImplementedError("子类必须实现")
 
@@ -580,7 +581,7 @@ class Teacher(Person):
     def __init__(self, name, subject):
         super().__init__(name)
         self.subject = subject
-    
+
     def speak(self):
         return f"{self.name}老师说：今天学习{self.subject}"
 
@@ -588,7 +589,7 @@ class Student(Person):
     def __init__(self, name, grade):
         super().__init__(name)
         self.grade = grade
-    
+
     def speak(self):
         return f"{self.name}同学说：我是{self.grade}年级学生"
 
@@ -623,19 +624,19 @@ def validate_types(**types):
             # 获取函数参数名
             import inspect
             arg_names = list(inspect.signature(func).parameters.keys())
-            
+
             # 验证位置参数
             for i, arg in enumerate(args):
                 if i < len(arg_names) and arg_names[i] in types:
                     expected_type = types[arg_names[i]]
                     if not isinstance(arg, expected_type):
                         raise TypeError(f"{arg_names[i]}必须是{expected_type}")
-            
+
             # 验证关键字参数
             for key, value in kwargs.items():
                 if key in types and not isinstance(value, types[key]):
                     raise TypeError(f"{key}必须是{types[key]}")
-            
+
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -654,14 +655,14 @@ def create_user(name, age):
 - [ ] 理解类属性、实例属性、私有属性
 - [ ] 能使用@property定义getter/setter
 - [ ] 理解Python的多态和鸭子类型
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 2,
                 "lab": {
                     "title": "实验：实现一个数据验证装饰器",
                     "description": "创建一个通用的参数类型验证装饰器，用于函数参数类型检查",
-                    "starter_code": """import functools
+                    "starter_code": '''import functools
 import inspect
 
 def validate_types(**types):
@@ -674,13 +675,13 @@ def validate_types(**types):
         def wrapper(*args, **kwargs):
             # TODO: 获取函数参数名
             arg_names = list(inspect.signature(func).parameters.keys())
-            
+
             # TODO: 验证位置参数类型
             # 遍历args，检查每个参数是否在types中且类型匹配
-            
+
             # TODO: 验证关键字参数类型
             # 遍历kwargs，检查每个参数是否在types中且类型匹配
-            
+
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -699,8 +700,8 @@ try:
     print(create_user("Bob", "25"))  # age应该是int
 except TypeError as e:
     print(f"捕获到错误: {e}")
-""",
-                    "solution_code": """import functools
+''',
+                    "solution_code": '''import functools
 import inspect
 
 def validate_types(**types):
@@ -713,7 +714,7 @@ def validate_types(**types):
         def wrapper(*args, **kwargs):
             # 获取函数参数名
             arg_names = list(inspect.signature(func).parameters.keys())
-            
+
             # 验证位置参数
             for i, arg in enumerate(args):
                 if i < len(arg_names) and arg_names[i] in types:
@@ -723,7 +724,7 @@ def validate_types(**types):
                             f"参数'{arg_names[i]}'必须是{expected_type.__name__}，"
                             f"实际是{type(arg).__name__}"
                         )
-            
+
             # 验证关键字参数
             for key, value in kwargs.items():
                 if key in types and not isinstance(value, types[key]):
@@ -731,7 +732,7 @@ def validate_types(**types):
                         f"参数'{key}'必须是{types[key].__name__}，"
                         f"实际是{type(value).__name__}"
                     )
-            
+
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -750,7 +751,7 @@ try:
     print(create_user("Bob", "25"))  # age应该是int
 except TypeError as e:
     print(f"捕获到错误: {e}")
-""",
+''',
                     "test_cases": [
                         {"description": "正常参数调用通过", "expected": "返回正确结果"},
                         {"description": "类型错误时抛出TypeError", "expected": "抛出异常"},
@@ -765,7 +766,7 @@ except TypeError as e:
             },
             {
                 "title": "第3章：NumPy基础 - 数组与矩阵运算",
-                "content": """# NumPy基础：数组与矩阵运算
+                "content": '''# NumPy基础：数组与矩阵运算
 
 ## 🎯 学习目标
 - 理解ndarray内存结构与Java数组的本质区别
@@ -1006,14 +1007,14 @@ print(f"用户1与用户3相似度更高: {sim_1_3:.3f} > {sim_1_2:.3f}")
 - [ ] 掌握向量化计算（避免Python循环）
 - [ ] 理解广播机制并能应用
 - [ ] 掌握基础矩阵运算
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 3,
                 "lab": {
                     "title": "实验：向量化计算性能对比",
                     "description": "对比Python循环和NumPy向量化的性能差异，感受向量化的威力",
-                    "starter_code": """import time
+                    "starter_code": '''import time
 import numpy as np
 
 def measure_performance():
@@ -1022,7 +1023,7 @@ def measure_performance():
     任务: 计算数组每个元素的平方加0.5倍自身
     \"\"\"
     size = 1000000
-    
+
     # Python方式
     start = time.time()
     python_result = []
@@ -1030,26 +1031,26 @@ def measure_performance():
         # TODO: 计算 i^2 + i*0.5
         pass
     python_time = time.time() - start
-    
+
     # NumPy方式
     start = time.time()
     # TODO: 使用NumPy向量化计算
     arr = np.arange(size)
     numpy_result = None  # 完成计算
     numpy_time = time.time() - start
-    
+
     print(f"Python循环: {python_time:.4f}秒")
     print(f"NumPy向量化: {numpy_time:.4f}秒")
     print(f"加速比: {python_time/numpy_time:.1f}倍")
-    
+
     return python_time / numpy_time
 
 # 运行测试
 speedup = measure_performance()
 assert speedup > 10, "加速比应该大于10倍"
 print("✅ 任务完成 - 感受向量化的威力")
-""",
-                    "solution_code": """import time
+''',
+                    "solution_code": '''import time
 import numpy as np
 
 def measure_performance():
@@ -1058,31 +1059,31 @@ def measure_performance():
     任务: 计算数组每个元素的平方加0.5倍自身
     \"\"\"
     size = 1000000
-    
+
     # Python方式
     start = time.time()
     python_result = []
     for i in range(size):
         python_result.append(i ** 2 + i * 0.5)
     python_time = time.time() - start
-    
+
     # NumPy方式
     start = time.time()
     arr = np.arange(size)
     numpy_result = arr ** 2 + arr * 0.5
     numpy_time = time.time() - start
-    
+
     print(f"Python循环: {python_time:.4f}秒")
     print(f"NumPy向量化: {numpy_time:.4f}秒")
     print(f"加速比: {python_time/numpy_time:.1f}倍")
-    
+
     return python_time / numpy_time
 
 # 运行测试
 speedup = measure_performance()
 assert speedup > 10, "加速比应该大于10倍"
 print("✅ 任务完成 - 感受向量化的威力")
-""",
+''',
                     "test_cases": [
                         {"description": "向量化计算结果正确", "expected": "结果数组正确"},
                         {"description": "加速比大于10倍", "expected": "speedup > 10"}
@@ -1096,7 +1097,7 @@ print("✅ 任务完成 - 感受向量化的威力")
             },
             {
                 "title": "第4章：Pandas入门 - 从SQL视角理解DataFrame",
-                "content": """# Pandas入门：从SQL视角理解DataFrame
+                "content": '''# Pandas入门：从SQL视角理解DataFrame
 
 ## 🎯 学习目标
 - 理解DataFrame与SQL表的对应关系
@@ -1199,24 +1200,24 @@ df['age'] = df['age'].astype(int)
 - [ ] 理解DataFrame与SQL表的对应关系
 - [ ] 掌握基础数据读取和查询
 - [ ] 能进行简单的数据清洗
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 4,
                 "lab": {
                     "title": "实验：CSV数据处理与编码处理",
                     "description": "学习如何正确读取CSV文件，处理各种编码问题，包括UTF-8、GBK等常见编码",
-                    "starter_code": """import pandas as pd
+                    "starter_code": '''import pandas as pd
 import os
 
 def read_csv_with_encoding(filepath):
     """
     读取CSV文件，自动检测并处理编码问题
     需要处理的编码: utf-8, gbk, latin-1
-    
+
     Args:
         filepath: CSV文件路径
-    
+
     Returns:
         DataFrame对象
     """
@@ -1247,19 +1248,19 @@ if __name__ == "__main__":
 李四,30,上海,12000
 王五,35,广州,15000
 赵六,28,深圳,10000"""
-    
+
     # 保存为不同编码的文件
     with open('test_utf8.csv', 'w', encoding='utf-8') as f:
         f.write(test_data)
-    
+
     with open('test_gbk.csv', 'w', encoding='gbk') as f:
         f.write(test_data)
-    
+
     # TODO: 测试读取函数
     # df = read_csv_with_encoding('test_utf8.csv')
     # print(df)
-""",
-                    "solution_code": """import pandas as pd
+''',
+                    "solution_code": '''import pandas as pd
 import os
 
 def read_csv_with_encoding(filepath):
@@ -1268,7 +1269,7 @@ def read_csv_with_encoding(filepath):
     需要处理的编码: utf-8, gbk, latin-1
     """
     encodings = ['utf-8', 'gbk', 'latin-1', 'utf-16']
-    
+
     for encoding in encodings:
         try:
             df = pd.read_csv(filepath, encoding=encoding)
@@ -1279,7 +1280,7 @@ def read_csv_with_encoding(filepath):
         except Exception as e:
             print(f"使用 {encoding} 失败: {e}")
             continue
-    
+
     raise ValueError(f"无法使用已知编码读取文件: {filepath}")
 
 
@@ -1289,7 +1290,7 @@ def process_csv_data(filepath, output_path='processed.csv'):
     """
     # 1. 读取数据
     df = read_csv_with_encoding(filepath)
-    
+
     # 2. 显示基本信息
     print("=" * 50)
     print("数据基本信息:")
@@ -1298,25 +1299,25 @@ def process_csv_data(filepath, output_path='processed.csv'):
     print(f"列名: {list(df.columns)}")
     print("\\n数据类型:")
     print(df.dtypes)
-    
+
     # 3. 缺失值统计
     print("\\n缺失值统计:")
     print(df.isnull().sum())
-    
+
     # 4. 处理缺失值（删除完全缺失的行）
     before_count = len(df)
     df = df.dropna(how='all')
     after_count = len(df)
     print(f"\\n删除完全缺失的行: {before_count - after_count} 行")
-    
+
     # 5. 数值列的统计信息
     print("\\n数值列统计:")
     print(df.describe())
-    
+
     # 6. 保存处理后的数据（统一使用utf-8-sig以兼容Excel）
     df.to_csv(output_path, index=False, encoding='utf-8-sig')
     print(f"\\n处理后的数据已保存: {output_path}")
-    
+
     return df
 
 
@@ -1328,27 +1329,27 @@ if __name__ == "__main__":
 李四,30,上海,12000
 王五,35,广州,15000
 赵六,28,深圳,10000"""
-    
+
     # 保存为不同编码的文件
     with open('test_utf8.csv', 'w', encoding='utf-8') as f:
         f.write(test_data)
-    
+
     with open('test_gbk.csv', 'w', encoding='gbk') as f:
         f.write(test_data)
-    
+
     # 测试读取函数
     print("=== 测试UTF-8文件 ===")
     df1 = read_csv_with_encoding('test_utf8.csv')
     print(df1)
-    
+
     print("\\n=== 测试GBK文件 ===")
     df2 = read_csv_with_encoding('test_gbk.csv')
     print(df2)
-    
+
     # 测试完整处理流程
     print("\\n=== 测试完整处理流程 ===")
     df_processed = process_csv_data('test_utf8.csv', 'output.csv')
-""",
+''',
                     "test_cases": [
                         {"description": "能正确读取UTF-8编码的CSV", "expected": "DataFrame读取成功"},
                         {"description": "能正确读取GBK编码的CSV", "expected": "DataFrame读取成功"},
@@ -1365,7 +1366,7 @@ if __name__ == "__main__":
             },
             {
                 "title": "第5章：Pandas高级数据操作",
-                "content": """# Pandas高级数据操作
+                "content": '''# Pandas高级数据操作
 
 ## 🎯 学习目标
 - 掌握数据清洗技巧
@@ -1483,41 +1484,41 @@ print(f"数量: {len(high_value)}")
 - [ ] 掌握GroupBy分组聚合
 - [ ] 能进行复杂的数据清洗
 - [ ] 理解透视表和交叉表
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 5,
                 "lab": {
                     "title": "实验：Pandas数据转换与清洗",
                     "description": "学习使用Pandas进行数据清洗、类型转换、数据格式化处理",
-                    "starter_code": """import pandas as pd
+                    "starter_code": '''import pandas as pd
 import numpy as np
 
 def clean_and_transform_data(df):
     """
     数据清洗和转换函数
     包括: 类型转换、缺失值处理、异常值检测、格式标准化
-    
+
     Args:
         df: 原始DataFrame
-    
+
     Returns:
         清洗后的DataFrame
     """
     # 创建副本避免修改原始数据
     df_clean = df.copy()
-    
+
     # TODO: 实现数据清洗逻辑
     # 1. 数据类型转换 - 将年龄转为整数，收入转为浮点数
-    
+
     # 2. 处理缺失值 - 数值列用中位数填充，文本列用众数填充
-    
+
     # 3. 异常值检测 - 使用IQR方法检测异常值
-    
+
     # 4. 字符串标准化 - 统一大小写、去除空格
-    
+
     # 5. 日期解析 - 将日期字符串转为datetime对象
-    
+
     return df_clean
 
 
@@ -1525,12 +1526,12 @@ def transform_categories(df, column, mapping):
     """
     类别数据转换
     例如: 将城市名称映射为区域
-    
+
     Args:
         df: DataFrame
         column: 需要转换的列名
         mapping: 映射字典
-    
+
     Returns:
         转换后的DataFrame
     """
@@ -1547,7 +1548,7 @@ def create_derived_features(df):
     # 1. 年龄段 (青年/中年/老年)
     # 2. 收入水平 (低/中/高)
     # 3. 城市等级 (一线/二线/三线)
-    
+
     return df
 
 
@@ -1570,8 +1571,8 @@ print(df_test.dtypes)
 # df_cleaned = clean_and_transform_data(df_test)
 # print("\\n清洗后数据:")
 # print(df_cleaned)
-""",
-                    "solution_code": """import pandas as pd
+''',
+                    "solution_code": '''import pandas as pd
 import numpy as np
 
 def clean_and_transform_data(df):
@@ -1579,20 +1580,20 @@ def clean_and_transform_data(df):
     数据清洗和转换函数
     """
     df_clean = df.copy()
-    
+
     # 1. 数据类型转换
     # 将年龄转为数值，无法转换的设为NaN
     df_clean['年龄'] = pd.to_numeric(df_clean['年龄'], errors='coerce')
     # 将收入转为数值
     df_clean['收入'] = pd.to_numeric(df_clean['收入'], errors='coerce')
-    
+
     # 2. 处理缺失值
     # 数值列用中位数填充
     numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
     for col in numeric_cols:
         median_val = df_clean[col].median()
         df_clean[col].fillna(median_val, inplace=True)
-    
+
     # 文本列用众数填充
     text_cols = df_clean.select_dtypes(include=['object']).columns
     for col in text_cols:
@@ -1600,7 +1601,7 @@ def clean_and_transform_data(df):
             mode_val = df_clean[col].mode()
             if len(mode_val) > 0:
                 df_clean[col].fillna(mode_val[0], inplace=True)
-    
+
     # 3. 异常值检测 (使用IQR方法)
     for col in ['年龄', '收入']:
         if col in df_clean.columns:
@@ -1609,7 +1610,7 @@ def clean_and_transform_data(df):
             IQR = Q3 - Q1
             lower_bound = Q1 - 1.5 * IQR
             upper_bound = Q3 + 1.5 * IQR
-            
+
             # 标记异常值
             outliers = (df_clean[col] < lower_bound) | (df_clean[col] > upper_bound)
             if outliers.sum() > 0:
@@ -1617,18 +1618,18 @@ def clean_and_transform_data(df):
                 # 用边界值替换异常值
                 df_clean.loc[df_clean[col] < lower_bound, col] = lower_bound
                 df_clean.loc[df_clean[col] > upper_bound, col] = upper_bound
-    
+
     # 4. 字符串标准化
     for col in text_cols:
         if df_clean[col].dtype == 'object':
             df_clean[col] = df_clean[col].astype(str).str.strip().str.title()
-    
+
     # 5. 日期解析 - 智能识别多种日期格式
     def parse_date(date_str):
         """尝试多种日期格式解析"""
         if pd.isna(date_str):
             return pd.NaT
-        
+
         formats = ['%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d', '%d-%m-%Y', '%m/%d/%Y']
         for fmt in formats:
             try:
@@ -1636,12 +1637,12 @@ def clean_and_transform_data(df):
             except:
                 continue
         return pd.to_datetime(date_str, errors='coerce')
-    
+
     if '入职日期' in df_clean.columns:
         df_clean['入职日期'] = df_clean['入职日期'].apply(parse_date)
         df_clean['入职年份'] = df_clean['入职日期'].dt.year
         df_clean['入职月份'] = df_clean['入职日期'].dt.month
-    
+
     return df_clean
 
 
@@ -1659,14 +1660,14 @@ def create_derived_features(df):
     创建派生特征
     """
     df_new = df.copy()
-    
+
     # 1. 年龄段
     df_new['年龄段'] = pd.cut(
         df_new['年龄'],
         bins=[0, 25, 35, 50, 100],
         labels=['青年', '中青年', '中年', '老年']
     )
-    
+
     # 2. 收入水平
     income_median = df_new['收入'].median()
     df_new['收入水平'] = pd.cut(
@@ -1674,7 +1675,7 @@ def create_derived_features(df):
         bins=[0, income_median * 0.7, income_median * 1.3, float('inf')],
         labels=['低', '中', '高']
     )
-    
+
     # 3. 城市等级
     city_mapping = {
         '北京': '一线', '上海': '一线', '广州': '一线', '深圳': '一线',
@@ -1682,7 +1683,7 @@ def create_derived_features(df):
         '西安': '三线', '郑州': '三线', '长沙': '三线'
     }
     df_new['城市等级'] = df_new['城市'].map(city_mapping).fillna('其他')
-    
+
     return df_new
 
 
@@ -1714,7 +1715,7 @@ print("\\n最终数据 (含派生特征):")
 print(df_final)
 print("\\n数据统计:")
 print(df_final.describe())
-""",
+''',
                     "test_cases": [
                         {"description": "能正确转换数据类型", "expected": "年龄转为int，收入转为float"},
                         {"description": "能正确处理缺失值", "expected": "无NaN值或已合理填充"},
@@ -1732,7 +1733,7 @@ print(df_final.describe())
             },
             {
                 "title": "第6章：Python ETL项目实战",
-                "content": """# Python ETL项目实战
+                "content": '''# Python ETL项目实战
 
 ## 🎯 学习目标
 - 整合Python、NumPy、Pandas知识
@@ -1767,43 +1768,43 @@ class ETLPipeline:
     def __init__(self, source_conn, target_conn):
         self.source_engine = create_engine(source_conn)
         self.target_engine = create_engine(target_conn)
-    
+
     def extract(self, query):
         \"\"\"数据抽取\"\"\"
         logger.info("开始抽取数据...")
         df = pd.read_sql(query, self.source_engine)
         logger.info(f"抽取完成: {len(df)} 行")
         return df
-    
+
     def transform(self, df):
         \"\"\"数据转换\"\"\"
         logger.info("开始数据转换...")
-        
+
         # 清洗
         df = df.dropna(subset=['user_id'])
         df = df.drop_duplicates()
-        
+
         # 转换
-        df['age_group'] = pd.cut(df['age'], 
+        df['age_group'] = pd.cut(df['age'],
                                   bins=[0, 18, 35, 50, 100],
                                   labels=['未成年', '青年', '中年', '老年'])
-        
+
         # 聚合
         summary = df.groupby('age_group').agg({
             'user_id': 'count',
             'order_amount': ['sum', 'mean']
         })
-        
+
         logger.info("转换完成")
         return df, summary
-    
+
     def load(self, df, table_name):
         \"\"\"数据加载\"\"\"
         logger.info(f"开始加载到 {table_name}...")
-        df.to_sql(table_name, self.target_engine, 
+        df.to_sql(table_name, self.target_engine,
                   if_exists='replace', index=False)
         logger.info("加载完成")
-    
+
     def run(self, query, target_table):
         \"\"\"执行完整ETL流程\"\"\"
         df = self.extract(query)
@@ -1817,12 +1818,12 @@ if __name__ == "__main__":
         source_conn="mysql://user:pass@source/db",
         target_conn="postgresql://user:pass@target/db"
     )
-    
+
     summary = pipeline.run(
         query="SELECT * FROM orders WHERE date >= '2024-01-01'",
         target_table="cleaned_orders"
     )
-    
+
     print(summary)
 ```
 
@@ -1834,14 +1835,14 @@ if __name__ == "__main__":
 - [ ] 异常处理和日志记录
 - [ ] 数据质量检查
 - [ ] 项目文档和README
-""",
+''',
                 "chapter_type": "lab",
                 "duration_minutes": 180,
                 "order_index": 6,
                 "lab": {
                     "title": "完整ETL项目开发",
                     "description": "开发一个完整的ETL数据处理管道，包含数据抽取、清洗转换、加载、报表生成",
-                    "starter_code": """import pandas as pd
+                    "starter_code": '''import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
 import logging
@@ -1856,18 +1857,18 @@ class ETLPipeline:
     ETL数据处理管道
     支持从多种数据源抽取、转换、加载数据
     \"\"\"
-    
+
     def __init__(self):
         self.source_data = None
         self.transformed_data = None
-    
+
     def extract_from_csv(self, filepath):
         \"\"\"
         从CSV文件抽取数据
         TODO: 实现CSV读取，处理编码问题
         \"\"\"
         pass
-    
+
     def transform(self, df):
         \"\"\"
         数据转换
@@ -1878,28 +1879,28 @@ class ETLPipeline:
         4. 异常值处理
         \"\"\"
         pass
-    
+
     def aggregate(self, df):
         \"\"\"
         数据聚合
         TODO: 按指定维度分组统计
         \"\"\"
         pass
-    
+
     def load_to_csv(self, df, filepath):
         \"\"\"
         加载到CSV
         TODO: 保存处理后的数据
         \"\"\"
         pass
-    
+
     def generate_report(self, summary_stats):
         \"\"\"
         生成数据报表
         TODO: 输出关键指标统计
         \"\"\"
         pass
-    
+
     def run(self, input_file, output_file):
         \"\"\"执行完整ETL流程\"\"\"
         # TODO: 调用上述方法完成完整流程
@@ -1911,7 +1912,7 @@ def generate_test_data(filepath):
     \"\"\"生成测试数据\"\"\"
     np.random.seed(42)
     n = 1000
-    
+
     data = {
         'user_id': range(1, n+1),
         'name': [f'User_{i}' for i in range(1, n+1)],
@@ -1920,12 +1921,12 @@ def generate_test_data(filepath):
         'salary': np.random.normal(10000, 3000, n).astype(int),
         'order_amount': np.random.exponential(500, n),
     }
-    
+
     df = pd.DataFrame(data)
     # 添加一些缺失值和异常值
     df.loc[np.random.choice(n, 10, replace=False), 'age'] = np.nan
     df.loc[np.random.choice(n, 5, replace=False), 'salary'] = -1000  # 异常值
-    
+
     df.to_csv(filepath, index=False, encoding='utf-8')
     print(f"测试数据已生成: {filepath}")
 
@@ -1933,12 +1934,12 @@ def generate_test_data(filepath):
 if __name__ == "__main__":
     # 生成测试数据
     generate_test_data('test_data.csv')
-    
+
     # TODO: 运行ETL流程
     # pipeline = ETLPipeline()
     # pipeline.run('test_data.csv', 'output.csv')
-""",
-                    "solution_code": """import pandas as pd
+''',
+                    "solution_code": '''import pandas as pd
 import numpy as np
 from sqlalchemy import create_engine
 import logging
@@ -1953,11 +1954,11 @@ class ETLPipeline:
     ETL数据处理管道
     支持从多种数据源抽取、转换、加载数据
     \"\"\"
-    
+
     def __init__(self):
         self.source_data = None
         self.transformed_data = None
-    
+
     def extract_from_csv(self, filepath):
         \"\"\"从CSV文件抽取数据\"\"\"
         logger.info(f"开始从 {filepath} 抽取数据...")
@@ -1965,68 +1966,68 @@ class ETLPipeline:
         logger.info(f"抽取完成: {len(df)} 行, {len(df.columns)} 列")
         self.source_data = df
         return df
-    
+
     def transform(self, df):
         \"\"\"数据转换\"\"\"
         logger.info("开始数据转换...")
-        
+
         # 1. 删除缺失值
         before_count = len(df)
         df = df.dropna(subset=['user_id', 'age', 'salary'])
         after_count = len(df)
         logger.info(f"删除缺失值: {before_count - after_count} 行")
-        
+
         # 2. 数据类型转换
         df['user_id'] = df['user_id'].astype(int)
         df['age'] = df['age'].astype(int)
         df['salary'] = df['salary'].astype(float)
         df['order_amount'] = df['order_amount'].astype(float)
-        
+
         # 3. 异常值处理（工资不能为负）
         abnormal_count = len(df[df['salary'] < 0])
         df = df[df['salary'] >= 0]
         logger.info(f"删除异常值: {abnormal_count} 行")
-        
+
         # 4. 添加新列：年龄分组
-        df['age_group'] = pd.cut(df['age'], 
+        df['age_group'] = pd.cut(df['age'],
                                   bins=[0, 25, 35, 45, 100],
                                   labels=['青年', '中青年', '中年', '老年'])
-        
+
         # 5. 添加新列：消费等级
         df['spending_level'] = pd.cut(df['order_amount'],
                                        bins=[0, 200, 500, 1000, float('inf')],
                                        labels=['低', '中', '高', '超高'])
-        
+
         self.transformed_data = df
         logger.info("数据转换完成")
         return df
-    
+
     def aggregate(self, df):
         \"\"\"数据聚合\"\"\"
         logger.info("开始数据聚合...")
-        
+
         # 按城市统计
         city_stats = df.groupby('city').agg({
             'user_id': 'count',
             'salary': ['mean', 'median', 'std'],
             'order_amount': ['sum', 'mean']
         }).round(2)
-        
+
         # 按年龄分组统计
         age_stats = df.groupby('age_group').agg({
             'user_id': 'count',
             'salary': 'mean',
             'order_amount': 'mean'
         }).round(2)
-        
+
         return {'city_stats': city_stats, 'age_stats': age_stats}
-    
+
     def load_to_csv(self, df, filepath):
         \"\"\"加载到CSV\"\"\"
         logger.info(f"开始保存到 {filepath}...")
         df.to_csv(filepath, index=False, encoding='utf-8-sig')
         logger.info("保存完成")
-    
+
     def generate_report(self, summary_stats):
         \"\"\"生成数据报表\"\"\"
         report = []
@@ -2035,49 +2036,49 @@ class ETLPipeline:
         report.append(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report.append("=" * 50)
         report.append("")
-        
+
         report.append("【城市统计】")
         report.append(str(summary_stats['city_stats']))
         report.append("")
-        
+
         report.append("【年龄分组统计】")
         report.append(str(summary_stats['age_stats']))
         report.append("")
-        
+
         report_text = "\\n".join(report)
-        
+
         # 保存报表
         with open('report.txt', 'w', encoding='utf-8') as f:
             f.write(report_text)
-        
+
         logger.info("报表已生成: report.txt")
         return report_text
-    
+
     def run(self, input_file, output_file):
         \"\"\"执行完整ETL流程\"\"\"
         logger.info("=" * 50)
         logger.info("ETL流程开始")
         logger.info("=" * 50)
-        
+
         # Extract
         df = self.extract_from_csv(input_file)
-        
+
         # Transform
         df_clean = self.transform(df)
-        
+
         # Aggregate
         summary = self.aggregate(df_clean)
-        
+
         # Load
         self.load_to_csv(df_clean, output_file)
-        
+
         # Report
         report = self.generate_report(summary)
-        
+
         logger.info("=" * 50)
         logger.info("ETL流程完成")
         logger.info("=" * 50)
-        
+
         return summary, report
 
 
@@ -2086,7 +2087,7 @@ def generate_test_data(filepath):
     \"\"\"生成测试数据\"\"\"
     np.random.seed(42)
     n = 1000
-    
+
     data = {
         'user_id': range(1, n+1),
         'name': [f'User_{i}' for i in range(1, n+1)],
@@ -2095,12 +2096,12 @@ def generate_test_data(filepath):
         'salary': np.random.normal(10000, 3000, n).astype(int),
         'order_amount': np.random.exponential(500, n),
     }
-    
+
     df = pd.DataFrame(data)
     # 添加一些缺失值和异常值
     df.loc[np.random.choice(n, 10, replace=False), 'age'] = np.nan
     df.loc[np.random.choice(n, 5, replace=False), 'salary'] = -1000
-    
+
     df.to_csv(filepath, index=False, encoding='utf-8')
     print(f"测试数据已生成: {filepath}")
 
@@ -2108,15 +2109,15 @@ def generate_test_data(filepath):
 if __name__ == "__main__":
     # 生成测试数据
     generate_test_data('test_data.csv')
-    
+
     # 运行ETL流程
     pipeline = ETLPipeline()
     summary, report = pipeline.run('test_data.csv', 'cleaned_data.csv')
-    
+
     print("\\n" + "=" * 50)
     print("处理结果预览:")
     print(report)
-""",
+''',
                     "test_cases": [
                         {"description": "能正确读取CSV数据", "expected": "数据读取成功"},
                         {"description": "能正确清洗数据（缺失值、异常值）", "expected": "数据清洗成功"},
@@ -2133,7 +2134,7 @@ if __name__ == "__main__":
             },
             {
                 "title": "第7章：Phase 1 复习与总结",
-                "content": """# Phase 1: Python基础复习与总结
+                "content": '''# Phase 1: Python基础复习与总结
 
 ## 🎯 本章目标
 - 复习2周学习内容
@@ -2198,7 +2199,7 @@ Phase 1: Python基础 (2周/14天)
 - 矩阵分解与PCA
 - 概率与统计
 - 梯度下降优化
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 60,
                 "order_index": 7
@@ -2215,7 +2216,7 @@ Phase 1: Python基础 (2周/14天)
         "chapters": [
             {
                 "title": "第8章：线性代数基础 - 向量与矩阵",
-                "content": """# 线性代数基础：向量与矩阵
+                "content": '''# 线性代数基础：向量与矩阵
 
 ## 🎯 学习目标
 - 理解向量运算
@@ -2309,14 +2310,14 @@ houses = np.array([
 - [ ] 理解向量和矩阵的基本运算
 - [ ] 掌握矩阵乘法规则
 - [ ] 理解数据矩阵的含义（行=样本，列=特征）
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 1
             },
             {
                 "title": "第9章：矩阵分解与PCA降维",
-                "content": """# 矩阵分解与PCA降维
+                "content": '''# 矩阵分解与PCA降维
 
 ## 🎯 学习目标
 - 理解SVD原理
@@ -2378,20 +2379,20 @@ def pca_manual(X, n_components):
     \"\"\"
     # 1. 中心化
     X_centered = X - np.mean(X, axis=0)
-    
+
     # 2. 计算协方差矩阵
     cov_matrix = np.cov(X_centered, rowvar=False)
-    
+
     # 3. 特征值分解
     eigenvalues, eigenvectors = np.linalg.eigh(cov_matrix)
-    
+
     # 4. 选择前n个主成分
     idx = np.argsort(eigenvalues)[::-1]
     eigenvectors = eigenvectors[:, idx[:n_components]]
-    
+
     # 5. 投影
     X_pca = X_centered @ eigenvectors
-    
+
     return X_pca, eigenvectors
 
 # 测试
@@ -2414,14 +2415,14 @@ X_pca_manual, components = pca_manual(X, 2)
 - [ ] 理解SVD的基本概念
 - [ ] 能用sklearn进行PCA降维
 - [ ] 理解PCA的应用场景
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 2
             },
             {
                 "title": "第10章：概率与统计基础",
-                "content": """# 概率与统计基础
+                "content": '''# 概率与统计基础
 
 ## 🎯 学习目标
 - 理解常见分布
@@ -2490,15 +2491,15 @@ def bayesian_spam(word, spam_emails, ham_emails):
     total = len(spam_emails) + len(ham_emails)
     p_spam = len(spam_emails) / total
     p_ham = len(ham_emails) / total
-    
+
     # 计算条件概率（加1平滑）
     p_word_given_spam = (spam_emails.count(word) + 1) / (len(spam_emails) + 2)
     p_word_given_ham = (ham_emails.count(word) + 1) / (len(ham_emails) + 2)
-    
+
     # 贝叶斯公式
     p_word = p_word_given_spam * p_spam + p_word_given_ham * p_ham
     p_spam_given_word = (p_word_given_spam * p_spam) / p_word
-    
+
     return p_spam_given_word
 ```
 
@@ -2509,14 +2510,14 @@ def bayesian_spam(word, spam_emails, ham_emails):
 - [ ] 理解正态分布的特点
 - [ ] 掌握描述性统计指标
 - [ ] 理解贝叶斯定理的基本思想
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 60,
                 "order_index": 3
             },
             {
                 "title": "第11章：梯度下降优化",
-                "content": """# 梯度下降优化
+                "content": '''# 梯度下降优化
 
 ## 🎯 学习目标
 - 理解导数和梯度
@@ -2554,7 +2555,7 @@ def gradient(x, y):
 def gradient_descent(f, df, x0, learning_rate=0.1, n_iterations=100):
     \"\"\"
     梯度下降优化
-    
+
     参数:
         f: 目标函数
         df: 导数函数
@@ -2564,15 +2565,15 @@ def gradient_descent(f, df, x0, learning_rate=0.1, n_iterations=100):
     \"\"\"
     x = x0
     history = [x]
-    
+
     for i in range(n_iterations):
         gradient = df(x)
         x = x - learning_rate * gradient  # 沿负梯度方向更新
         history.append(x)
-        
+
         if i % 10 == 0:
             print(f"迭代 {i}: x={x:.4f}, f(x)={f(x):.4f}")
-    
+
     return x, history
 
 # 使用示例
@@ -2607,13 +2608,13 @@ def gradient_descent_2d(f, grad_f, x0, y0, lr=0.1, n_iter=100):
     \"\"\"
     x, y = x0, y0
     history = [(x, y)]
-    
+
     for i in range(n_iter):
         gx, gy = grad_f(x, y)
         x -= lr * gx
         y -= lr * gy
         history.append((x, y))
-    
+
     return x, y, history
 
 # 最小化 f(x,y) = (x-2)^2 + (y-3)^2
@@ -2643,7 +2644,7 @@ print(f"最小值点: ({x_min:.4f}, {y_min:.4f})")  # 应该接近 (2, 3)
 - [ ] 理解导数和梯度的概念
 - [ ] 能实现简单的梯度下降
 - [ ] 理解学习率的重要性
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 4
@@ -2660,7 +2661,7 @@ print(f"最小值点: ({x_min:.4f}, {y_min:.4f})")  # 应该接近 (2, 3)
         "chapters": [
             {
                 "title": "第12章：机器学习概述与Scikit-Learn入门",
-                "content": """# 机器学习概述与Scikit-Learn入门
+                "content": '''# 机器学习概述与Scikit-Learn入门
 
 ## 🎯 学习目标
 - 理解机器学习基本范式
@@ -2743,14 +2744,14 @@ print(f"准确率: {accuracy:.4f}")
 - [ ] 理解监督学习vs无监督学习的区别
 - [ ] 掌握Scikit-Learn的基本使用流程
 - [ ] 完成第一个鸢尾花分类模型
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 1
             },
             {
                 "title": "第13章：特征工程",
-                "content": """# 特征工程
+                "content": '''# 特征工程
 
 ## 🎯 学习目标
 - 掌握特征缩放
@@ -2828,87 +2829,87 @@ importances = model.feature_importances_
 - [ ] 掌握标准化和归一化的区别
 - [ ] 能进行类别特征编码
 - [ ] 了解特征选择的基本方法
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 2,
                 "lab": {
                     "title": "实验：数据清洗 - 处理缺失值与异常值",
                     "description": "学习如何处理数据中的缺失值和异常值，掌握多种填充策略和异常值检测方法",
-                    "starter_code": """import pandas as pd
+                    "starter_code": '''import pandas as pd
 import numpy as np
 from scipy import stats
 
 def handle_missing_values(df, strategy='auto'):
     """
     处理缺失值
-    
+
     Args:
         df: 输入DataFrame
         strategy: 填充策略 ('auto', 'mean', 'median', 'mode', 'drop')
-    
+
     Returns:
         处理后的DataFrame
     """
     df_clean = df.copy()
-    
+
     # TODO: 实现缺失值处理逻辑
     # 1. 统计每列的缺失值数量
-    
+
     # 2. 根据strategy选择填充方法:
     #    - 数值列: mean, median
     #    - 类别列: mode
     #    - 时间列: 前后填充
-    
+
     # 3. 如果某列缺失值超过50%，考虑删除该列
-    
+
     return df_clean
 
 
 def detect_outliers(df, method='iqr', columns=None):
     """
     检测异常值
-    
+
     Args:
         df: 输入DataFrame
         method: 检测方法 ('iqr', 'zscore', 'modified_zscore')
         columns: 要检测的数值列，None则检测所有数值列
-    
+
     Returns:
         异常值索引列表
     """
     outlier_indices = set()
-    
+
     # TODO: 实现异常值检测
     # 1. 获取数值列
-    
+
     # 2. 根据method选择检测方法:
     #    - IQR: Q1 - 1.5*IQR, Q3 + 1.5*IQR 之外的值
     #    - Z-score: |z| > 3 的值
     #    - Modified Z-score: 使用median代替mean
-    
+
     return list(outlier_indices)
 
 
 def handle_outliers(df, method='clip', outlier_indices=None):
     """
     处理检测到的异常值
-    
+
     Args:
         df: 输入DataFrame
         method: 处理方法 ('clip', 'remove', 'replace_median')
         outlier_indices: 异常值索引
-    
+
     Returns:
         处理后的DataFrame
     """
     df_clean = df.copy()
-    
+
     # TODO: 实现异常值处理
     # - clip: 将异常值裁剪到边界
     # - remove: 删除异常值行
     # - replace_median: 用中位数替换
-    
+
     return df_clean
 
 
@@ -2939,8 +2940,8 @@ print("\\n缺失值统计:")
 print(test_df.isnull().sum())
 
 # TODO: 调用函数进行处理
-""",
-                    "solution_code": """import pandas as pd
+''',
+                    "solution_code": '''import pandas as pd
 import numpy as np
 from scipy import stats
 
@@ -2949,27 +2950,27 @@ def handle_missing_values(df, strategy='auto'):
     处理缺失值
     """
     df_clean = df.copy()
-    
+
     # 1. 统计每列的缺失值数量
     missing_stats = df_clean.isnull().sum()
     missing_percent = (missing_stats / len(df_clean)) * 100
-    
+
     print("缺失值统计:")
     for col in df_clean.columns:
         if missing_stats[col] > 0:
             print(f"  {col}: {missing_stats[col]} ({missing_percent[col]:.1f}%)")
-    
+
     # 2. 删除缺失值过多的列 (>50%)
     cols_to_drop = missing_percent[missing_percent > 50].index.tolist()
     if cols_to_drop:
         print(f"\\n删除缺失值过多的列: {cols_to_drop}")
         df_clean = df_clean.drop(columns=cols_to_drop)
-    
+
     # 3. 填充缺失值
     for col in df_clean.columns:
         if df_clean[col].isnull().sum() == 0:
             continue
-        
+
         if strategy == 'auto':
             # 根据列类型自动选择策略
             if df_clean[col].dtype in ['int64', 'float64']:
@@ -2998,7 +2999,7 @@ def handle_missing_values(df, strategy='auto'):
                 df_clean[col].fillna(mode_val[0], inplace=True)
         elif strategy == 'drop':
             df_clean.dropna(subset=[col], inplace=True)
-    
+
     return df_clean
 
 
@@ -3007,22 +3008,22 @@ def detect_outliers(df, method='iqr', columns=None):
     检测异常值
     """
     outlier_indices = set()
-    
+
     # 获取数值列
     if columns is None:
         numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     else:
         numeric_cols = columns
-    
+
     print(f"检测异常值 - 数值列: {numeric_cols}")
     print(f"使用方法: {method}")
-    
+
     for col in numeric_cols:
         if col not in df.columns:
             continue
-        
+
         col_data = df[col].dropna()
-        
+
         if method == 'iqr':
             # IQR方法
             Q1 = col_data.quantile(0.25)
@@ -3030,18 +3031,18 @@ def detect_outliers(df, method='iqr', columns=None):
             IQR = Q3 - Q1
             lower_bound = Q1 - 1.5 * IQR
             upper_bound = Q3 + 1.5 * IQR
-            
+
             outliers = df[(df[col] < lower_bound) | (df[col] > upper_bound)].index
             outlier_indices.update(outliers)
             print(f"  {col}: 发现 {len(outliers)} 个异常值 (范围: [{lower_bound:.2f}, {upper_bound:.2f}])")
-            
+
         elif method == 'zscore':
             # Z-score方法
             z_scores = np.abs(stats.zscore(col_data))
             outliers = df.loc[col_data.index[z_scores > 3]].index
             outlier_indices.update(outliers)
             print(f"  {col}: 发现 {len(outliers)} 个异常值 (|z| > 3)")
-            
+
         elif method == 'modified_zscore':
             # Modified Z-score (使用MAD)
             median = col_data.median()
@@ -3050,7 +3051,7 @@ def detect_outliers(df, method='iqr', columns=None):
             outliers = df.loc[col_data.index[np.abs(modified_z_scores) > 3.5]].index
             outlier_indices.update(outliers)
             print(f"  {col}: 发现 {len(outliers)} 个异常值 (modified |z| > 3.5)")
-    
+
     return list(outlier_indices)
 
 
@@ -3059,42 +3060,42 @@ def handle_outliers(df, method='clip', outlier_indices=None):
     处理检测到的异常值
     """
     df_clean = df.copy()
-    
+
     if outlier_indices is None or len(outlier_indices) == 0:
         print("没有检测到异常值")
         return df_clean
-    
+
     print(f"\\n处理 {len(outlier_indices)} 个异常值 - 方法: {method}")
-    
+
     numeric_cols = df_clean.select_dtypes(include=[np.number]).columns
-    
+
     for col in numeric_cols:
         col_outliers = [idx for idx in outlier_indices if idx in df_clean.index and col in df_clean.columns]
         if not col_outliers:
             continue
-        
+
         Q1 = df_clean[col].quantile(0.25)
         Q3 = df_clean[col].quantile(0.75)
         IQR = Q3 - Q1
         lower_bound = Q1 - 1.5 * IQR
         upper_bound = Q3 + 1.5 * IQR
-        
+
         if method == 'clip':
             # 裁剪到边界
             df_clean.loc[col_outliers, col] = df_clean.loc[col_outliers, col].clip(lower_bound, upper_bound)
             print(f"  {col}: 异常值已裁剪到 [{lower_bound:.2f}, {upper_bound:.2f}]")
-            
+
         elif method == 'remove':
             # 删除异常值行
             df_clean = df_clean.drop(index=col_outliers)
             print(f"  {col}: 删除了 {len(col_outliers)} 行")
-            
+
         elif method == 'replace_median':
             # 用中位数替换
             median_val = df_clean[col].median()
             df_clean.loc[col_outliers, col] = median_val
             print(f"  {col}: 异常值用中位数 {median_val:.2f} 替换")
-    
+
     return df_clean
 
 
@@ -3142,7 +3143,7 @@ print("\\n清洗后数据统计:")
 print(df_clean.describe())
 print(f"\\n最终数据行数: {len(df_clean)}")
 print(f"原始数据行数: {len(test_df)}")
-""",
+''',
                     "test_cases": [
                         {"description": "能正确识别缺失值", "expected": "返回缺失值统计"},
                         {"description": "能正确处理数值列缺失值", "expected": "数值列无缺失"},
@@ -3160,7 +3161,7 @@ print(f"原始数据行数: {len(test_df)}")
             },
             {
                 "title": "第14章：线性回归与正则化",
-                "content": """# 线性回归与正则化
+                "content": '''# 线性回归与正则化
 
 ## 🎯 学习目标
 - 理解线性回归原理
@@ -3236,14 +3237,14 @@ print(f"R²: {r2:.4f}")
 - [ ] 理解线性回归的原理
 - [ ] 理解L1和L2正则化的区别
 - [ ] 能进行房价预测并评估模型
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 3
             },
             {
                 "title": "第15章：逻辑回归与分类算法",
-                "content": """# 逻辑回归与分类算法
+                "content": '''# 逻辑回归与分类算法
 
 ## 🎯 学习目标
 - 理解逻辑回归原理
@@ -3316,7 +3317,7 @@ tree.fit(X_train, y_train)
 
 # 可视化
 plt.figure(figsize=(20, 10))
-plot_tree(tree, feature_names=data.feature_names, 
+plot_tree(tree, feature_names=data.feature_names,
           class_names=data.target_names, filled=True)
 plt.savefig('tree.png')
 ```
@@ -3328,14 +3329,14 @@ plt.savefig('tree.png')
 - [ ] 理解逻辑回归与线性回归的区别
 - [ ] 掌握分类评估指标（准确率、精确率、召回率、F1）
 - [ ] 理解混淆矩阵
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 4
             },
             {
                 "title": "第16章：集成学习 - Random Forest",
-                "content": """# 集成学习 - Random Forest
+                "content": '''# 集成学习 - Random Forest
 
 ## 🎯 学习目标
 - 理解Bagging思想
@@ -3423,14 +3424,14 @@ print(f"高风险客户数量: {len(high_risk)}")
 - [ ] 理解Bagging和Boosting的区别
 - [ ] 掌握Random Forest的使用
 - [ ] 能进行特征重要性分析
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 5
             },
             {
                 "title": "第17章：XGBoost与LightGBM",
-                "content": """# XGBoost与LightGBM
+                "content": '''# XGBoost与LightGBM
 
 ## 🎯 学习目标
 - 理解Boosting原理
@@ -3512,14 +3513,14 @@ model.fit(
 - [ ] 理解Boosting的基本原理
 - [ ] 掌握XGBoost的基本使用
 - [ ] 了解XGBoost和LightGBM的差异
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 6
             },
             {
                 "title": "第18章：模型评估与超参数调优",
-                "content": """# 模型评估与超参数调优
+                "content": '''# 模型评估与超参数调优
 
 ## 🎯 学习目标
 - 掌握交叉验证
@@ -3552,7 +3553,7 @@ import matplotlib.pyplot as plt
 
 # 学习曲线
 train_sizes, train_scores, val_scores = learning_curve(
-    model, X, y, cv=5, 
+    model, X, y, cv=5,
     train_sizes=np.linspace(0.1, 1.0, 10)
 )
 
@@ -3600,7 +3601,7 @@ def objective(trial):
         'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.3),
         'subsample': trial.suggest_float('subsample', 0.6, 1.0)
     }
-    
+
     model = xgb.XGBClassifier(**params)
     score = cross_val_score(model, X, y, cv=5).mean()
     return score
@@ -3617,14 +3618,14 @@ print(f"最佳参数: {study.best_params}")
 - [ ] 掌握交叉验证的使用
 - [ ] 能识别过拟合和欠拟合
 - [ ] 了解超参数调优的方法
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 7
             },
             {
                 "title": "第19章：K-Means聚类与客户分群",
-                "content": """# K-Means聚类与客户分群
+                "content": '''# K-Means聚类与客户分群
 
 ## 🎯 学习目标
 - 理解聚类原理
@@ -3712,14 +3713,14 @@ print(customers.groupby('cluster').mean())
 - [ ] 理解K-Means的基本原理
 - [ ] 掌握确定最佳K值的方法
 - [ ] 能进行客户分群分析
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 8
             },
             {
                 "title": "第20章：机器学习项目实战",
-                "content": """# 机器学习项目实战
+                "content": '''# 机器学习项目实战
 
 ## 🎯 项目目标
 完成一个完整的机器学习项目：客户流失预测
@@ -3806,14 +3807,14 @@ joblib.dump(scaler, 'scaler.pkl')
 - [ ] 训练好的模型文件
 - [ ] 项目报告（包含数据分析、模型选择、结果）
 - [ ] GitHub代码仓库
-""",
+''',
                 "chapter_type": "lab",
                 "duration_minutes": 480,
                 "order_index": 9
             },
             {
                 "title": "第21章：时间序列分析基础",
-                "content": """# 时间序列分析基础
+                "content": '''# 时间序列分析基础
 
 ## 🎯 学习目标
 - 理解时序特点
@@ -3864,14 +3865,14 @@ forecast = model_fit.forecast(steps=30)
 
 - [ ] 理解时间序列的组成（趋势、季节、残差）
 - [ ] 了解ARIMA的基本概念
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 10
             },
             {
                 "title": "第22章：ML工程化基础",
-                "content": """# ML工程化基础
+                "content": '''# ML工程化基础
 
 ## 🎯 学习目标
 - 模型服务化（Flask API）
@@ -3942,7 +3943,7 @@ def evaluate_model():
 with DAG('ml_pipeline', start_date=datetime(2024, 1, 1)) as dag:
     train_task = PythonOperator(task_id='train', python_callable=train_model)
     eval_task = PythonOperator(task_id='evaluate', python_callable=evaluate_model)
-    
+
     train_task >> eval_task
 ```
 
@@ -3953,14 +3954,14 @@ with DAG('ml_pipeline', start_date=datetime(2024, 1, 1)) as dag:
 - [ ] 能用Flask部署模型API
 - [ ] 理解Pipeline的优势
 - [ ] 了解Airflow的基本概念
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 11
             },
             {
                 "title": "第23章：Phase 3 复习与总结",
-                "content": """# Phase 3: 机器学习复习与总结
+                "content": '''# Phase 3: 机器学习复习与总结
 
 ## 📚 知识图谱
 
@@ -3997,7 +3998,7 @@ Phase 3: 机器学习 (4周/28天)
 - 神经网络基础
 - PyTorch框架
 - CNN/RNN
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 60,
                 "order_index": 12
@@ -4014,7 +4015,7 @@ Phase 3: 机器学习 (4周/28天)
         "chapters": [
             {
                 "title": "第24章：神经网络基础与PyTorch入门",
-                "content": """# 神经网络基础与PyTorch入门
+                "content": '''# 神经网络基础与PyTorch入门
 
 ## 🎯 学习目标
 - 理解神经网络基本原理
@@ -4086,7 +4087,7 @@ class NeuralNetwork(nn.Module):
         self.fc1 = nn.Linear(input_size, hidden_size)
         self.relu = nn.ReLU()
         self.fc2 = nn.Linear(hidden_size, num_classes)
-    
+
     def forward(self, x):
         out = self.fc1(x)
         out = self.relu(out)
@@ -4104,14 +4105,14 @@ model = NeuralNetwork(input_size=784, hidden_size=256, num_classes=10)
 - [ ] 理解神经网络的基本结构
 - [ ] 掌握PyTorch Tensor操作
 - [ ] 理解自动求导机制
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 1
             },
             {
                 "title": "第25章：MNIST手写字识别实战",
-                "content": """# MNIST手写字识别实战
+                "content": '''# MNIST手写字识别实战
 
 ## 🎯 学习目标
 - 搭建全连接神经网络
@@ -4150,7 +4151,7 @@ class Net(nn.Module):
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 10)
         self.dropout = nn.Dropout(0.2)
-    
+
     def forward(self, x):
         x = x.view(-1, 28*28)
         x = torch.relu(self.fc1(x))
@@ -4174,7 +4175,7 @@ for epoch in range(num_epochs):
         loss = criterion(output, target)
         loss.backward()
         optimizer.step()
-        
+
         if batch_idx % 100 == 0:
             print(f'Epoch: {epoch}, Batch: {batch_idx}, Loss: {loss.item():.4f}')
 
@@ -4199,14 +4200,14 @@ print(f'准确率: {100 * correct / total:.2f}%')
 - [ ] 完成MNIST数据加载
 - [ ] 训练并评估模型
 - [ ] 达到90%+准确率
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 2
             },
             {
                 "title": "第26章：卷积神经网络CNN",
-                "content": """# 卷积神经网络CNN
+                "content": '''# 卷积神经网络CNN
 
 ## 🎯 学习目标
 - 理解卷积操作
@@ -4243,21 +4244,21 @@ class CNN(nn.Module):
         self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
         self.dropout = nn.Dropout(0.25)
-        
+
         # 全连接层
         self.fc1 = nn.Linear(64 * 7 * 7, 128)
         self.fc2 = nn.Linear(128, 10)
-    
+
     def forward(self, x):
         # 卷积块1: 28x28 -> 14x14
         x = self.pool(torch.relu(self.conv1(x)))
         # 卷积块2: 14x14 -> 7x7
         x = self.pool(torch.relu(self.conv2(x)))
         x = self.dropout(x)
-        
+
         # 展平
         x = x.view(-1, 64 * 7 * 7)
-        
+
         # 全连接
         x = torch.relu(self.fc1(x))
         x = self.dropout(x)
@@ -4279,14 +4280,14 @@ class CNN(nn.Module):
 - [ ] 理解卷积的作用
 - [ ] 掌握CNN的基本结构
 - [ ] 能实现CNN图像分类
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 3
             },
             {
                 "title": "第27章：循环神经网络RNN与LSTM",
-                "content": """# 循环神经网络RNN与LSTM
+                "content": '''# 循环神经网络RNN与LSTM
 
 ## 🎯 学习目标
 - 理解RNN结构
@@ -4321,11 +4322,11 @@ class LSTM predictor(nn.Module):
         self.num_layers = num_layers
         self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
         self.fc = nn.Linear(hidden_size, output_size)
-    
+
     def forward(self, x):
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size)
-        
+
         out, _ = self.lstm(x, (h0, c0))
         out = self.fc(out[:, -1, :])
         return out
@@ -4359,14 +4360,14 @@ def create_sequences(data, seq_length):
 - [ ] 理解RNN和LSTM的区别
 - [ ] 掌握LSTM的基本使用
 - [ ] 能进行简单的时序预测
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 120,
                 "order_index": 4
             },
             {
                 "title": "第28章：深度学习优化与部署",
-                "content": """# 深度学习优化与部署
+                "content": '''# 深度学习优化与部署
 
 ## 🎯 学习目标
 - 掌握批归一化和Dropout
@@ -4389,7 +4390,7 @@ class OptimizedNet(nn.Module):
         self.bn2 = nn.BatchNorm2d(64)
         self.dropout = nn.Dropout(0.5)  # Dropout
         self.fc = nn.Linear(64 * 5 * 5, 10)
-    
+
     def forward(self, x):
         x = self.bn1(torch.relu(self.conv1(x)))
         x = self.bn2(torch.relu(self.conv2(x)))
@@ -4447,14 +4448,14 @@ loaded_model = torch.jit.load('model_scripted.pt')
 - [ ] 理解批归一化和Dropout的作用
 - [ ] 能保存和加载模型
 - [ ] 了解TorchScript部署
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 5
             },
             {
                 "title": "第29章：Phase 4 复习与总结",
-                "content": """# Phase 4: 深度学习复习与总结
+                "content": '''# Phase 4: 深度学习复习与总结
 
 ## 📚 知识图谱
 
@@ -4483,7 +4484,7 @@ Phase 4: 深度学习 (2周/14天)
 - Transformer架构
 - BERT/GPT
 - LangChain开发
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 60,
                 "order_index": 6
@@ -4500,7 +4501,7 @@ Phase 4: 深度学习 (2周/14天)
         "chapters": [
             {
                 "title": "第30章：NLP基础与Word2Vec",
-                "content": """# NLP基础与Word2Vec
+                "content": '''# NLP基础与Word2Vec
 
 ## 🎯 学习目标
 - 理解文本处理流程
@@ -4580,14 +4581,14 @@ plt.show()
 - [ ] 理解文本预处理流程
 - [ ] 了解Word2Vec的基本概念
 - [ ] 理解词向量的意义
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 60,
                 "order_index": 1
             },
             {
                 "title": "第31章：Transformer架构",
-                "content": """# Transformer架构
+                "content": '''# Transformer架构
 
 ## 🎯 学习目标
 - 理解Self-Attention机制
@@ -4624,12 +4625,12 @@ class TransformerBlock(nn.Module):
             nn.Linear(4 * embed_dim, embed_dim)
         )
         self.norm2 = nn.LayerNorm(embed_dim)
-    
+
     def forward(self, x):
         # Self-Attention + 残差连接
         attn_out, _ = self.attention(x, x, x)
         x = self.norm1(x + attn_out)
-        
+
         # Feed Forward + 残差连接
         ffn_out = self.ffn(x)
         x = self.norm2(x + ffn_out)
@@ -4645,7 +4646,7 @@ def positional_encoding(max_len, d_model):
     pe = torch.zeros(max_len, d_model)
     position = torch.arange(0, max_len).unsqueeze(1)
     div_term = torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000.0) / d_model))
-    
+
     pe[:, 0::2] = torch.sin(position * div_term)
     pe[:, 1::2] = torch.cos(position * div_term)
     return pe
@@ -4658,14 +4659,14 @@ def positional_encoding(max_len, d_model):
 - [ ] 理解Self-Attention的核心思想
 - [ ] 了解Transformer的编码器-解码器结构
 - [ ] 理解位置编码的作用
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 120,
                 "order_index": 2
             },
             {
                 "title": "第32章：BERT与GPT模型",
-                "content": """# BERT与GPT模型
+                "content": '''# BERT与GPT模型
 
 ## 🎯 学习目标
 - 理解BERT的双向编码
@@ -4731,14 +4732,14 @@ generated_text = tokenizer.decode(outputs[0])
 - [ ] 理解BERT和GPT的结构差异
 - [ ] 能用transformers库加载预训练模型
 - [ ] 了解两种模型的应用场景
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 3
             },
             {
                 "title": "第33章：Prompt Engineering",
-                "content": """# Prompt Engineering
+                "content": '''# Prompt Engineering
 
 ## 🎯 学习目标
 - 掌握Zero-shot和Few-shot提示技巧
@@ -4779,7 +4780,7 @@ generated_text = tokenizer.decode(outputs[0])
 - 提供上下文
 - 使用分隔符
 - 指定输出格式
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 60,
                 "order_index": 4
@@ -4796,7 +4797,7 @@ generated_text = tokenizer.decode(outputs[0])
         "chapters": [
             {
                 "title": "第34章：模型部署与服务化",
-                "content": """# 模型部署与服务化
+                "content": '''# 模型部署与服务化
 
 ## 🎯 学习目标
 - 掌握模型导出格式（ONNX、TorchScript）
@@ -4865,21 +4866,21 @@ mlflow.set_experiment("my-experiment")
 with mlflow.start_run():
     # 记录参数
     mlflow.log_param("lr", 0.01)
-    
+
     # 记录指标
     mlflow.log_metric("accuracy", 0.95)
-    
+
     # 保存模型
     mlflow.pytorch.log_model(model, "model")
 ```
-""",
+''',
                 "chapter_type": "code",
                 "duration_minutes": 90,
                 "order_index": 1
             },
             {
                 "title": "第35章：MLOps与监控",
-                "content": """# MLOps与监控
+                "content": '''# MLOps与监控
 
 ## 🎯 学习目标
 - 了解MLOps核心概念
@@ -4920,14 +4921,14 @@ report = Report(metrics=[DataDriftPreset()])
 report.run(reference_data=reference, current_data=current)
 report.save_html("drift_report.html")
 ```
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 60,
                 "order_index": 2
             },
             {
                 "title": "第36章：AI系统架构设计",
-                "content": """# AI系统架构设计
+                "content": '''# AI系统架构设计
 
 ## 🎯 学习目标
 - 理解AI系统架构模式
@@ -4968,14 +4969,14 @@ CREATE TABLE ai_predictions (
     created_at TIMESTAMP
 );
 ```
-""",
+''',
                 "chapter_type": "text",
                 "duration_minutes": 60,
                 "order_index": 3,
                 "lab": {
                     "title": "构建端到端AI Pipeline",
                     "description": "设计一个完整的AI系统，包括数据准备、模型训练、部署和监控",
-                    "starter_code": """# TODO: 设计AI系统架构
+                    "starter_code": '''# TODO: 设计AI系统架构
 # 1. 定义问题：客户流失预测
 # 2. 数据流设计
 # 3. 模型服务设计
@@ -4994,8 +4995,8 @@ def design_ai_system():
 
 # 输出设计
 print(design_ai_system())
-""",
-                    "solution_code": """def design_ai_system():
+''',
+                    "solution_code": '''def design_ai_system():
     """设计AI系统架构"""
     architecture = {
         "problem": "客户流失预测",
@@ -5008,7 +5009,7 @@ print(design_ai_system())
     return architecture
 
 print(design_ai_system())
-""",
+''',
                     "test_cases": [
                         {"description": "返回架构字典", "expected": "dict"}
                     ],
@@ -5018,4 +5019,4 @@ print(design_ai_system())
         ]
     }
 ]
-
+# fmt: on

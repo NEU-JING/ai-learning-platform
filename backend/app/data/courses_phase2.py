@@ -2,6 +2,7 @@
 Phase 2 课程数据加载器
 从 JSON + Markdown 文件加载课程内容到数据库
 """
+
 import json
 from pathlib import Path
 
@@ -52,7 +53,7 @@ def init_phase2_data(db, behavior="upsert"):
 
     Use behavior="create_only" to skip if course already exists.
     """
-    from app.models import Course, Chapter, Lab
+    from app.models import Chapter, Course, Lab
 
     course_data = load_phase2_data()
     chapters_data = course_data.pop("chapters", [])
@@ -61,7 +62,7 @@ def init_phase2_data(db, behavior="upsert"):
     existing = db.query(Course).filter(Course.title == course_data["title"]).first()
     if existing:
         if behavior == "create_only":
-            print(f"Phase 2: skipped (create_only, course exists)")
+            print("Phase 2: skipped (create_only, course exists)")
             return existing
         for key, value in course_data.items():
             if key != "id":
@@ -99,8 +100,10 @@ def init_phase2_data(db, behavior="upsert"):
             lab = Lab(
                 chapter_id=chapter.id,
                 title=chapter_data.get("title", "Lab"),
-                description=chapter_data.get("content", "")[:500] if chapter_data.get("content") else None,
-                **lab_fields
+                description=(
+                    chapter_data.get("content", "")[:500] if chapter_data.get("content") else None
+                ),
+                **lab_fields,
             )
             db.add(lab)
 
