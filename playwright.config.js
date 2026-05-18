@@ -1,18 +1,24 @@
 // @ts-check
 const { defineConfig } = require('@playwright/test');
 
-const EXISTING_CHROMIUM = '/root/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome';
+// CI 中无需设置：npx playwright install 会自动安装并发现浏览器
+// 本地开发：通过环境变量 PLAYWRIGHT_CHROMIUM_PATH 指定，或留空自动发现
+const CHROMIUM_PATH = process.env.PLAYWRIGHT_CHROMIUM_PATH;
+
+// 本地回退：如果指定了路径或已有安装则使用，否则自动发现
+const launchOptions = {
+  headless: true,
+  args: ['--no-sandbox'],
+};
+if (CHROMIUM_PATH) {
+  launchOptions.executablePath = CHROMIUM_PATH;
+}
 
 module.exports = defineConfig({
   testDir: './tests/e2e',
   timeout: 30000,
   retries: 1,
-  // 使用已存在的 Chromium v1217（网络差，下载新版本会超时）
   use: {
-    launchOptions: {
-      executablePath: EXISTING_CHROMIUM,
-      headless: true,
-      args: ['--no-sandbox'],
-    },
+    launchOptions,
   },
 });
