@@ -4,8 +4,10 @@ Phase 1 课程数据加载器
 """
 
 import json
+import logging
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
 PHASE1_DIR = Path(__file__).parent / "phase1"
 
 
@@ -16,15 +18,40 @@ def load_phase1_data():
     with open(index_path, "r", encoding="utf-8") as f:
         course_data = json.load(f)
 
-    # Load content from markdown files
+    # Load content from markdown files (fallback only)
+    # Priority: JSON inline content > .md file > placeholder
+    # If JSON has non-trivial content already, keep it (it may be richer)
+    # Note: content equality is len-based (proxy heuristic). Logged for audit.
     for chapter in course_data["chapters"]:
         content_file = chapter.pop("content_file", None)
         if content_file:
             md_path = PHASE1_DIR / content_file
             if md_path.exists():
-                chapter["content"] = md_path.read_text(encoding="utf-8")
+                md_content = md_path.read_text(encoding="utf-8")
+                # Only use .md content if JSON inline is shorter (stale)
+                existing = chapter.get("content", "") or ""
+                if len(existing.strip()) < len(md_content.strip()):
+                    logger.info(
+                        "Chapter '%s': using .md content (%d chars over %d chars JSON)",
+                        chapter.get("id", chapter.get("title", "?")),
+                        len(md_content.strip()),
+                        len(existing.strip()),
+                    )
+                    chapter["content"] = md_content
+                elif existing.strip():
+                    logger.warning(
+                        "Chapter '%s': JSON inline (%dch) > .md (%dch) — keeping JSON",
+                        chapter.get("id", chapter.get("title", "?")),
+                        len(existing.strip()),
+                        len(md_content.strip()),
+                    )
+                # else: keep the richer JSON inline content
             else:
                 chapter["content"] = f"# {chapter['title']}\n\n内容加载中..."
+
+        # Strip leading newlines from content (JSON formatting artifact)
+        raw = chapter.get("content", "") or ""
+        chapter["content"] = raw.lstrip("\n")
 
         # Load lab starter_code and test_cases from files
         lab = chapter.get("lab")

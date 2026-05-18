@@ -1,0 +1,67 @@
+name: E2E Smoke Tests
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'backend/app/data/**'
+      - 'tests/e2e/**'
+      - '.github/workflows/e2e-smoke.yml'
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements*.txt'
+
+      - name: Install backend deps
+        run: |
+          pip install -r backend/requirements.txt -q
+          pip install -r backend/requirements-dev.txt -q
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'package-lock.json'
+
+      - name: Install Node deps
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Start backend server
+        run: |
+          cd backend
+          PYTHONPATH=. SERVE_STATIC=True uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          echo "BACKEND_PID=$!" >> $GITHUB_ENV
+
+      - name: Wait for server
+        run: |
+          for i in $(seq 1 30); do
+            curl -s http://localhost:8000/health && echo " Server ready" && exit 0
+            echo "waiting... ($i)"
+            sleep 2
+          done
+          echo "Server failed to start"
+          exit 1
+
+      - name: Run E2E smoke tests
+        run: npx playwright test tests/e2e/smoke.spec.js
+
+      - name: Cleanup backend server
+        if: always()
+        run: |
+          if [ -n "$BACKEND_PID" ]; then
+            kill $BACKEND_PID 2>/dev/null || true
+          fi

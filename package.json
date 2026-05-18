@@ -1,0 +1,28 @@
+{
+  "name": "ai-learning-platform",
+  "version": "1.0.0",
+  "description": "> 浏览器内\"学→练→测→证\"全链路的AI全栈工程师培养平台",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NEU-JING/ai-learning-platform.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/NEU-JING/ai-learning-platform/issues"
+  },
+  "homepage": "https://github.com/NEU-JING/ai-learning-platform#readme",
+  "dependencies": {
+    "@playwright/test": "^1.60.0",
+    "playwright": "^1.60.0"
+  }
+}

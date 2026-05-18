@@ -4,6 +4,19 @@
  */
 
 export class Store {
+  static _instance = null;
+
+  static getInstance() {
+    if (!Store._instance) {
+      throw new Error('Store not initialized. Call Store.setInstance() from main.js first.');
+    }
+    return Store._instance;
+  }
+
+  static setInstance(store) {
+    Store._instance = store;
+  }
+
   constructor(options = {}) {
     this.state = this._makeReactive(options.state || {});
     this.mutations = options.mutations || {};
