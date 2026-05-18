@@ -189,9 +189,11 @@ app.add_middleware(
 
 # 静态文件服务配置
 # 生产环境: 前端文件挂载到容器中，由后端同时提供API和静态文件服务
-STATIC_DIR = os.getenv("STATIC_DIR", "../frontend")
+FRONTEND_VERSION = os.getenv("FRONTEND_VERSION", "v1")  # v1 or v2
+STATIC_DIR_V1 = os.path.abspath(os.getenv("STATIC_DIR", "../frontend"))
+STATIC_DIR_V2 = os.path.abspath(os.getenv("STATIC_DIR_V2", "../frontend-v2"))
 # Force absolute path to avoid cwd issues
-STATIC_DIR = os.path.abspath(STATIC_DIR)
+STATIC_DIR = STATIC_DIR_V2 if FRONTEND_VERSION == "v2" else STATIC_DIR_V1
 SERVE_STATIC = True  # Always serve static files in this deployment
 
 if SERVE_STATIC and os.path.exists(STATIC_DIR):
@@ -229,7 +231,39 @@ def health_check():
         "status": "healthy",
         "version": settings.VERSION,
         "environment": os.getenv("ENVIRONMENT", "development"),
+        "frontend_version": FRONTEND_VERSION,
+        "frontend_dir": STATIC_DIR,
     }
+
+
+@app.get("/v2", response_class=HTMLResponse)
+def root_v2():
+    """新版前端入口 - 直接返回 frontend-v2/index.html"""
+    v2_index = os.path.join(STATIC_DIR_V2, "index.html")
+    if os.path.exists(v2_index):
+        return FileResponse(v2_index)
+    return HTMLResponse(
+        content="<h1>Frontend V2 Not Found</h1><p>Please check frontend-v2/ directory exists.</p>",
+        status_code=404
+    )
+
+
+@app.get("/v2/{full_path:path}", response_class=HTMLResponse)
+async def spa_fallback_v2(request: Request, full_path: str):
+    """新版前端 SPA 回退处理"""
+    # 优先尝试返回静态文件
+    static_extensions = (".js", ".mjs", ".css", ".map", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".json", ".webp")
+    if full_path and any(full_path.endswith(ext) for ext in static_extensions):
+        file_path = os.path.normpath(os.path.join(STATIC_DIR_V2, full_path))
+        if file_path.startswith(os.path.abspath(STATIC_DIR_V2)) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return HTMLResponse(content="Not Found", status_code=404)
+    
+    # 返回 index.html 让前端路由处理
+    v2_index = os.path.join(STATIC_DIR_V2, "index.html")
+    if os.path.exists(v2_index):
+        return FileResponse(v2_index)
+    return HTMLResponse(content="Frontend V2 Not Found", status_code=404)
 
 
 # SPA路由回退处理
