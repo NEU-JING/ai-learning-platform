@@ -3,6 +3,7 @@ Tests for frontend-v2 API integration and configuration
 """
 
 import os
+
 import pytest
 from fastapi.testclient import TestClient
 
