@@ -31,14 +31,20 @@ def load_phase1_data():
                 # Only use .md content if JSON inline is shorter (stale)
                 existing = chapter.get("content", "") or ""
                 if len(existing.strip()) < len(md_content.strip()):
-                    logger.info("Chapter '%s': using .md content (%d chars over %d chars JSON)",
-                                chapter.get("id", chapter.get("title", "?")),
-                                len(md_content.strip()), len(existing.strip()))
+                    logger.info(
+                        "Chapter '%s': using .md content (%d chars over %d chars JSON)",
+                        chapter.get("id", chapter.get("title", "?")),
+                        len(md_content.strip()),
+                        len(existing.strip()),
+                    )
                     chapter["content"] = md_content
                 elif existing.strip():
-                    logger.warning("Chapter '%s': JSON inline content (%d chars) richer than .md (%d chars) — keeping JSON",
-                                   chapter.get("id", chapter.get("title", "?")),
-                                   len(existing.strip()), len(md_content.strip()))
+                    logger.warning(
+                        "Chapter '%s': JSON inline content (%d chars) richer than .md (%d chars) — keeping JSON",
+                        chapter.get("id", chapter.get("title", "?")),
+                        len(existing.strip()),
+                        len(md_content.strip()),
+                    )
                 # else: keep the richer JSON inline content
             else:
                 chapter["content"] = f"# {chapter['title']}\n\n内容加载中..."

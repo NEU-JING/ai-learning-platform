@@ -8,6 +8,7 @@
 - 内容仅有空白 → 正确比较 strip 后的长度
 - 前导 \\n 被正确 strip
 """
+
 import json
 from pathlib import Path
 
@@ -83,6 +84,7 @@ class TestContentSelection:
         # Monkeypatch the module-level directory
         with monkeypatch.context() as m:
             from app.data import courses_phase1
+
             m.setattr(courses_phase1, "PHASE1_DIR", tmp_phase_dir)
 
             data = courses_phase1.load_phase1_data()
@@ -106,6 +108,7 @@ class TestContentSelection:
 
         with monkeypatch.context() as m:
             from app.data import courses_phase1
+
             m.setattr(courses_phase1, "PHASE1_DIR", tmp_phase_dir)
 
             data = courses_phase1.load_phase1_data()
@@ -128,6 +131,7 @@ class TestContentSelection:
 
         with monkeypatch.context() as m:
             from app.data import courses_phase1
+
             m.setattr(courses_phase1, "PHASE1_DIR", tmp_phase_dir)
 
             data = courses_phase1.load_phase1_data()
@@ -150,6 +154,7 @@ class TestContentSelection:
 
         with monkeypatch.context() as m:
             from app.data import courses_phase1
+
             m.setattr(courses_phase1, "PHASE1_DIR", tmp_phase_dir)
 
             data = courses_phase1.load_phase1_data()
@@ -169,6 +174,7 @@ class TestContentSelection:
 
         with monkeypatch.context() as m:
             from app.data import courses_phase1
+
             m.setattr(courses_phase1, "PHASE1_DIR", tmp_phase_dir)
 
             data = courses_phase1.load_phase1_data()
