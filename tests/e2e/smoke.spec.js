@@ -12,7 +12,7 @@
  * 已知过滤的噪声：
  *   - favicon.ico 404（浏览器自动请求，标准行为）
  */
-const { test, expect, chromium } = require('@playwright/test');
+const { test, expect } = require('@playwright/test');
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8000';
 
@@ -64,9 +64,9 @@ test.describe('前端冒烟测试', () => {
 
   let firstCourseId;
 
-  test.beforeAll(async () => {
+  test.beforeAll(async ({ browser }) => {
     // 动态获取第一个可用课程 ID（避免硬编码 1 导致 404）
-    const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'], executablePath: '/root/.cache/ms-playwright/chromium-1217/chrome-linux64/chrome' });
+    // 使用 Playwright Test 的 browser fixture，无需硬编码可执行路径
     const page = await browser.newPage();
     const errors = [];
     page.on('response', resp => {
@@ -98,7 +98,7 @@ test.describe('前端冒烟测试', () => {
       }
     }
     if (!firstCourseId) firstCourseId = '5'; // last resort fallback
-    await browser.close();
+    await page.close();
   });
 
   test('首页可加载且无控制台错误', async ({ browser }) => {
