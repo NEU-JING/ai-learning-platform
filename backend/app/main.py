@@ -244,7 +244,7 @@ def root_v2():
         return FileResponse(v2_index)
     return HTMLResponse(
         content="<h1>Frontend V2 Not Found</h1><p>Please check frontend-v2/ directory exists.</p>",
-        status_code=404
+        status_code=404,
     )
 
 
@@ -252,13 +252,30 @@ def root_v2():
 async def spa_fallback_v2(request: Request, full_path: str):
     """新版前端 SPA 回退处理"""
     # 优先尝试返回静态文件
-    static_extensions = (".js", ".mjs", ".css", ".map", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".woff", ".woff2", ".ttf", ".eot", ".json", ".webp")
+    static_extensions = (
+        ".js",
+        ".mjs",
+        ".css",
+        ".map",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+        ".ico",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+        ".json",
+        ".webp",
+    )
     if full_path and any(full_path.endswith(ext) for ext in static_extensions):
         file_path = os.path.normpath(os.path.join(STATIC_DIR_V2, full_path))
         if file_path.startswith(os.path.abspath(STATIC_DIR_V2)) and os.path.isfile(file_path):
             return FileResponse(file_path)
         return HTMLResponse(content="Not Found", status_code=404)
-    
+
     # 返回 index.html 让前端路由处理
     v2_index = os.path.join(STATIC_DIR_V2, "index.html")
     if os.path.exists(v2_index):
