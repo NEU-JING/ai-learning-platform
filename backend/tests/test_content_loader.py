@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 
-from app.data.courses_phase1 import load_phase1_data, PHASE1_DIR
-from app.data.courses_phase2 import load_phase2_data, PHASE2_DIR
+from app.data.courses_phase1 import PHASE1_DIR, load_phase1_data
+from app.data.courses_phase2 import PHASE2_DIR, load_phase2_data
 
 
 class TestContentSelection:
