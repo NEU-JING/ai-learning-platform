@@ -40,7 +40,7 @@ def load_phase2_data():
                     chapter["content"] = md_content
                 elif existing.strip():
                     logger.warning(
-                        "Chapter '%s': JSON inline content (%d chars) richer than .md (%d chars) — keeping JSON",
+                        "Chapter '%s': JSON inline (%dch) > .md (%dch) — keeping JSON",
                         chapter.get("id", chapter.get("title", "?")),
                         len(existing.strip()),
                         len(md_content.strip()),
