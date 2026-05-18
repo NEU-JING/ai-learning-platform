@@ -240,7 +240,8 @@ const router = new Router({
   }
 });
 
-// 全局依赖注入
+// 注册Store单例 + 全局依赖注入
+Store.setInstance(store);
 window.$store = store;
 window.$router = router;
 window.$api = API;

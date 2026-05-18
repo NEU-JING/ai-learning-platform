@@ -49,7 +49,16 @@ pytest tests/test_data_contract.py -v                                # 跑数据
 4. 是否Breaking Change
 5. 契约测试已更新
 
-### 5. 数据契约不可违反 🚨
+### 5. 🚨 修改前端文件后必须冒烟验证
+- 修改 `frontend/` 下任何 JS/CSS/HTML 文件后，**必须执行前端冒烟测试**
+- 冒烟测试命令：`cd /root/workspace/ai-learning-platform && npx playwright test tests/e2e/smoke.spec.js`
+- 冒烟测试检查项：
+  1. 核心页面正常加载（`/`、`/#/courses`、`/#/login`、`/#/register`）
+  2. 页面加载后 **浏览器控制台无 `console.error` 或 JS 运行时异常**
+  3. 页面 title 符合预期
+- 冒烟失败 = 前端损坏 = **阻塞提交**，必须先修复
+
+### 6. 数据契约不可违反 🚨
 - **启动断言**：`_assert_data_contract(db)` 在lifespan中执行，违反则服务拒绝启动
 - **契约测试**：`tests/test_data_contract.py` 16项断言，CI门禁
 - **init行为**：Phase 1/2 用 `upsert`（JSON为真相源），Phase 3-6 用 `create_only`（DB为真相源）

@@ -16,13 +16,20 @@ def load_phase2_data():
     with open(index_path, "r", encoding="utf-8") as f:
         course_data = json.load(f)
 
-    # Load content from markdown files
+    # Load content from markdown files (fallback only)
+    # Priority: JSON inline content > .md file > placeholder
+    # If JSON has non-trivial content already, keep richer one
     for chapter in course_data["chapters"]:
         content_file = chapter.pop("content_file", None)
         if content_file:
             md_path = PHASE2_DIR / content_file
             if md_path.exists():
-                chapter["content"] = md_path.read_text(encoding="utf-8")
+                md_content = md_path.read_text(encoding="utf-8")
+                # Only use .md content if JSON inline is shorter (stale)
+                existing = chapter.get("content", "") or ""
+                if len(existing.strip()) < len(md_content.strip()):
+                    chapter["content"] = md_content
+                # else: keep the richer JSON inline content
             else:
                 chapter["content"] = f"# {chapter['title']}\n\n内容加载中..."
 

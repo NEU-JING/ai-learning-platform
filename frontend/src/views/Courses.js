@@ -33,14 +33,12 @@ export default async function Courses() {
       </a>
       <ul class="navbar-nav">
         <li><a href="#" data-nav="/">首页</a></li>
-        <li><a href="#" data-nav="/courses">课程</a></li>
-        <li><a href="#" data-nav="/discussions">讨论区</a></li>
+        <li><a href="#" data-nav="/courses" class="active">课程</a></li>
+        <li><a href="#" data-nav="/progress">学习进度</a></li>
       </ul>
       <div class="navbar-right">
-        ${isAuthenticated && store?.state?.user ? `
+        ${store.state.token && store.state.user ? `
           <span class="user-name">${store.state.user.email}</span>
-          <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); window.location.hash = '#/'; return false;">退出</a>
-        ` : isAuthenticated ? `
           <a href="#" class="btn btn-secondary btn-sm" onclick="window.$store.dispatch('logout'); window.location.hash = '#/'; return false;">退出</a>
         ` : `
           <a href="#" class="btn btn-secondary btn-sm" data-nav="/login">登录</a>
