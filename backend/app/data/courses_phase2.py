@@ -4,8 +4,10 @@ Phase 2 课程数据加载器
 """
 
 import json
+import logging
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
 PHASE2_DIR = Path(__file__).parent / "phase2"
 
 
@@ -19,6 +21,7 @@ def load_phase2_data():
     # Load content from markdown files (fallback only)
     # Priority: JSON inline content > .md file > placeholder
     # If JSON has non-trivial content already, keep richer one
+    # Note: content equality is len-based (proxy heuristic). Logged for audit.
     for chapter in course_data["chapters"]:
         content_file = chapter.pop("content_file", None)
         if content_file:
@@ -28,11 +31,21 @@ def load_phase2_data():
                 # Only use .md content if JSON inline is shorter (stale)
                 existing = chapter.get("content", "") or ""
                 if len(existing.strip()) < len(md_content.strip()):
+                    logger.info("Chapter '%s': using .md content (%d chars over %d chars JSON)",
+                                chapter.get("id", chapter.get("title", "?")),
+                                len(md_content.strip()), len(existing.strip()))
                     chapter["content"] = md_content
+                elif existing.strip():
+                    logger.warning("Chapter '%s': JSON inline content (%d chars) richer than .md (%d chars) — keeping JSON",
+                                   chapter.get("id", chapter.get("title", "?")),
+                                   len(existing.strip()), len(md_content.strip()))
                 # else: keep the richer JSON inline content
             else:
                 chapter["content"] = f"# {chapter['title']}\n\n内容加载中..."
 
+        # Strip leading newlines from content (JSON formatting artifact)
+        raw = chapter.get("content", "") or ""
+        chapter["content"] = raw.lstrip("\n")
         # Load lab starter_code and test_cases from files
         if chapter.get("chapter_type") == "lab":
             starter_file = chapter.pop("starter_code_file", None)

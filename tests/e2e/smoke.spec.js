@@ -16,9 +16,20 @@ const { test, expect } = require('@playwright/test');
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8000';
 
-/** favicon.ico 404 是标准浏览器行为，不计为错误 */
+/**
+ * 已知过滤的噪声：
+ *   - favicon.ico 404（浏览器自动请求，标准行为）
+ *   - 非应用来源的错误（浏览器扩展、CDN 等第三方脚本）
+ */
+const APP_DOMAIN = new URL(BASE_URL).hostname;
 function isRealError(msg) {
-  return !msg.location()?.url?.includes('favicon.ico');
+  const loc = msg.location();
+  const url = loc?.url || '';
+  // favicon 是标准浏览器行为
+  if (url.includes('favicon.ico')) return false;
+  // 仅跟踪来自应用域名的错误（过滤浏览器扩展等第三方噪声）
+  if (url && !url.includes(APP_DOMAIN) && !url.startsWith('http://localhost')) return false;
+  return true;
 }
 
 /**

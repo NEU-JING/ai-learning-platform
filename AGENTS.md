@@ -6,7 +6,7 @@
 ## 快速启动
 
 ```bash
-cd /root/workspace/ai-learning-platform/backend
+cd backend
 source /tmp/ailp-venv/bin/activate
 SERVE_STATIC=True uvicorn app.main:app --host 0.0.0.0 --port 8000   # 启动后端
 pytest tests/ -v                                                     # 跑测试（78个）
@@ -51,7 +51,7 @@ pytest tests/test_data_contract.py -v                                # 跑数据
 
 ### 5. 🚨 修改前端文件后必须冒烟验证
 - 修改 `frontend/` 下任何 JS/CSS/HTML 文件后，**必须执行前端冒烟测试**
-- 冒烟测试命令：`cd /root/workspace/ai-learning-platform && npx playwright test tests/e2e/smoke.spec.js`
+- 冒烟测试命令：`npx playwright test tests/e2e/smoke.spec.js`
 - 冒烟测试检查项：
   1. 核心页面正常加载（`/`、`/#/courses`、`/#/login`、`/#/register`）
   2. 页面加载后 **浏览器控制台无 `console.error` 或 JS 运行时异常**
