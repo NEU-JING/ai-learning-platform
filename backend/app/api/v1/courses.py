@@ -12,12 +12,9 @@ from app.schemas.course import (
     CourseListResponse,
     CourseResponse,
     LabPublicResponse,
-    LabSubmissionCreate,
-    LabSubmissionResponse,
 )
 from app.schemas.pagination import PaginatedResponse
 from app.services.course_service import course_service
-from app.services.lab_service import lab_service
 
 router = APIRouter()
 
@@ -88,22 +85,3 @@ def get_chapter(chapter_id: int, db: Session = Depends(get_db)):
 def get_chapter_lab(chapter_id: int, db: Session = Depends(get_db)):
     """Get the lab associated with a chapter (public view, no solution)."""
     return course_service.get_chapter_lab(db, chapter_id)
-
-
-@router.post("/labs/{lab_id}/submit", response_model=LabSubmissionResponse)
-def submit_lab(
-    lab_id: int,
-    submission: LabSubmissionCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
-):
-    """Submit code for a lab — executes in sandbox and auto-grades."""
-    result = lab_service.submit_and_grade(
-        db=db,
-        user_id=current_user.id,
-        lab_id=lab_id,
-        code=submission.code,
-    )
-    # Invalidate course caches after lab submission (progress may have changed)
-    course_service.invalidate_course_cache()
-    return result

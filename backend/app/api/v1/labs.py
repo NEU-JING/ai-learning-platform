@@ -8,8 +8,14 @@ from app.api.deps import get_current_active_user
 from app.core.code_security import check_code_security
 from app.core.database import get_db
 from app.models import LabSubmission, User
-from app.schemas.course import CodeExecutionRequest, CodeExecutionResponse, LabSubmissionResponse
+from app.schemas.course import (
+    CodeExecutionRequest,
+    CodeExecutionResponse,
+    LabSubmissionCreate,
+    LabSubmissionResponse,
+)
 from app.services.code_executor import execute_code_docker
+from app.services.lab_service import lab_service
 
 router = APIRouter()
 
@@ -108,3 +114,20 @@ def get_submission_detail(
             detail="提交记录不存在",
         )
     return submission
+
+
+@router.post("/{lab_id}/submit", response_model=LabSubmissionResponse)
+def submit_lab(
+    lab_id: int,
+    submission: LabSubmissionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Submit code for a lab — executes in sandbox and auto-grades."""
+    result = lab_service.submit_and_grade(
+        db=db,
+        user_id=current_user.id,
+        lab_id=lab_id,
+        code=submission.code,
+    )
+    return result

@@ -234,12 +234,12 @@ export const API = {
     getChapterLab: (chapterId) => client.get(`/courses/chapters/${chapterId}/lab`)
   },
 
-  // 实验相关
+    // 实验相关
   labs: {
-    execute: (code, language = 'python', timeout = 30) => 
+    execute: (code, language = 'python', timeout = 30) =>
       client.post('/labs/execute', { code, language, timeout }),
-    submit: (labId, code) => 
-      client.post(`/courses/labs/${labId}/submit`, { code }),
+    submit: (labId, code) =>
+      client.post(`/labs/${labId}/submit`, { code }),
     getSubmissions: (labId) => client.get(`/labs/${labId}/submissions`),
     getSubmission: (id) => client.get(`/labs/submissions/${id}`)
   },

@@ -1,5 +1,6 @@
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash, verify_password
@@ -27,8 +28,12 @@ class UserService:
             email=user_data.email, username=user_data.username, password_hash=hashed_password
         )
         db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
+        try:
+            db.commit()
+            db.refresh(db_user)
+        except IntegrityError:
+            db.rollback()
+            raise ValueError("邮箱或用户名已存在")
         return db_user
 
     @staticmethod

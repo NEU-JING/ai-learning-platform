@@ -20,7 +20,7 @@ class TestRegister:
             json={"email": "testuser@example.com", "username": "other", "password": "Pass1234"},
         )
         assert resp.status_code == 400
-        assert "已被注册" in resp.json()["detail"]
+        assert "邮箱或用户名已存在" in resp.json()["detail"]
 
     def test_register_duplicate_username(self, client, test_user):
         resp = client.post(

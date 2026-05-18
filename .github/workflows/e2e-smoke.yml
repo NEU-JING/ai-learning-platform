@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'frontend/**'
+      - 'frontend-v2/**'
       - 'backend/app/data/**'
       - 'tests/e2e/**'
       - '.github/workflows/e2e-smoke.yml'
@@ -57,7 +58,10 @@ jobs:
           exit 1
 
       - name: Run E2E smoke tests
-        run: npx playwright test tests/e2e/smoke.spec.js
+        run: |
+          npx playwright test tests/e2e/smoke.spec.js
+          npx playwright test tests/e2e/frontend-v2.spec.js
+          npx playwright test tests/e2e/complete-coverage.spec.js --project=chromium
 
       - name: Cleanup backend server
         if: always()

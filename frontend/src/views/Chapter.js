@@ -263,7 +263,7 @@ function renderMarkdown(md) {
   }).join('\n');
 
   // Clean up block markers
-  html = html.replace(/%%%(\/)?(CODEBLOCK|DETAILS|HEADER|HR|BLOCKQUOTE|TABLE)%%%/g, '');
+  html = html.replace(/%%%\/?(CODEBLOCK|DETAILS|HEADER|HR|BLOCKQUOTE|TABLE)%%%/g, '');
 
   // Fix: remove empty <p> tags
   html = html.replace(/<p[^>]*>\s*<\/p>/g, '');

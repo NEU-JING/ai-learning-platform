@@ -86,7 +86,7 @@ const api = {
     execute: (code, language = 'python', timeout = 30) =>
       request('/labs/execute', { method: 'POST', body: { code, language, timeout } }),
     submit: (labId, code) =>
-      request(`/courses/labs/${labId}/submit`, { method: 'POST', body: { code } }),
+      request(`/labs/${labId}/submit`, { method: 'POST', body: { code } }),
     getSubmissions: (labId) => request(`/labs/${labId}/submissions`),
     getSubmission: (id) => request(`/labs/submissions/${id}`),
   },

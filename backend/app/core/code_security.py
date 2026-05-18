@@ -702,6 +702,8 @@ class CodeSecurityChecker:
                 "forkpty",
                 "kill",
                 "killpg",
+                "wait",
+                "open",
             ]:
                 self.errors.append(f"禁止调用危险方法: {attr_name}")
 

@@ -54,6 +54,15 @@ jobs:
       - name: Build Docker image
         run: docker build -t ai-learning-platform:${{ github.sha }} .
 
+      - name: Verify frontend-v2 files exist
+        run: |
+          test -d frontend-v2 || (echo "❌ frontend-v2 directory missing" && exit 1)
+          test -f frontend-v2/index.html || (echo "❌ index.html missing" && exit 1)
+          test -f frontend-v2/app.jsx || (echo "❌ app.jsx missing" && exit 1)
+          test -f frontend-v2/api.js || (echo "❌ api.js missing" && exit 1)
+          test -f frontend-v2/store.js || (echo "❌ store.js missing" && exit 1)
+          echo "✅ frontend-v2 structure valid"
+
       - name: Smoke test
         run: |
           docker run -d --name test-container \

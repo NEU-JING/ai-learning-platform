@@ -123,7 +123,7 @@ class TestLabSubmit:
         """Submitting dangerous code should return 400."""
         lab_id = test_course["lab"].id
         resp = client.post(
-            f"/api/v1/courses/labs/{lab_id}/submit",
+            f"/api/v1/labs/{lab_id}/submit",
             json={"code": "import os\nos.system('whoami')"},
             headers=auth_headers,
         )
@@ -132,7 +132,7 @@ class TestLabSubmit:
 
     def test_submit_lab_not_found(self, client, auth_headers):
         resp = client.post(
-            "/api/v1/courses/labs/99999/submit",
+            "/api/v1/labs/99999/submit",
             json={"code": "print('hello')"},
             headers=auth_headers,
         )
@@ -141,7 +141,7 @@ class TestLabSubmit:
     def test_submit_lab_no_auth(self, client, test_course):
         lab_id = test_course["lab"].id
         resp = client.post(
-            f"/api/v1/courses/labs/{lab_id}/submit",
+            f"/api/v1/labs/{lab_id}/submit",
             json={"code": "print('hello')"},
         )
         assert resp.status_code == 401

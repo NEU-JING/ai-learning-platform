@@ -123,17 +123,27 @@ export class Router {
       return '([^/]+)';
     });
 
-    const regex = new RegExp(`^${regexPattern}$`);
-    const match = path.match(regex);
+    try {
+      const regex = new RegExp(`^${regexPattern}$`);
+      const match = path.match(regex);
 
-    if (!match) return null;
+      if (!match) return null;
 
-    const params = {};
-    paramNames.forEach((name, index) => {
-      params[name] = match[index + 1];
-    });
+      const params = {};
+      paramNames.forEach((name, index) => {
+        params[name] = match[index + 1];
+      });
 
-    return { params };
+      return { params };
+    } catch (e) {
+      console.error('RegExp创建失败:', {
+        path,
+        routePath,
+        regexPattern,
+        error: e.message
+      });
+      throw e;
+    }
   }
 
   async renderRoute(route) {
