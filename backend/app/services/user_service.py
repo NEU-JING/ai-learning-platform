@@ -1,5 +1,6 @@
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.security import get_password_hash, verify_password
@@ -22,14 +23,26 @@ class UserService:
 
     @staticmethod
     def create(db: Session, user_data: UserCreate) -> User:
-        hashed_password = get_password_hash(user_data.password)
-        db_user = User(
-            email=user_data.email, username=user_data.username, password_hash=hashed_password
-        )
-        db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
-        return db_user
+        """创建用户，捕获数据库唯一约束冲突"""
+        try:
+            hashed_password = get_password_hash(user_data.password)
+            db_user = User(
+                email=user_data.email, username=user_data.username, password_hash=hashed_password
+            )
+            db.add(db_user)
+            db.commit()
+            db.refresh(db_user)
+            return db_user
+        except IntegrityError as e:
+            db.rollback()
+            # 区分是邮箱还是用户名冲突
+            error_str = str(e).lower()
+            if "email" in error_str or "ix_users_email" in error_str:
+                raise ValueError("该邮箱已被注册")
+            elif "username" in error_str or "ix_users_username" in error_str:
+                raise ValueError("该用户名已被使用")
+            else:
+                raise ValueError("用户信息已存在，请更换邮箱或用户名")
 
     @staticmethod
     def update(db: Session, user: User, user_data: UserUpdate) -> User:

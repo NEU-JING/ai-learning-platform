@@ -58,18 +58,16 @@ class CodeGrader:
         else:
             grading_code = CodeGrader._build_grading_script(code, test_cases)
 
-        # 3. Execute in sandbox (skip security check — grading script is system-generated)
+        # 3. Execute in sandbox (always with security check)
         import asyncio
 
         try:
             result = asyncio.get_event_loop().run_until_complete(
-                execute_code_docker(grading_code, timeout=timeout, skip_security_check=True)
+                execute_code_docker(grading_code, timeout=timeout)
             )
         except RuntimeError:
             loop = asyncio.new_event_loop()
-            result = loop.run_until_complete(
-                execute_code_docker(grading_code, timeout=timeout, skip_security_check=True)
-            )  # noqa: E501
+            result = loop.run_until_complete(execute_code_docker(grading_code, timeout=timeout))
             loop.close()
 
         if not result.get("success"):

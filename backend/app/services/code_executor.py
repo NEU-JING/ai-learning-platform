@@ -422,9 +422,7 @@ print("===RESULT_END===")
                 pass
 
 
-async def execute_code_docker(
-    code: str, timeout: int = DEFAULT_TIMEOUT, skip_security_check: bool = False
-) -> Dict:
+async def execute_code_docker(code: str, timeout: int = DEFAULT_TIMEOUT) -> Dict:
     """
     使用Docker沙箱执行Python代码
 
@@ -452,11 +450,10 @@ async def execute_code_docker(
             "execution_time_ms": 0,
         }
 
-    # 2. Security check (skip for system-generated grading scripts)
-    if not skip_security_check:
-        is_safe, security_error = check_code_security(code)
-        if not is_safe:
-            return {"success": False, "output": "", "error": security_error, "execution_time_ms": 0}
+    # 2. Security check (always required)
+    is_safe, security_error = check_code_security(code)
+    if not is_safe:
+        return {"success": False, "output": "", "error": security_error, "execution_time_ms": 0}
 
     # 3. 检查Docker是否可用
     if not check_docker_available():

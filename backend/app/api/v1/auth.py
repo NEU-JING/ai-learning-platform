@@ -16,17 +16,11 @@ security = HTTPBearer()
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """用户注册"""
-    # 检查邮箱是否已存在
-    if user_service.get_by_email(db, user_data.email):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该邮箱已被注册")
-
-    # 检查用户名是否已存在
-    if user_service.get_by_username(db, user_data.username):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="该用户名已被使用")
-
-    # 创建用户
-    user = user_service.create(db, user_data)
-    return user
+    try:
+        user = user_service.create(db, user_data)
+        return user
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.post("/login", response_model=Token)
