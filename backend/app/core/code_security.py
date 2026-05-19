@@ -8,10 +8,8 @@ from typing import Any, Dict, List, Set, Tuple
 
 # ========== 危险模式黑名单 ==========
 
-# 禁止的模块导入
+# 禁止的模块导入（精简版：只保留真正危险的，os/sys/pathlib 等学习必需模块已移至白名单）
 FORBIDDEN_MODULES: Set[str] = {
-    "os",
-    "sys",
     "subprocess",
     "socket",
     "urllib",
@@ -45,9 +43,6 @@ FORBIDDEN_MODULES: Set[str] = {
     "tty",
     "termios",
     "fcntl",
-    "select",
-    "selectors",
-    "signal",
     "multiprocessing",
     "concurrent.futures",
     "asyncio",
@@ -56,7 +51,6 @@ FORBIDDEN_MODULES: Set[str] = {
     "dummy_threading",
     "queue",
     "pipes",
-    "platform",
     "site",
     "importlib",
     "imp",
@@ -67,16 +61,11 @@ FORBIDDEN_MODULES: Set[str] = {
     "zipfile",
     "tarfile",
     "shutil",
-    "pathlib",
-    "path",
     "glob",
     "fnmatch",
     "linecache",
-    "traceback",
     "gc",
     "weakref",
-    "types",
-    "inspect",
     "code",
     "codeop",
     "bdb",
@@ -90,7 +79,6 @@ FORBIDDEN_MODULES: Set[str] = {
     "py_compile",
     "symtable",
     "parser",
-    "ast",
     "tokenize",
     "token",
     "keyword",
@@ -112,7 +100,6 @@ FORBIDDEN_MODULES: Set[str] = {
     "uu",
     "encodings",
     "codecs",
-    "unicodedata",
     "stringprep",
     "readline",
     "rlcompleter",
@@ -130,7 +117,6 @@ FORBIDDEN_MODULES: Set[str] = {
     "getpass",
     "curses",
     "ssl",
-    "hashlib",
     "hmac",
     "secrets",
     "uuid",
@@ -244,9 +230,8 @@ FORBIDDEN_MODULES: Set[str] = {
     "sunaudiodev",
 }
 
-# 禁止的函数调用
+# 禁止的函数调用（open() 已移除，改为 AST 级别只读检查）
 FORBIDDEN_FUNCTIONS: Set[str] = {
-    "open",
     "file",
     "exec",
     "eval",
@@ -356,8 +341,10 @@ FORBIDDEN_FUNCTIONS: Set[str] = {
     "builtins.compile",
     "builtins.__import__",
 }
+# 写入模式关键词（open() 只允许只读模式）
+WRITE_MODES = {"w", "a", "x", "r+", "w+", "a+", "x+", "wb", "ab", "xb", "rb+", "wb+", "ab+", "xb+"}
 
-# 禁止的属性访问
+# 禁止的属性访问（精简版：OOP教学核心属性已移除）
 FORBIDDEN_ATTRIBUTES: Set[str] = {
     "__subclasses__",
     "__bases__",
@@ -371,11 +358,7 @@ FORBIDDEN_ATTRIBUTES: Set[str] = {
     "__kwdefaults__",
     "__annotations__",
     "__module__",
-    "__dict__",
-    "__class__",
-    "__self__",
     "__weakref__",
-    "__slots__",
     "__get__",
     "__set__",
     "__delete__",
@@ -430,17 +413,6 @@ FORBIDDEN_ATTRIBUTES: Set[str] = {
 
 # 正则表达式危险模式
 DANGEROUS_PATTERNS: List[Tuple[str, str]] = [
-    # 危险导入
-    (r"import\s+os\b", "禁止导入 os 模块"),
-    (r"import\s+sys\b", "禁止导入 sys 模块"),
-    (r"import\s+subprocess\b", "禁止导入 subprocess 模块"),
-    (r"import\s+socket\b", "禁止导入 socket 模块"),
-    (r"import\s+(urllib|urllib2|httplib|ftplib)\b", "禁止导入网络模块"),
-    (r"import\s+requests\b", "禁止导入 requests 模块"),
-    (r"from\s+os\s+import", "禁止从 os 模块导入"),
-    (r"from\s+sys\s+import", "禁止从 sys 模块导入"),
-    (r"from\s+subprocess\s+import", "禁止从 subprocess 导入"),
-    (r"from\s+socket\s+import", "禁止从 socket 导入"),
     # 动态导入
     (r"__import__\s*\(", "禁止使用动态导入"),
     (r"importlib\.", "禁止使用 importlib"),
@@ -453,12 +425,7 @@ DANGEROUS_PATTERNS: List[Tuple[str, str]] = [
     (r"subprocess\.call\s*\(", "禁止调用 subprocess.call"),
     (r"subprocess\.run\s*\(", "禁止调用 subprocess.run"),
     (r"subprocess\.Popen\s*\(", "禁止调用 subprocess.Popen"),
-    (r"eval\s*\(", "禁止使用 eval"),
-    (r"exec\s*\(", "禁止使用 exec"),
-    (r"compile\s*\(", "禁止使用 compile"),
-    (r"execfile\s*\(", "禁止使用 execfile"),
     # 文件操作
-    (r"open\s*\(", "禁止使用 open 函数"),
     (r"file\s*\(", "禁止使用 file 函数"),
     (r"os\.remove\s*\(", "禁止删除文件"),
     (r"os\.unlink\s*\(", "禁止删除文件"),
@@ -499,7 +466,7 @@ DANGEROUS_PATTERNS: List[Tuple[str, str]] = [
     (r"raw_input\s*\(", "禁止使用 raw_input"),
 ]
 
-# 允许的模块白名单（仅这些模块可以导入）
+# 允许的模块白名单（学习必需模块已从黑名单移入）
 ALLOWED_MODULES: Set[str] = {
     "math",
     "random",
@@ -526,8 +493,30 @@ ALLOWED_MODULES: Set[str] = {
     "itertools",
     "functools",
     "operator",
-    "pathlib",
+    # --- 学习必需模块（从黑名单移入） ---
+    "os",
     "os.path",
+    "sys",
+    "pathlib",
+    "hashlib",
+    "inspect",
+    "types",
+    "traceback",
+    "select",
+    "selectors",
+    "signal",
+    "platform",
+    "unicodedata",
+    # --- 数据科学模块 ---
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "matplotlib.pyplot",
+    "sklearn",
+    "scipy",
+    "scipy.stats",
+    "scipy.optimize",
+    # --- 通用模块 ---
     "re",
     "string",
     "struct",
@@ -541,27 +530,11 @@ ALLOWED_MODULES: Set[str] = {
     "csv",
     "configparser",
     "tomllib",
-    "hashlib",
-    "hmac",
-    "secrets",
-    "inspect",
-    "types",
-    "typing",
+    "contextlib",
     "abc",
     "atexit",
-    "traceback",
     "warnings",
-    "contextlib",
-    "dataclasses",
-    "enum",
-    "numpy",
-    "pandas",
-    "matplotlib",
-    "matplotlib.pyplot",
-    "sklearn",
-    "scipy",
-    "scipy.stats",
-    "scipy.optimize",
+    "typing",
 }
 
 
@@ -664,7 +637,10 @@ class CodeSecurityChecker:
         if isinstance(node.func, ast.Name):
             # 直接函数调用
             func_name = node.func.id
-            if func_name in FORBIDDEN_FUNCTIONS:
+            # open() 特殊处理：允许只读模式，禁止写入
+            if func_name == "open":
+                self._check_open_call(node)
+            elif func_name in FORBIDDEN_FUNCTIONS:
                 self.errors.append(f"禁止调用函数: {func_name}")
             elif func_name in ["eval", "exec", "compile"]:
                 self.errors.append(f"禁止调用危险内置函数: {func_name}")
@@ -720,18 +696,54 @@ class CodeSecurityChecker:
         """检查表达式语句"""
         # 这里可以添加额外的表达式检查
 
+    def _check_open_call(self, node: ast.Call):
+        """检查 open() 调用 — 允许只读模式，禁止写入/删除。
+
+        允许:
+            open('file.csv')         # 默认 'r' 模式
+            open('file.csv', 'r')
+            open('file.csv', 'rb')
+            open('file.csv', encoding='utf-8')
+
+        禁止:
+            open('file.csv', 'w')
+            open('file.csv', 'a')
+            open('file.csv', 'wb')
+        """
+        if len(node.args) < 2:
+            # open(path) 或 open(path, encoding=...) → 默认只读，允许
+            return
+
+        # 第二个位置参数是 mode
+        mode_arg = node.args[1]
+        if isinstance(mode_arg, ast.Constant) and isinstance(mode_arg.value, str):
+            mode_str = mode_arg.value
+            if mode_str in WRITE_MODES or any(m in mode_str for m in ("w", "a", "x", "+")):
+                self.errors.append(f"禁止以写入模式打开文件: open(..., '{mode_str}') — 仅允许只读模式")
+                return
+        elif isinstance(mode_arg, ast.Name):
+            # mode 是变量，无法静态判断 → 警告但不阻止
+            self.warnings.append(f"open() 的 mode 参数是变量 '{mode_arg.id}'，建议使用字符串字面量")
+        else:
+            # 无法识别的 mode → 警告
+            self.warnings.append("open() 的 mode 参数无法静态分析，请确保使用只读模式")
+
 
 # 便捷函数
-def check_code_security(code: str) -> Tuple[bool, str]:
+def check_code_security(code: str, *, skip_security: bool = False) -> Tuple[bool, str]:
     """
     检查代码安全性
 
     Args:
-        code: 要检查的Python代码
+        code: 要检查的代码
+        skip_security: 跳过安全检查（用于系统内部代码如 grader 评测脚本）
 
     Returns:
         (是否安全, 错误信息)
     """
+    if skip_security:
+        return True, ""
+
     checker = CodeSecurityChecker()
     is_safe, errors, warnings = checker.check_code(code)
 

@@ -285,8 +285,10 @@ async def execute_code_subprocess_fallback(code: str, timeout: int = DEFAULT_TIM
 
     try:
         # 包装代码，限制资源和输出
-        wrapped_code = f"""
-import sys
+        # 包装代码，限制资源和输出
+        # 用户代码通过 exec() 执行，避免函数外 return/yield 导致 SyntaxError
+        indented_code = chr(10).join("    " + line for line in code.split(chr(10)))
+        wrapped_code = f"""import sys
 import io
 import resource
 import signal
@@ -313,9 +315,10 @@ old_stderr = sys.stderr
 sys.stdout = io.StringIO()
 sys.stderr = io.StringIO()
 
-# 执行用户代码
+# 执行用户代码（通过 exec 避免缩进陷阱）
+_user_code = {repr(code)}
 try:
-{chr(10).join("    " + line for line in code.split(chr(10)))}
+    exec(_user_code)
 except Exception as e:
     import traceback
     print(f"Error: {{e}}", file=sys.stderr)
@@ -422,13 +425,14 @@ print("===RESULT_END===")
                 pass
 
 
-async def execute_code_docker(code: str, timeout: int = DEFAULT_TIMEOUT) -> Dict:
+async def execute_code_docker(code: str, timeout: int = DEFAULT_TIMEOUT, *, skip_security: bool = False) -> Dict:
     """
     使用Docker沙箱执行Python代码
 
     Args:
         code: 要执行的Python代码
         timeout: 执行超时时间（秒）
+        skip_security: 跳过安全检查（用于系统内部代码如 grader 评测脚本）
 
     Returns:
         {
@@ -450,8 +454,8 @@ async def execute_code_docker(code: str, timeout: int = DEFAULT_TIMEOUT) -> Dict
             "execution_time_ms": 0,
         }
 
-    # 2. Security check (always required)
-    is_safe, security_error = check_code_security(code)
+    # 2. Security check (skip for system-generated code like grader scripts)
+    is_safe, security_error = check_code_security(code, skip_security=skip_security)
     if not is_safe:
         return {"success": False, "output": "", "error": security_error, "execution_time_ms": 0}
 
