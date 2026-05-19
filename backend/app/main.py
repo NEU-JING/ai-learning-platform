@@ -240,12 +240,27 @@ def health_check():
 
 
 @app.get("/v2", response_class=HTMLResponse)
+@app.get("/v2/", response_class=HTMLResponse)
 def v2_index():
     """V2 React前端入口"""
     index_file = os.path.join(STATIC_DIR_V2, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return HTMLResponse(content="<h1>V2 Frontend not built</h1><p>Run: cd frontend-v2 && npm run build</p>")
+
+
+@app.get("/v2/{full_path:path}", response_class=HTMLResponse)
+async def v2_spa_fallback(full_path: str):
+    """V2 SPA fallback — all /v2/* routes return index.html for client-side routing"""
+    # If it's an asset file, serve it directly
+    asset_file = os.path.normpath(os.path.join(STATIC_DIR_V2, full_path))
+    if asset_file.startswith(os.path.abspath(STATIC_DIR_V2)) and os.path.isfile(asset_file):
+        return FileResponse(asset_file)
+    # Otherwise return index.html for SPA routing
+    index_file = os.path.join(STATIC_DIR_V2, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse(content="<h1>V2 Frontend not built</h1>")
 
 
 # SPA路由回退处理
@@ -260,7 +275,26 @@ async def spa_fallback(request: Request, full_path: str):
     - /api/* - API路由
     - /docs, /redoc, /openapi.json - API文档
     - /static/* - 静态文件
+    - /v2/* - V2前端（由独立路由处理）
     """
+    # DEBUG: log what the catch-all sees
+    import sys
+    print(f"[DEBUG catch-all] full_path='{full_path}'", file=sys.stderr)
+    # V2 routes are handled by their own route handlers — never fall through here
+    if full_path == "v2/" or full_path == "v2":
+        # /v2/ and /v2 with trailing slash — serve V2 index directly
+        index_file = os.path.join(STATIC_DIR_V2, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+    if full_path.startswith("v2/"):
+        # /v2/* SPA routes — serve V2 index for client-side routing
+        asset_path = full_path[3:]  # strip "v2/"
+        asset_file = os.path.normpath(os.path.join(STATIC_DIR_V2, asset_path))
+        if asset_file.startswith(os.path.abspath(STATIC_DIR_V2)) and os.path.isfile(asset_file):
+            return FileResponse(asset_file)
+        index_file = os.path.join(STATIC_DIR_V2, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
     # --- Static file serving (js/css/images/src/etc.) ---
     # Before falling back to SPA/HTML, check if the path maps to a real file
     # under STATIC_DIR. This handles relative paths like js/api.js, css/style.css,
