@@ -33,17 +33,17 @@ export const api = {
     me: () => apiRequest('/auth/me'),
   },
   courses: {
-    list: (page = 1, perPage = 20) => apiRequest(`/courses?page=${page}&per_page=${perPage}`),
+    list: (page = 1, perPage = 20) => apiRequest(`/courses/?page=${page}&per_page=${perPage}`),
     get: (id) => apiRequest(`/courses/${id}`),
     chapters: (courseId) => apiRequest(`/courses/${courseId}/chapters`),
   },
   labs: {
     get: (id) => apiRequest(`/labs/${id}`),
-    submit: (id, code) => apiRequest(`/labs/${id}/submit`, {
+    submit: (id, code) => apiRequest(`/courses/labs/${id}/submit`, {
       method: 'POST', body: JSON.stringify({ code })
     }),
   },
   progress: {
-    get: () => apiRequest('/progress'),
+    get: () => apiRequest('/progress/'),
   },
 };

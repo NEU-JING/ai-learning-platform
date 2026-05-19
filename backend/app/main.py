@@ -188,16 +188,22 @@ app.add_middleware(
 )
 
 # 静态文件服务配置
-# 生产环境: 前端文件挂载到容器中，由后端同时提供API和静态文件服务
+# 静态文件服务配置
 STATIC_DIR = os.getenv("STATIC_DIR", "../frontend")
+STATIC_DIR_V2 = os.getenv("STATIC_DIR_V2", "../frontend-v2/dist")
 # Force absolute path to avoid cwd issues
 STATIC_DIR = os.path.abspath(STATIC_DIR)
+STATIC_DIR_V2 = os.path.abspath(STATIC_DIR_V2)
 SERVE_STATIC = True  # Always serve static files in this deployment
 
 if SERVE_STATIC and os.path.exists(STATIC_DIR):
     # 挂载静态文件目录
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
     print(f"✅ 静态文件服务已启用: {STATIC_DIR}")
+
+if SERVE_STATIC and os.path.exists(STATIC_DIR_V2):
+    app.mount("/v2/assets", StaticFiles(directory=os.path.join(STATIC_DIR_V2, "assets")), name="v2-assets")
+    print(f"✅ V2前端服务已启用: {STATIC_DIR_V2}")
 
 
 # 注册API路由
@@ -224,12 +230,22 @@ def root():
 
 @app.get("/health")
 def health_check():
-    """健康检查端点 - 用于负载均衡器和监控"""
+    """健康检查端点"""
     return {
         "status": "healthy",
         "version": settings.VERSION,
         "environment": os.getenv("ENVIRONMENT", "development"),
+        "frontend_v2": os.path.exists(STATIC_DIR_V2),
     }
+
+
+@app.get("/v2", response_class=HTMLResponse)
+def v2_index():
+    """V2 React前端入口"""
+    index_file = os.path.join(STATIC_DIR_V2, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return HTMLResponse(content="<h1>V2 Frontend not built</h1><p>Run: cd frontend-v2 && npm run build</p>")
 
 
 # SPA路由回退处理
