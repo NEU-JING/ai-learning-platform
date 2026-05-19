@@ -53,3 +53,6 @@ secrets/
 *.db.bak*
 update_lab_solutions.py
 test-results/
+
+# Build output
+frontend-v2/dist/
