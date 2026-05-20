@@ -1,15 +1,39 @@
 /* Progress dashboard — stats, weekly activity, course breakdown, recent activity */
 import React, { useState, useEffect } from 'react';
 import { Icon } from '../icons';
-import { loadCourses, CURRENT, MOCK_COURSES, PROGRESS_STATS, LEVEL_MAP, CATEGORY_MAP } from '../data';
+import { loadCourses, loadUserProgress, CURRENT, LEVEL_MAP, CATEGORY_MAP } from '../data';
 import { useNavigate } from 'react-router-dom';
 
 const ScreenProgress = () => {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState(MOCK_COURSES);
-  useEffect(() => { loadCourses().then(setCourses); }, []);
-  const s = PROGRESS_STATS;
-  const maxWeekly = Math.max(...s.weekly);
+  const [courses, setCourses] = useState([]);
+  const [progress, setProgress] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      loadCourses(),
+      loadUserProgress(),
+    ]).then(([coursesData, progressData]) => {
+      setCourses(coursesData || []);
+      setProgress(progressData);
+      setLoading(false);
+    });
+  }, []);
+
+  // Use API data or default empty state
+  const s = progress || {
+    streak_days: 0,
+    total_minutes: 0,
+    chapters_completed: 0,
+    labs_completed: 0,
+    weekly: [0, 0, 0, 0, 0, 0, 0],
+    overall_pct: 0,
+    recent: [],
+  };
+  
+  const maxWeekly = Math.max(...s.weekly, 1);
   const totalHours = (s.total_minutes / 60).toFixed(1);
 
   return (
@@ -32,12 +56,12 @@ const ScreenProgress = () => {
       {/* Activity chart + path overview */}
       <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 16, marginBottom: 24 }}>
         <ActivityChart weekly={s.weekly} maxWeekly={maxWeekly} />
-        <PathOverview navigate={navigate} />
+        <PathOverview navigate={navigate} courses={courses} />
       </div>
 
       {/* Two-col: course progress + recent activity */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <CourseProgressList navigate={navigate} />
+        <CourseProgressList navigate={navigate} courses={courses} />
         <RecentActivity items={s.recent} />
       </div>
     </div>

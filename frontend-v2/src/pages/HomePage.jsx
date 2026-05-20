@@ -2,22 +2,36 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '../icons';
-import { loadCourses, CURRENT, LEVEL_MAP, MOCK_COURSES } from '../data';
+import { loadCourses, loadPlatformStats, CURRENT, LEVEL_MAP, CATEGORY_MAP } from '../data';
 
 const ScreenHome = ({ tweaks }) => {
   const navigate = useNavigate();
-  const [courses, setCourses] = useState(MOCK_COURSES);
-  useEffect(() => { loadCourses().then(setCourses); }, []);
+  const [courses, setCourses] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      loadCourses(),
+      loadPlatformStats(),
+    ]).then(([coursesData, statsData]) => {
+      setCourses(coursesData || []);
+      setStats(statsData);
+      setLoading(false);
+    });
+  }, []);
+  
   const current = courses.find(c => c.id === CURRENT.course_id);
   const currentChapter = current?.chapters?.find(ch => ch.id === CURRENT.chapter_id);
-  const overallProgress = Math.round(
-    courses.reduce((sum, c) => sum + c.chapters_done, 0) /
-    courses.reduce((sum, c) => sum + c.chapters_total, 0) * 100
-  );
+  const overallProgress = courses.length > 0
+    ? Math.round(courses.reduce((sum, c) => sum + (c.chapters_done || 0), 0) / courses.reduce((sum, c) => sum + (c.chapters_total || 1), 0) * 100)
+    : 0;
+  const totalStudents = courses.reduce((s, c) => s + (c.students || 0), 0);
 
   return (
     <div className="screen">
-      <Hero progress={overallProgress} layout={tweaks?.hero_layout} />
+      <Hero progress={overallProgress} layout={tweaks?.hero_layout} totalStudents={totalStudents} />
 
       <section className="container" style={{ paddingTop: 32 }}>
         <ContinueCard course={current} chapter={currentChapter} />
@@ -53,7 +67,7 @@ const ScreenHome = ({ tweaks }) => {
   );
 };
 
-const Hero = ({ progress, layout }) => {
+const Hero = ({ progress, layout, totalStudents }) => {
   const navigate = useNavigate();
   if (layout === "split") {
     return (
@@ -115,13 +129,17 @@ const Hero = ({ progress, layout }) => {
             查看进度
           </button>
         </div>
-        <HeroStats />
+        <HeroStats totalStudents={totalStudents} />
       </div>
     </section>
   );
 };
 
-const HeroStats = () => (
+const HeroStats = ({ totalStudents }) => {
+  const fmtStudents = totalStudents >= 1000
+    ? (totalStudents / 1000).toFixed(totalStudents >= 10000 ? 1 : 0) + 'k'
+    : totalStudents.toLocaleString();
+  return (
   <div style={{
     display: "grid", gridTemplateColumns: "repeat(4, 1fr)",
     maxWidth: 720, margin: "48px auto 0", gap: 0,
@@ -129,10 +147,10 @@ const HeroStats = () => (
     background: "var(--surface)",
   }}>
     {[
-      { n: "60", l: "章节" },
-      { n: "43", l: "实验" },
-      { n: "6", l: "学习阶段" },
-      { n: "12.8k", l: "在学学员" },
+      { n: stats?.total_chapters ? String(stats.total_chapters) : '—', l: "章节" },
+      { n: stats?.total_labs ? String(stats.total_labs) : '—', l: "实验" },
+      { n: stats?.total_phases ? String(stats.total_phases) : '6', l: "学习阶段" },
+      { n: fmtStudents, l: "在学学员" },
     ].map((s, i) => (
       <div key={i} style={{
         padding: "20px 16px", textAlign: "center",
@@ -143,7 +161,8 @@ const HeroStats = () => (
       </div>
     ))}
   </div>
-);
+  );
+};
 
 const HeroVisual = () => (
   <div style={{

@@ -2,16 +2,24 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '../icons';
-import { loadCourses, CATEGORY_MAP, LEVEL_MAP, MOCK_COURSES } from '../data';
+import { loadCourses, CATEGORY_MAP, LEVEL_MAP } from '../data';
 import { CourseCard } from './HomePage';
 
 const ScreenCourses = () => {
   const navigate = useNavigate();
   const [level, setLevel] = useState("all");
   const [category, setCategory] = useState("all");
-  const [view, setView] = useState("grid"); // grid | list
-  const [courses, setCourses] = useState(MOCK_COURSES);
-  useEffect(() => { loadCourses().then(setCourses); }, []);
+  const [view, setView] = useState("grid");
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    setLoading(true);
+    loadCourses().then(data => {
+      setCourses(data || []);
+      setLoading(false);
+    });
+  }, []);
 
   const filtered = courses.filter(c =>
     (level === "all" || c.level === level) &&

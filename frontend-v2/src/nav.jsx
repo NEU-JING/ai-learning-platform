@@ -1,18 +1,20 @@
 import React from 'react';
 import { Icon } from './icons';
-import { loadCourses, MOCK_COURSES } from './data';
+import { loadCourses } from './data';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 /* Topbar / Navigation / Command palette */
 
-const Topbar = ({ onOpenSearch, onOpenTweaks }) => {
+const Topbar = ({ onOpenSearch, onOpenTweaks, auth = {} }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isLoggedIn = auth.isLoggedIn || false;
+  const user = auth.user || null;
   const tabs = [
     { id: "home",     label: "首页",   icon: "home" },
     { id: "courses",  label: "课程",   icon: "book" },
     { id: "progress", label: "进度",   icon: "trending" },
-    { id: "discuss",  label: "讨论区", icon: "message" },
+
   ];
 
   const pathname = location.pathname;
@@ -22,17 +24,37 @@ const Topbar = ({ onOpenSearch, onOpenTweaks }) => {
       ? "home"
       : pathname.startsWith('/progress')
         ? "progress"
-        : pathname.startsWith('/discuss')
-          ? "discuss"
-          : pathname.split('/').filter(Boolean)[0] || 'home';
+      : pathname.split('/').filter(Boolean)[0] || 'home';
 
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>
-          <span className="brand-mark">J</span>
-          <span>JING</span>
-          <span className="dim" style={{ fontWeight: 400, marginLeft: 2 }}>· 学习平台</span>
+        <a className="brand" href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }} title="AI Learning Platform">
+          {/* SVG Logo: AI神经元图标 + 品牌名 */}
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 10, flexShrink: 0 }}>
+            <rect width="28" height="28" rx="6" fill="url(#logo-gradient)"/>
+            <circle cx="14" cy="14" r="3" fill="white"/>
+            <circle cx="14" cy="7" r="2" fill="white" opacity="0.9"/>
+            <circle cx="14" cy="21" r="2" fill="white" opacity="0.9"/>
+            <circle cx="7" cy="14" r="2" fill="white" opacity="0.7"/>
+            <circle cx="21" cy="14" r="2" fill="white" opacity="0.7"/>
+            <circle cx="8.5" cy="8.5" r="1.5" fill="white" opacity="0.5"/>
+            <circle cx="19.5" cy="8.5" r="1.5" fill="white" opacity="0.5"/>
+            <circle cx="8.5" cy="19.5" r="1.5" fill="white" opacity="0.5"/>
+            <circle cx="19.5" cy="19.5" r="1.5" fill="white" opacity="0.5"/>
+            <line x1="14" y1="11" x2="14" y2="7" stroke="white" strokeWidth="1.5" opacity="0.8"/>
+            <line x1="14" y1="17" x2="14" y2="21" stroke="white" strokeWidth="1.5" opacity="0.8"/>
+            <line x1="11" y1="14" x2="7" y2="14" stroke="white" strokeWidth="1.5" opacity="0.6"/>
+            <line x1="17" y1="14" x2="21" y2="14" stroke="white" strokeWidth="1.5" opacity="0.6"/>
+            <defs>
+              <linearGradient id="logo-gradient" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#6366f1"/>
+                <stop offset="1" stopColor="#8b5cf6"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <span style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.02em' }}>AILP</span>
+          <span className="dim" style={{ fontWeight: 400, marginLeft: 6, fontSize: 13 }}>AI学习平台</span>
         </a>
 
         <nav className="nav" aria-label="主导航">
@@ -46,7 +68,7 @@ const Topbar = ({ onOpenSearch, onOpenTweaks }) => {
                 if (t.id === "home") navigate('/');
                 else if (t.id === "courses") navigate('/courses');
                 else if (t.id === "progress") navigate('/progress');
-                else if (t.id === "discuss") navigate('/discuss');
+
               }}
             >{t.label}</a>
           ))}
@@ -62,7 +84,14 @@ const Topbar = ({ onOpenSearch, onOpenTweaks }) => {
 
         <button className="icon-btn" title="通知"><Icon name="bell" size={16} /></button>
         <button className="icon-btn" title="设计参数" onClick={onOpenTweaks}><Icon name="settings" size={16} /></button>
-        <div className="avatar" title="learner@jing.dev">LJ</div>
+        {isLoggedIn ? (
+          <div className="avatar" title={user?.email || 'learner'}>{user?.name ? user.name.slice(0, 2).toUpperCase() : (user?.email || '??').slice(0, 2).toUpperCase()}</div>
+        ) : (
+          <div className="hstack" style={{ gap: 8 }}>
+            <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>登录</button>
+            <button className="btn btn-primary btn-sm" onClick={() => navigate('/register')}>注册</button>
+          </div>
+        )}
       </div>
     </header>
   );
@@ -75,7 +104,7 @@ const MobileNav = () => {
     { id: "home", label: "首页", icon: "home" },
     { id: "courses", label: "课程", icon: "book" },
     { id: "progress", label: "进度", icon: "trending" },
-    { id: "discuss", label: "讨论", icon: "message" },
+
   ];
 
   const pathname = location.pathname;
@@ -85,9 +114,7 @@ const MobileNav = () => {
       ? "home"
       : pathname.startsWith('/progress')
         ? "progress"
-        : pathname.startsWith('/discuss')
-          ? "discuss"
-          : pathname.split('/').filter(Boolean)[0] || 'home';
+      : pathname.split('/').filter(Boolean)[0] || 'home';
 
   return (
     <nav className="mobile-nav" aria-label="底部导航">
@@ -97,7 +124,6 @@ const MobileNav = () => {
           if (t.id === "home") navigate('/');
           else if (t.id === "courses") navigate('/courses');
           else if (t.id === "progress") navigate('/progress');
-          else if (t.id === "discuss") navigate('/discuss');
         }}>
           <Icon name={t.icon} size={18} />
           {t.label}
@@ -110,10 +136,10 @@ const MobileNav = () => {
 const CommandPalette = ({ open, onClose }) => {
   const navigate = useNavigate();
   const [q, setQ] = React.useState("");
-  const [courses, setCourses] = React.useState(MOCK_COURSES);
+  const [courses, setCourses] = React.useState([]);
   const inputRef = React.useRef(null);
   React.useEffect(() => {
-    loadCourses().then(setCourses);
+    loadCourses().then(data => setCourses(data || []));
   }, []);
   React.useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 30);

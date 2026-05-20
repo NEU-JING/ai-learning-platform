@@ -1,20 +1,41 @@
 /* Chapter reading screen — Breadcrumb + sticky progress + TOC + content + prev/next */
 import React, { useState, useEffect } from 'react';
 import { Icon } from '../icons';
-import { loadChapter, loadCourses, CURRENT, MOCK_CHAPTER, MOCK_COURSES, PROGRESS_STATS, LEVEL_MAP, CATEGORY_MAP } from '../data';
+import { loadChapter, loadCourseDetail, CURRENT, LEVEL_MAP, CATEGORY_MAP } from '../data';
 import { useNavigate, useParams } from 'react-router-dom';
+import { marked } from 'marked';
+
+// Configure marked for safe rendering
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+  headerIds: true,
+  mangle: false,
+});
 
 const ScreenChapter = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [chapter, setChapter] = useState(MOCK_CHAPTER);
-  const [courses, setCourses] = useState(MOCK_COURSES);
+  const [chapter, setChapter] = useState(null);
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
   useEffect(() => {
-    loadChapter(id).then(ch => { if (ch) setChapter(ch); });
-    loadCourses().then(setCourses);
+    setLoading(true);
+    loadChapter(id).then(ch => {
+      if (ch) {
+        setChapter(ch);
+        loadCourseDetail(ch.course_id).then(courseData => {
+          setCourse(courseData);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    });
   }, [id]);
-  const course = courses.find(c => c.id === chapter.course_id) || courses[2];
-  const chapterList = course.chapters || [];
+  
+  const chapterList = course?.chapters || [];
   const currentIdx = chapterList.findIndex(c => c.id === chapter.id);
   const prev = currentIdx > 0 ? chapterList[currentIdx - 1] : null;
   const next = currentIdx >= 0 && currentIdx < chapterList.length - 1 ? chapterList[currentIdx + 1] : null;
@@ -105,9 +126,11 @@ const ScreenChapter = () => {
         {/* Main content */}
         <main style={{ paddingTop: 8 }}>
           <ChapterHeader chapter={chapter} />
-          <article className="md-body" style={{ marginTop: 24 }}>
-            {chapter.blocks.map((b, i) => <Block key={i} block={b} />)}
-          </article>
+          <article 
+            className="md-body markdown-content" 
+            style={{ marginTop: 24 }}
+            dangerouslySetInnerHTML={{ __html: marked.parse(chapter.content || chapter.sections?.map(s => s.content).join('\n\n') || '') }}
+          />
 
           {/* Lab entry / chapter complete actions */}
           <div className="card" style={{
@@ -236,9 +259,9 @@ const Block = ({ block }) => {
 };
 
 const ChapterSidebar = ({ course, chapters, currentId, toc, activeSection, setActiveSection, onNavigate }) => {
-  const [tab, setTab] = React.useState("toc"); // toc | chapters
+  const [tab, setTab] = React.useState("chapters"); // chapters | toc (default to chapters since it has data)
   return (
-    <div>
+    <div style={{ position: "sticky", top: 120, maxHeight: "calc(100vh - 140px)", overflowY: "auto" }}>
       {/* Tab switch */}
       <div className="hstack" style={{ gap: 2, padding: 2, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 6, marginBottom: 14 }}>
         {[
@@ -413,6 +436,72 @@ const ChapterMarkdownStyle = () => (
       overflow-x: auto;
     }
     .md-body code { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    
+    /* Markdown content styles */
+    .markdown-content h1 { font-size: 28px; font-weight: 700; margin: 32px 0 20px; color: var(--fg); }
+    .markdown-content h2 { font-size: 22px; font-weight: 600; margin: 28px 0 16px; color: var(--fg); border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    .markdown-content h3 { font-size: 18px; font-weight: 600; margin: 24px 0 12px; color: var(--fg); }
+    .markdown-content h4 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; color: var(--fg); }
+    .markdown-content p { margin: 0 0 16px; color: var(--fg-2); line-height: 1.75; }
+    .markdown-content ul, .markdown-content ol { margin: 0 0 16px 24px; color: var(--fg-2); }
+    .markdown-content li { margin-bottom: 8px; }
+    .markdown-content code {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--fg);
+    }
+    .markdown-content pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+    .markdown-content pre code {
+      background: transparent;
+      padding: 0;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .markdown-content blockquote {
+      border-left: 4px solid var(--brand);
+      margin: 20px 0;
+      padding: 12px 20px;
+      background: var(--brand-soft);
+      border-radius: 0 8px 8px 0;
+    }
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+    .markdown-content th,
+    .markdown-content td {
+      border: 1px solid var(--line);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    .markdown-content th {
+      background: var(--surface);
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .markdown-content tr:nth-child(even) {
+      background: var(--surface-2);
+    }
+    .markdown-content strong { color: var(--fg); font-weight: 600; }
+    .markdown-content em { font-style: italic; }
+    .markdown-content a { color: var(--brand); text-decoration: none; }
+    .markdown-content a:hover { text-decoration: underline; }
+    .markdown-content hr { border: none; border-top: 1px solid var(--line); margin: 24px 0; }
+    
+    /* Sidebar sticky styles */
+    .sidebar-sticky { position: sticky; top: 120px; }
   `}</style>
 );
 
