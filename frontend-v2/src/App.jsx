@@ -4,6 +4,7 @@ import { Topbar, MobileNav, CommandPalette } from './nav';
 import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor, TweakButton } from './tweaks-panel';
 import { Icon } from './icons';
 import { CURRENT_USER } from './data';
+import ErrorBoundary from './components/ErrorBoundary';
 import HomePage from './pages/HomePage';
 import WelcomePage from './pages/WelcomePage';
 import RegisterPage from './pages/RegisterPage';
@@ -74,16 +75,18 @@ const AppContent = () => {
       <Topbar onOpenSearch={() => setSearchOpen(true)} onOpenTweaks={() => setTweaksOpen(true)} auth={auth} />
 
       <main className="app-main">
-        <Routes>
-          <Route path="/" element={auth.isLoggedIn ? <HomePage tweaks={t} /> : <WelcomePage />} />
-          <Route path="/courses" element={<CoursesPage />} />
-          <Route path="/courses/:id" element={<CourseDetailPage />} />
-          <Route path="/chapter/:id" element={<ChapterPage />} />
-          <Route path="/lab/:id" element={<LabPage />} />
-          <Route path="/progress" element={<ProgressPage />} />
-          <Route path="/login" element={<LoginPage onLogin={setAuth} />} />
-          <Route path="/register" element={<RegisterPage onLogin={setAuth} />} />
-        </Routes>
+        <ErrorBoundary onRetry={() => window.location.reload()}>
+          <Routes>
+            <Route path="/" element={auth.isLoggedIn ? <HomePage tweaks={t} /> : <WelcomePage />} />
+            <Route path="/courses" element={<CoursesPage />} />
+            <Route path="/courses/:id" element={<CourseDetailPage />} />
+            <Route path="/chapter/:id" element={<ChapterPage />} />
+            <Route path="/lab/:id" element={<LabPage />} />
+            <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/login" element={<LoginPage onLogin={setAuth} />} />
+            <Route path="/register" element={<RegisterPage onLogin={setAuth} />} />
+          </Routes>
+        </ErrorBoundary>
       </main>
 
       <MobileNav />
