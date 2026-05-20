@@ -3,7 +3,11 @@ import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { Topbar, MobileNav, CommandPalette } from './nav';
 import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor, TweakButton } from './tweaks-panel';
 import { Icon } from './icons';
+import { CURRENT_USER } from './data';
 import HomePage from './pages/HomePage';
+import WelcomePage from './pages/WelcomePage';
+import RegisterPage from './pages/RegisterPage';
+import LoginPage from './pages/LoginPage';
 import CoursesPage from './pages/CoursesPage';
 import CourseDetailPage from './pages/CourseDetailPage';
 import ChapterPage from './pages/ChapterPage';
@@ -42,6 +46,7 @@ const AppContent = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const [auth, setAuth] = useState(CURRENT_USER || { isLoggedIn: false, user: null });
 
   // Apply tweak attributes to <html>
   useEffect(() => {
@@ -66,17 +71,18 @@ const AppContent = () => {
 
   return (
     <div className="app">
-      <Topbar onOpenSearch={() => setSearchOpen(true)} onOpenTweaks={() => setTweaksOpen(true)} />
+      <Topbar onOpenSearch={() => setSearchOpen(true)} onOpenTweaks={() => setTweaksOpen(true)} auth={auth} />
 
       <main className="app-main">
         <Routes>
-          <Route path="/" element={<HomePage tweaks={t} />} />
+          <Route path="/" element={auth.isLoggedIn ? <HomePage tweaks={t} /> : <WelcomePage />} />
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/chapter/:id" element={<ChapterPage />} />
           <Route path="/lab/:id" element={<LabPage />} />
           <Route path="/progress" element={<ProgressPage />} />
-          <Route path="/discuss" element={<ScreenStub title="讨论区" desc="P1 阶段开放：每章节问答、共学小组、教研团队答疑。" />} />
+          <Route path="/login" element={<LoginPage onLogin={setAuth} />} />
+          <Route path="/register" element={<RegisterPage onLogin={setAuth} />} />
         </Routes>
       </main>
 

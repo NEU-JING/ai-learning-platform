@@ -154,6 +154,7 @@ class CourseListResponse(CourseBase):
     id: int
     order_index: int
     chapters_count: int = 0
+    labs_count: int = 0
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)

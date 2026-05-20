@@ -2,7 +2,7 @@ import json
 import logging
 from typing import List, Optional, Tuple
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.core.cache import cache_manager
 from app.models import Chapter, Course, LearningProgress
@@ -43,6 +43,7 @@ class CourseService:
                     courses = (
                         db.query(Course)
                         .filter(Course.id.in_(course_ids))
+                        .options(selectinload(Course.chapters).selectinload(Chapter.lab))
                         .order_by(Course.order_index)
                         .all()
                     )
@@ -68,9 +69,9 @@ class CourseService:
         if page is not None:
             _per_page = min(per_page or 20, 100)
             offset = (page - 1) * _per_page
-            courses = query.order_by(Course.order_index).offset(offset).limit(_per_page).all()
+            courses = query.options(selectinload(Course.chapters).selectinload(Chapter.lab)).order_by(Course.order_index).offset(offset).limit(_per_page).all()
         else:
-            courses = query.order_by(Course.order_index).all()
+            courses = query.options(selectinload(Course.chapters).selectinload(Chapter.lab)).order_by(Course.order_index).all()
 
         # Write to cache
         try:

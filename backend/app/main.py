@@ -197,13 +197,14 @@ STATIC_DIR_V2 = os.path.abspath(STATIC_DIR_V2)
 SERVE_STATIC = True  # Always serve static files in this deployment
 
 if SERVE_STATIC and os.path.exists(STATIC_DIR):
-    # 挂载静态文件目录
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-    print(f"✅ 静态文件服务已启用: {STATIC_DIR}")
+    print(f"✅ 旧版静态文件: {STATIC_DIR}")
 
+# V2 作为主前端——assets 和 index.html 都从 dist 目录服务
 if SERVE_STATIC and os.path.exists(STATIC_DIR_V2):
-    app.mount("/v2/assets", StaticFiles(directory=os.path.join(STATIC_DIR_V2, "assets")), name="v2-assets")
-    print(f"✅ V2前端服务已启用: {STATIC_DIR_V2}")
+    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR_V2, "assets")), name="v2-assets")
+    app.mount("/v2/assets", StaticFiles(directory=os.path.join(STATIC_DIR_V2, "assets")), name="v2-assets-legacy")
+    print(f"✅ V2前端 (dist): {STATIC_DIR_V2}")
 
 
 # 注册API路由
@@ -218,10 +219,12 @@ app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["数据�
 
 @app.get("/", response_class=HTMLResponse)
 def root():
-    """首页 - 返回SPA应用"""
-    spa_file = os.path.join(STATIC_DIR, "spa.html")
-    if os.path.exists(spa_file):
-        return FileResponse(spa_file)
+    """首页 - V2 React SPA"""
+    # 优先 V2
+    v2_index = os.path.join(STATIC_DIR_V2, "index.html")
+    if os.path.exists(v2_index):
+        return FileResponse(v2_index)
+    # 回退旧版
     index_file = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)

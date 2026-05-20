@@ -19,24 +19,53 @@ const ScreenChapter = () => {
   const [chapter, setChapter] = useState(null);
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
+    setError(null);
+    
     loadChapter(id).then(ch => {
+      if (cancelled) return;
       if (ch) {
         setChapter(ch);
         loadCourseDetail(ch.course_id).then(courseData => {
-          setCourse(courseData);
-          setLoading(false);
+          if (!cancelled) {
+            setCourse(courseData);
+            setLoading(false);
+          }
+        }).catch(err => {
+          if (!cancelled) {
+            setError('加载课程信息失败');
+            setLoading(false);
+          }
         });
       } else {
+        setError('章节不存在或加载失败');
+        setLoading(false);
+      }
+    }).catch(err => {
+      if (!cancelled) {
+        setError('加载章节失败');
         setLoading(false);
       }
     });
+    
+    return () => { cancelled = true; };
   }, [id]);
   
+  // Loading state
+  if (loading) return <ChapterSkeleton />;
+  
+  // Error state
+  if (error) return <ChapterError message={error} onRetry={() => window.location.reload()} />;
+  
+  // Empty state
+  if (!chapter) return <ChapterError message="章节不存在" onRetry={() => navigate('/courses')} />;
+  
   const chapterList = course?.chapters || [];
-  const currentIdx = chapterList.findIndex(c => c.id === chapter.id);
+  const currentIdx = chapterList.findIndex(c => c.id === chapter?.id);
   const prev = currentIdx > 0 ? chapterList[currentIdx - 1] : null;
   const next = currentIdx >= 0 && currentIdx < chapterList.length - 1 ? chapterList[currentIdx + 1] : null;
   const pct = chapterList.length ? Math.round((currentIdx + 1) / chapterList.length * 100) : 0;
@@ -145,7 +174,7 @@ const ScreenChapter = () => {
                 完成《信用卡欺诈检测》实验巩固本章知识。Recall ≥ 0.85，Precision ≥ 0.70。
               </div>
             </div>
-            <button className="btn btn-primary" onClick={() => navigate('/lab/35')}>
+            <button className="btn btn-primary" onClick={() => chapter?.lab_id && navigate('/lab/' + chapter.lab_id)} disabled={!chapter?.lab_id}>
               <Icon name="flask" size={13} /> 进入实验
             </button>
           </div>
@@ -498,11 +527,61 @@ const ChapterMarkdownStyle = () => (
     .markdown-content em { font-style: italic; }
     .markdown-content a { color: var(--brand); text-decoration: none; }
     .markdown-content a:hover { text-decoration: underline; }
-    .markdown-content hr { border: none; border-top: 1px solid var(--line); margin: 24px 0; }
     
-    /* Sidebar sticky styles */
-    .sidebar-sticky { position: sticky; top: 120px; }
+    /* Skeleton loading animation */
+    @keyframes skeleton-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .skeleton {
+      background: var(--surface);
+      border-radius: 6px;
+      animation: skeleton-pulse 1.5s ease-in-out infinite;
+    }
+    .skeleton-text { height: 16px; margin-bottom: 12px; }
+    .skeleton-title { height: 24px; margin-bottom: 16px; width: 60%; }
+    .skeleton-line { height: 12px; margin-bottom: 8px; }
   `}</style>
+);
+
+/* Loading skeleton component */
+const ChapterSkeleton = () => (
+  <div className="screen">
+    <div style={{ position: "sticky", top: 56, zIndex: 40, background: "var(--bg)", borderBottom: "1px solid var(--line)" }}>
+      <div className="container hstack" style={{ height: 48 }}>
+        <div className="skeleton" style={{ width: 120, height: 16 }} />
+      </div>
+    </div>
+    <div className="container layout-2col-left" style={{ paddingTop: 24 }}>
+      <aside className="sidebar">
+        <div className="skeleton" style={{ width: "100%", height: 200 }} />
+      </aside>
+      <main>
+        <div className="skeleton skeleton-title" />
+        <div className="skeleton skeleton-text" style={{ width: "80%" }} />
+        <div className="skeleton skeleton-line" />
+        <div className="skeleton skeleton-line" style={{ width: "90%" }} />
+        <div className="skeleton skeleton-line" />
+        <div className="skeleton skeleton-line" style={{ width: "70%" }} />
+      </main>
+    </div>
+    <ChapterMarkdownStyle />
+  </div>
+);
+
+/* Error state component */
+const ChapterError = ({ message, onRetry }) => (
+  <div className="screen" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+    <div className="card" style={{ padding: 40, textAlign: "center", maxWidth: 400 }}>
+      <Icon name="alertCircle" size={48} style={{ color: "var(--warn)", marginBottom: 16 }} />
+      <h3 style={{ marginBottom: 8 }}>加载失败</h3>
+      <p className="dim" style={{ marginBottom: 24 }}>{message}</p>
+      <button className="btn btn-primary" onClick={onRetry}>
+        <Icon name="refresh" size={14} /> 重试
+      </button>
+    </div>
+    <ChapterMarkdownStyle />
+  </div>
 );
 
 export default ScreenChapter;

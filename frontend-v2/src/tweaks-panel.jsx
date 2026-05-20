@@ -267,7 +267,8 @@ function TweaksPanel({ title = 'Tweaks', noDeckControls = false, open: openProp,
   }, [openProp]);
 
   const dismiss = () => {
-    setOpen(false);
+    if (onClose) onClose();
+    else setInternalOpen(false);
     window.parent.postMessage({ type: '__edit_mode_dismissed' }, '*');
   };
 

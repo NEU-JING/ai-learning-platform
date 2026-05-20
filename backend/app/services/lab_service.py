@@ -19,6 +19,11 @@ from app.services.grader import CodeGrader
 
 class LabService:
     @staticmethod
+    def get_lab(db: Session, lab_id: int) -> Lab | None:
+        """Get lab by ID (public view, no solution)."""
+        return db.query(Lab).filter(Lab.id == lab_id).first()
+
+    @staticmethod
     def submit_and_grade(
         db: Session,
         user_id: int,

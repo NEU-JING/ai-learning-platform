@@ -55,8 +55,14 @@ async function loadChapter(chapterId) {
 
 // ── Lab loading ──────────────────────────────────────────
 async function loadLab(labId, chapterId) {
+  // 优先通过 chapterId 获取（推荐方式）
   if (chapterId) {
     const data = await fetchAPI(`/courses/chapters/${chapterId}/lab`);
+    if (data) return apiLabToUI(data);
+  }
+  //  fallback：通过 labId 直接获取（需要后端支持）
+  if (labId) {
+    const data = await fetchAPI(`/labs/${labId}`);
     if (data) return apiLabToUI(data);
   }
   return null;

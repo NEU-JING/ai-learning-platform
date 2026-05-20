@@ -70,6 +70,13 @@ class Course(Base):
     def chapters_count(self):
         return len(self.chapters) if self.chapters else 0
 
+    @property
+    def labs_count(self):
+        """Count labs across all chapters in this course."""
+        if not self.chapters:
+            return 0
+        return sum(1 for ch in self.chapters if ch.lab is not None)
+
 
 class Chapter(Base):
     __tablename__ = "chapters"

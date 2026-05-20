@@ -90,6 +90,12 @@ def get_chapter_lab(chapter_id: int, db: Session = Depends(get_db)):
     return course_service.get_chapter_lab(db, chapter_id)
 
 
+@router.get("/labs/{lab_id}", response_model=Optional[LabPublicResponse])
+def get_lab_by_id(lab_id: int, db: Session = Depends(get_db)):
+    """Get lab detail by lab ID (public view, no solution)."""
+    return lab_service.get_lab(db, lab_id)
+
+
 @router.post("/labs/{lab_id}/submit", response_model=LabSubmissionResponse)
 def submit_lab(
     lab_id: int,
