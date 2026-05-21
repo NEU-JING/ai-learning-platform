@@ -117,56 +117,48 @@ async def lifespan(app: FastAPI):
         db.close()
     print("✅ 数据库初始化完成（数据契约校验通过）")
 
-    # 异步检查沙箱镜像（不阻塞启动）
-    async def check_sandbox_image():
-        """后台检查沙箱镜像，避免阻塞启动"""
-        try:
-            from app.services.code_executor import get_sandbox_image_info
+    # 检查沙箱镜像（同步检查，不阻塞启动）
+    # Docker 构建在后台进行，不影响应用启动
+    try:
+        from app.services.code_executor import get_sandbox_image_info
 
-            print("🔍 正在检查 Docker 沙箱镜像...")
-            image_info = get_sandbox_image_info()
+        print("🔍 正在检查 Docker 沙箱镜像...")
+        image_info = get_sandbox_image_info()
 
-            if not image_info["docker_available"]:
-                print("⚠️ Docker 不可用，代码执行将使用本地回退模式")
-                print("   如需使用 Docker 沙箱，请确保 Docker 服务已启动")
-                return
-
-            if image_info["image_exists"]:
-                print(f"✅ 沙箱镜像已存在: {image_info['image_tag']}")
-                ver = image_info["image_details"]["labels"].get("sandbox.version", "unknown")
-                print(f"   镜像版本: {ver}")
-                print(f"   镜像大小: {_format_size(image_info['image_details'].get('size', 0))}")
-            else:
-                print(f"⏳ 沙箱镜像未找到，正在后台构建: {image_info['image_tag']}")
-                # 异步构建镜像，不等待完成
-                asyncio.create_task(_build_sandbox_image_async())
-        except Exception as e:
-            print(f"⚠️ 沙箱镜像检查失败: {e}")
-            print("   代码执行将使用本地回退模式")
-
-    async def _build_sandbox_image_async():
-        """后台异步构建沙箱镜像"""
-        try:
-            from app.services.code_executor import ensure_sandbox_image
-
-            success = await ensure_sandbox_image()
-            if success:
-                print("✅ 沙箱镜像后台构建完成")
-            else:
-                print("⚠️ 沙箱镜像构建失败，代码执行将使用本地回退模式")
-        except asyncio.CancelledError:
-            # 正常取消，不打印错误
-            pass
-        except Exception as e:
-            print(f"❌ 沙箱镜像后台构建异常: {e}")
-            print("   代码执行将使用本地回退模式")
-
-    # 启动后台检查任务
-    asyncio.create_task(check_sandbox_image())
+        if os.environ.get("DISABLE_DOCKER_SANDBOX") == "1":
+            print("ℹ️ Docker 沙箱已禁用（DISABLE_DOCKER_SANDBOX=1），使用本地回退模式")
+        elif not image_info["docker_available"]:
+            print("⚠️ Docker 不可用，代码执行将使用本地回退模式")
+        elif image_info["image_exists"]:
+            print(f"✅ 沙箱镜像已存在: {image_info['image_tag']}")
+        else:
+            print(f"⏳ 沙箱镜像未找到，将在后台异步构建")
+            # 在后台启动镜像构建任务（不等待完成）
+            asyncio.create_task(_build_sandbox_image_async())
+    except Exception as e:
+        print(f"⚠️ 沙箱镜像检查失败: {e}")
+        print("   代码执行将使用本地回退模式")
 
     yield
     # 关闭时的清理
     print("👋 应用关闭")
+
+
+async def _build_sandbox_image_async():
+    """后台异步构建沙箱镜像"""
+    try:
+        from app.services.code_executor import ensure_sandbox_image
+
+        success = await ensure_sandbox_image()
+        if success:
+            print("✅ 沙箱镜像后台构建完成")
+        else:
+            print("⚠️ 沙箱镜像构建失败，代码执行将使用本地回退模式")
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        print(f"❌ 沙箱镜像后台构建异常: {e}")
+        print("   代码执行将使用本地回退模式")
 
 
 app = FastAPI(
