@@ -130,7 +130,8 @@ async def ensure_sandbox_image(force_rebuild: bool = False) -> bool:
                     needs_rebuild = True
 
             # 构建镜像
-            sandbox_dir = Path(__file__).parent.parent.parent.parent.parent / "sandbox"
+            # 从backend/app/services/code_executor.py -> 项目根目录/sandbox
+            sandbox_dir = Path(__file__).parent.parent.parent.parent / "sandbox"
             if not sandbox_dir.exists():
                 print(f"❌ 沙箱目录不存在: {sandbox_dir}")
                 _image_checked = True

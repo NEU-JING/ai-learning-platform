@@ -30,11 +30,12 @@ FORBIDDEN_BUILTINS = {
 }
 
 FORBIDDEN_MODULES = {
-    'os', 'sys', 'subprocess', 'socket', 'urllib', 'urllib2',
+    'subprocess', 'socket', 'urllib', 'urllib2',
     'httplib', 'ftplib', 'poplib', 'imaplib', 'smtplib',
     'requests', 'wget', 'curl', 'pty', 'tty', 'signal',
     'multiprocessing', 'threading', 'asyncio', 'concurrent',
-    'ssl'  # hashlib is allowed (needed for crypto exercises)
+    'ssl', 'os', 'sys'
+    # Note: hashlib is allowed (needed for crypto exercises)
 }
 
 # ========== 安全限制 ==========
