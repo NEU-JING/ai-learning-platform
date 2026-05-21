@@ -6,9 +6,10 @@ happens inside the Docker sandbox via code_executor.
 
 import ast
 import json
+import os
+import subprocess
+import tempfile
 from typing import Any, Dict, List, Optional
-
-from app.services.code_executor import execute_code_docker
 
 
 class CodeGrader:
@@ -20,7 +21,7 @@ class CodeGrader:
         test_cases,
         timeout: int = 30,
     ) -> Dict[str, Any]:
-        """Execute grading inside the Docker sandbox.
+        """Execute grading inside the sandbox.
 
         Supports two test_cases formats:
         - List[Dict]: structured test cases (new format)
@@ -58,17 +59,8 @@ class CodeGrader:
         else:
             grading_code = CodeGrader._build_grading_script(code, test_cases)
 
-        # 3. Execute in sandbox (skip security check — grader scripts are system-generated)
-        import asyncio
-
-        try:
-            result = asyncio.get_event_loop().run_until_complete(
-                execute_code_docker(grading_code, timeout=timeout, skip_security=True)
-            )
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            result = loop.run_until_complete(execute_code_docker(grading_code, timeout=timeout, skip_security=True))
-            loop.close()
+        # 3. Execute in sandbox using subprocess (synchronous)
+        result = CodeGrader._execute_code_sync(grading_code, timeout=timeout)
 
         if not result.get("success"):
             return {
@@ -103,6 +95,121 @@ class CodeGrader:
             "test_results": test_results,
             "feedback": feedback,
         }
+
+    @staticmethod
+    def _execute_code_sync(code: str, timeout: int = 30) -> Dict[str, Any]:
+        """同步执行代码（用于 grader，避免 asyncio 嵌套问题）"""
+        temp_file = None
+        try:
+            # 包装代码，限制资源和输出
+            indented_code = "\n".join("    " + line for line in code.split("\n"))
+            wrapped_code = f"""import sys
+import io
+import resource
+import signal
+import json
+
+# 设置资源限制
+def set_limits():
+    try:
+        resource.setrlimit(resource.RLIMIT_CPU, ({timeout}, {timeout} + 1))
+        resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024, 256 * 1024 * 1024))
+        resource.setrlimit(resource.RLIMIT_FSIZE, (1024 * 1024, 1024 * 1024))
+        resource.setrlimit(resource.RLIMIT_NPROC, (0, 0))
+    except Exception:
+        pass
+
+set_limits()
+
+# 重定向输出
+old_stdout = sys.stdout
+old_stderr = sys.stderr
+sys.stdout = io.StringIO()
+sys.stderr = io.StringIO()
+
+# 执行用户代码（通过 exec 避免缩进陷阱）
+_user_code = {repr(code)}
+try:
+    exec(_user_code)
+except Exception as e:
+    import traceback
+    print(f"Error: {{e}}", file=sys.stderr)
+    traceback.print_exc(file=sys.stderr)
+
+# 获取输出
+output = sys.stdout.getvalue()
+error = sys.stderr.getvalue()
+sys.stdout = old_stdout
+sys.stderr = old_stderr
+
+# 限制输出大小
+MAX_OUTPUT = 10000
+if len(output) > MAX_OUTPUT:
+    output = output[:MAX_OUTPUT] + "\\n[输出已截断]"
+if len(error) > MAX_OUTPUT:
+    error = error[:MAX_OUTPUT] + "\\n[错误输出已截断]"
+
+result = {{
+    "success": len(error) == 0,
+    "output": output,
+    "error": error if error else None
+}}
+print("===RESULT_START===")
+print(json.dumps(result))
+print("===RESULT_END===")
+"""
+
+            # 创建临时文件
+            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
+                f.write(wrapped_code)
+                temp_file = f.name
+
+            # 使用 subprocess 执行（同步）
+            proc = subprocess.run(
+                ["python3", temp_file],
+                capture_output=True,
+                text=True,
+                timeout=timeout + 5,  # 额外缓冲时间
+            )
+
+            stdout = proc.stdout
+            stderr = proc.stderr
+
+            # 尝试从输出中提取 JSON 结果
+            if "===RESULT_START===" in stdout and "===RESULT_END===" in stdout:
+                try:
+                    start = stdout.index("===RESULT_START===") + len("===RESULT_START===")
+                    end = stdout.index("===RESULT_END===")
+                    json_str = stdout[start:end].strip()
+                    return json.loads(json_str)
+                except Exception:
+                    pass
+
+            # 解析失败，返回原始输出
+            return {
+                "success": proc.returncode == 0,
+                "output": stdout[:10000],
+                "error": stderr[:10000] if stderr else None,
+            }
+
+        except subprocess.TimeoutExpired:
+            return {
+                "success": False,
+                "output": "",
+                "error": f"代码执行超时（超过{timeout}秒）",
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "output": "",
+                "error": f"执行错误: {str(e)}",
+            }
+        finally:
+            if temp_file:
+                try:
+                    os.unlink(temp_file)
+                except Exception:
+                    pass
 
     @staticmethod
     def check_syntax(code: str) -> tuple[bool, Optional[str]]:
