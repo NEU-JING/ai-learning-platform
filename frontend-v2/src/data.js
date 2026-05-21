@@ -70,7 +70,7 @@ async function loadLab(labId, chapterId) {
 
 // ── Progress loading ─────────────────────────────────────
 async function loadProgressStats() {
-  const data = await fetchAPI('/progress/stats');
+  const data = await fetchAPI('/progress/stats/summary');
   if (data) return data;
   return null;
 }
@@ -83,9 +83,8 @@ async function loadUserProgress() {
 
 // ── Stats loading ────────────────────────────────────────
 async function loadPlatformStats() {
-  const data = await fetchAPI('/stats/');
-  if (data) return data;
-  return null;
+  // Platform stats currently use the same endpoint as user progress stats
+  return loadProgressStats();
 }
 
 // ── API → UI transforms ──────────────────────────────────
