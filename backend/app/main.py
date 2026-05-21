@@ -154,8 +154,12 @@ async def lifespan(app: FastAPI):
                 print("✅ 沙箱镜像后台构建完成")
             else:
                 print("⚠️ 沙箱镜像构建失败，代码执行将使用本地回退模式")
+        except asyncio.CancelledError:
+            # 正常取消，不打印错误
+            pass
         except Exception as e:
             print(f"❌ 沙箱镜像后台构建异常: {e}")
+            print("   代码执行将使用本地回退模式")
 
     # 启动后台检查任务
     asyncio.create_task(check_sandbox_image())

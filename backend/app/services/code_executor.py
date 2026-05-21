@@ -183,6 +183,12 @@ async def ensure_sandbox_image(force_rebuild: bool = False) -> bool:
                 _image_checked = True
                 _image_exists = False
                 return False
+            except Exception as e:
+                # 捕获所有其他构建异常（如网络超时）
+                print(f"❌ 镜像构建异常: {e}")
+                _image_checked = True
+                _image_exists = False
+                return False
 
         except Exception as e:
             print(f"❌ 检查/构建沙箱镜像失败: {e}")
