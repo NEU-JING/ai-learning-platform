@@ -5,6 +5,7 @@ import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor, TweakButt
 import { Icon } from './icons';
 import { CURRENT_USER } from './data';
 import ErrorBoundary from './components/ErrorBoundary';
+import { AnalyticsProvider } from './useAnalytics';
 import HomePage from './pages/HomePage';
 import WelcomePage from './pages/WelcomePage';
 import RegisterPage from './pages/RegisterPage';
@@ -71,6 +72,7 @@ const AppContent = () => {
   }, []);
 
   return (
+    <AnalyticsProvider userId={auth.user?.id}>
     <div className="app">
       <Topbar onOpenSearch={() => setSearchOpen(true)} onOpenTweaks={() => setTweaksOpen(true)} auth={auth} />
 
@@ -154,6 +156,7 @@ const AppContent = () => {
         <TweakButton label="06 · 学习进度" onClick={() => window.location.hash = '#/progress' } secondary />
       </TweaksPanel>
     </div>
+    </AnalyticsProvider>
   );
 };
 

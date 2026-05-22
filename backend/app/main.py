@@ -7,13 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.v1 import analytics, auth, certificates, courses, discussions, labs, progress
+from app.api.v1 import analytics, auth, certificates, courses, discussions, labs, progress, recommendations, skills
 from app.core.config import settings
 from app.core.database import SessionLocal, init_db
 from app.data.courses import PHASE_TITLES, init_courses_data
 from app.data.courses_phase1 import init_phase1_data
 from app.data.courses_phase2 import init_phase2_data
 from app.data.courses_phase3_6 import init_phase3_6_data
+from app.data.learning_paths import init_learning_paths
 
 
 def _assert_data_contract(db):
@@ -99,6 +100,8 @@ async def lifespan(app: FastAPI):
     try:
         # Step 1: Create course shells + clean up orphan courses
         init_courses_data(db)
+        # Step 1b: Initialize learning paths (multi-path curriculum)
+        init_learning_paths(db)
         # Step 2: Load Phase 1/2 from high-quality JSON files
         init_phase1_data(db)
         init_phase2_data(db)
@@ -211,6 +214,8 @@ app.include_router(progress.router, prefix="/api/v1/progress", tags=["学习进�
 app.include_router(certificates.router, prefix="/api/v1/certificates", tags=["证书"])
 app.include_router(discussions.router, prefix="/api/v1", tags=["讨论区"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["数据分析"])
+app.include_router(skills.router, prefix="/api/v1/skills", tags=["技能雷达"])
+app.include_router(recommendations.router, prefix="/api/v1", tags=["个性化推荐"])
 
 
 @app.get("/", response_class=HTMLResponse)

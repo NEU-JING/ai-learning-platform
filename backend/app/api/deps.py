@@ -91,3 +91,7 @@ def get_optional_current_user(
         return user
     except (ValueError, TypeError, JWTError):
         return None
+
+
+# Alias for analytics / other contexts that prefer this naming convention
+get_current_user_optional = get_optional_current_user

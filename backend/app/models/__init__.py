@@ -251,3 +251,125 @@ class AnalyticsEvent(Base):
 
     # relationships
     user = relationship("User")
+
+
+# ── V3: User Profile & Learning Paths ──────────────────────────────────────────
+
+class UserSettings(Base):
+    """用户画像设置 — 每个用户一条记录，存储学习路径偏好和背景信息。"""
+
+    __tablename__ = "user_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    learning_path = Column(String(50), nullable=True)  # ai_expert / ai_engineer / ai_practitioner / ai_manager
+    background_language = Column(String(50), nullable=True)  # java / python / javascript / other
+    background_industry = Column(String(50), nullable=True)  # finance / internet / manufacturing / other
+    ai_experience_level = Column(String(20), nullable=True)  # beginner / concept_aware / api_user
+    assessment_completed = Column(Boolean, default=False)
+    assessment_score = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    # relationships
+    user = relationship("User")
+
+
+class UserSkillScore(Base):
+    """用户技能雷达评分 — 多维度 0-100 分。"""
+
+    __tablename__ = "user_skill_scores"
+    __table_args__ = (UniqueConstraint("user_id", "dimension", name="uq_user_skill_dimension"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    dimension = Column(String(30), nullable=False)  # python / math / ml / dl / llm / engineering / coding_harness / ai_application / ai_strategy
+    score = Column(Float, default=0.0)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    # relationships
+    user = relationship("User")
+
+
+class UserAchievement(Base):
+    """用户成就/徽章 — 每个用户可拥有多个成就。"""
+
+    __tablename__ = "user_achievements"
+    __table_args__ = (UniqueConstraint("user_id", "achievement_type", name="uq_user_achievement_type"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    achievement_type = Column(String(50), nullable=False)  # streak_7 / first_lab_pass / all_labs_phase1 / speed_demon / perfect_score
+    title = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
+    icon = Column(String(50), nullable=True)
+    earned_at = Column(DateTime, default=_utcnow)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    # relationships
+    user = relationship("User")
+
+
+class LearningPath(Base):
+    """学习路径定义 — 多路径课程体系的路径元数据。"""
+
+    __tablename__ = "learning_paths"
+
+    id = Column(Integer, primary_key=True, index=True)
+    path_id = Column(String(30), unique=True, index=True, nullable=False)  # ai_expert / ai_engineer / ai_practitioner / ai_manager
+    title = Column(String(100), nullable=False)
+    subtitle = Column(String(200), nullable=True)
+    description = Column(Text, nullable=False)
+    target_role = Column(String(100), nullable=False)
+    estimated_weeks = Column(Integer, nullable=False)
+    is_published = Column(Boolean, default=True)
+    order_index = Column(Integer, default=0)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    # relationships
+    modules = relationship("LearningPathModule", back_populates="learning_path")
+
+
+class LearningPathModule(Base):
+    """路径-课程模块关联 — 多对多桥接表，定义每条路径包含哪些课程。"""
+
+    __tablename__ = "learning_path_modules"
+    __table_args__ = (UniqueConstraint("path_id", "course_id", name="uq_path_course"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    path_id = Column(String(30), ForeignKey("learning_paths.path_id"), nullable=False)
+    course_id = Column(Integer, ForeignKey("courses.id"), nullable=False)
+    requirement = Column(String(20), default="required")  # required / recommended / optional
+    order_index = Column(Integer, default=0)
+    created_at = Column(DateTime, default=_utcnow)
+    updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
+
+    # relationships
+    learning_path = relationship("LearningPath", back_populates="modules")
+    course = relationship("Course")
+
+
+__all__ = [
+    "Base",
+    "User",
+    "Course",
+    "Chapter",
+    "Lab",
+    "LearningProgress",
+    "LabSubmission",
+    "Discussion",
+    "Comment",
+    "DiscussionLike",
+    "CommentLike",
+    "AnalyticsEvent",
+    # V3 additions
+    "UserSettings",
+    "UserSkillScore",
+    "UserAchievement",
+    "LearningPath",
+    "LearningPathModule",
+]
+

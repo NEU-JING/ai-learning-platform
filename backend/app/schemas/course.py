@@ -200,8 +200,35 @@ class LabSubmissionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-# ── Code Execution ───────────────────────────────────────
 
+# ── Learning Path ────────────────────────────────────────
+
+
+class LearningPathModuleResponse(BaseModel):
+    course_id: int
+    course_title: str
+    requirement: str
+    order_index: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LearningPathResponse(BaseModel):
+    path_id: str
+    title: str
+    subtitle: Optional[str] = None
+    target_role: str
+    estimated_weeks: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LearningPathDetailResponse(LearningPathResponse):
+    description: str
+    modules: list[LearningPathModuleResponse]
+
+
+# ── Code Execution ───────────────────────────────────────
 
 class CodeExecutionRequest(BaseModel):
     code: str
