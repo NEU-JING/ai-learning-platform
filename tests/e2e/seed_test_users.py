@@ -114,9 +114,9 @@ def main():
     if token:
         set_profile(token, "e2e_partial", is_public=True,
                     display_name="部分隐藏用户")
-        # Second call: disable labs, certs, basic_info; keep skill_radar
+        # Second call: disable labs, certs; keep basic_info + skill_radar
         set_profile(token, "e2e_partial",
-                    show_labs=False, show_certificates=False, show_basic_info=False,
+                    show_labs=False, show_certificates=False,
                     show_skill_radar=True)
 
     # e2e_hidden_all: profile ON but all dimensions hidden
