@@ -11,7 +11,6 @@ Covers:
   - bio exceeds 200 chars validation
 """
 
-
 from app.core.security import create_access_token, get_password_hash
 from app.models import User
 

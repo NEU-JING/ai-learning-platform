@@ -24,7 +24,6 @@ Full lifecycle:
 
 import threading
 
-
 from app.core.security import create_access_token, get_password_hash
 from app.models import (
     Chapter,

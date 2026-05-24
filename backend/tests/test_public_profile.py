@@ -10,7 +10,6 @@ Covers:
   - Deleted/disabled user (is_active=false): 404 (BR9)
 """
 
-
 from app.core.security import get_password_hash
 from app.models import (
     Chapter,

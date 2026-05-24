@@ -8,7 +8,6 @@ Covers:
   - OG tags are dynamically injected from user profile data
 """
 
-
 from app.core.security import get_password_hash
 from app.models import User
 from app.models.user_profile import UserProfile
