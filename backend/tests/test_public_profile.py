@@ -1,7 +1,8 @@
 """Tests for public profile data API (Task-2).
 
 Covers:
-  - Full visibility: returns complete data (display_name, bio, avatar_url, skill_radar, labs, certificates)
+  - Full visibility: returns complete data
+    (display_name, bio, avatar_url, skill_radar, labs, certificates)
   - Partial visibility: hidden fields return null/[], other fields normal
   - User not found: 404 + "该用户不存在"
   - UserProfile not exists (never configured): 403 + "该用户尚未公开能力主页"
@@ -284,8 +285,8 @@ class TestNoProfileRecord:
     """User exists but never configured UserProfile → 403."""
 
     def test_no_profile_returns_403(self, client, test_db):
-        user = _make_user(test_db, username="noprofile")
-        # No UserProfile created
+        _make_user(test_db, username="noprofile")
+        # No UserProfile created — expect 403
 
         resp = client.get(PUBLIC_URL.format(username="noprofile"))
         assert resp.status_code == 403

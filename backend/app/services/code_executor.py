@@ -294,7 +294,6 @@ async def execute_code_subprocess_fallback(code: str, timeout: int = DEFAULT_TIM
         # 包装代码，限制资源和输出
         # 包装代码，限制资源和输出
         # 用户代码通过 exec() 执行，避免函数外 return/yield 导致 SyntaxError
-        indented_code = chr(10).join("    " + line for line in code.split(chr(10)))
         wrapped_code = f"""import sys
 import io
 import resource

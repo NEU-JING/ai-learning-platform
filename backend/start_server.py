@@ -24,7 +24,7 @@ def signal_handler(signum, frame):
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)
 
-import uvicorn
+import uvicorn  # noqa: E402 — placed after signal handlers to avoid early import
 
 if __name__ == "__main__":
     print("Starting AILP backend server...")

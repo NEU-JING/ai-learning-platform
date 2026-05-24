@@ -102,7 +102,6 @@ class CodeGrader:
         temp_file = None
         try:
             # 包装代码，限制资源和输出
-            indented_code = "\n".join("    " + line for line in code.split("\n"))
             wrapped_code = f"""import sys
 import io
 import resource

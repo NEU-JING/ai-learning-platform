@@ -382,8 +382,8 @@ class TestAC7ProfileNotEnabled:
     """AC7: User exists but profile not enabled → 403."""
 
     def test_never_enabled_returns_403(self, client, test_db):
-        user = _make_user(test_db, username="ac7zhouba")
-        # No UserProfile created
+        _make_user(test_db, username="ac7zhouba")
+        # No UserProfile created — expect 403
 
         resp = client.get(PUBLIC_URL.format(username="ac7zhouba"))
         assert resp.status_code == 403
