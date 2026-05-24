@@ -23,10 +23,7 @@ Full lifecycle:
 """
 
 import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import pytest
-from fastapi.testclient import TestClient
 
 from app.core.security import create_access_token, get_password_hash
 from app.models import (
@@ -64,7 +61,7 @@ def _make_user(
     test_db.refresh(user)
     if with_auth:
         token = create_access_token(data={"sub": user.id})
-        return user, {f"Authorization": f"Bearer {token}"}
+        return user, {"Authorization": f"Bearer {token}"}
     return user
 
 
@@ -480,7 +477,7 @@ class TestAC9LargeDataset:
         user = _make_user(test_db, username="ac9order")
         _enable_profile(test_db, user)
 
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         for i in range(3):
             d = _make_course_with_lab(test_db, title=f"Order-Course-{i}")

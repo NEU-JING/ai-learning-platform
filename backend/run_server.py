@@ -2,8 +2,8 @@
 """Start server in a separate process that won't be affected by parent signals"""
 
 import os
-import sys
 import subprocess
+import sys
 import time
 
 os.chdir("/root/workspace/ai-learning-platform/backend")

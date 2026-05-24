@@ -146,7 +146,7 @@ async def lifespan(app: FastAPI):
         elif image_info["image_exists"]:
             print(f"✅ 沙箱镜像已存在: {image_info['image_tag']}")
         else:
-            print(f"⏳ 沙箱镜像未找到，将在后台异步构建")
+            print("⏳ 沙箱镜像未找到，将在后台异步构建")
             # 在后台启动镜像构建任务（不等待完成）
             asyncio.create_task(_build_sandbox_image_async())
     except Exception as e:
@@ -339,7 +339,7 @@ def _build_og_tags(username: str) -> str:
         tags = [
             f'<meta property="og:title" content="{_html_escape(display_name)} - AILP能力主页">',
             f'<meta property="og:description" content="{_html_escape(bio)}">',
-            f'<meta property="og:type" content="profile">',
+            '<meta property="og:type" content="profile">',
             f'<meta property="og:url" content="/p/{_html_escape(username)}">',
         ]
 

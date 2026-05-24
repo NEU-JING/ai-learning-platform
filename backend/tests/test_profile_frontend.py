@@ -8,8 +8,6 @@ Covers:
   - OG tags are dynamically injected from user profile data
 """
 
-import pytest
-from fastapi.testclient import TestClient
 
 from app.core.security import get_password_hash
 from app.models import User

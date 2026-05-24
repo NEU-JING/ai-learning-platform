@@ -10,10 +10,8 @@ Covers:
   - Deleted/disabled user (is_active=false): 404 (BR9)
 """
 
-import pytest
-from fastapi.testclient import TestClient
 
-from app.core.security import create_access_token, get_password_hash
+from app.core.security import get_password_hash
 from app.models import (
     Chapter,
     Course,
@@ -363,7 +361,7 @@ class TestLabListOrdering:
         d2 = _make_course_with_lab(test_db, title="Course B")
 
         # Submission for lab 1 (earlier)
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         yesterday = datetime.now(timezone.utc) - timedelta(days=1)
         sub1 = LabSubmission(

@@ -9,7 +9,6 @@ Handles cold-start gracefully: new users with no data get sensible defaults.
 
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime, timedelta, timezone
 

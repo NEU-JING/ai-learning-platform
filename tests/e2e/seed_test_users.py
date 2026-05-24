@@ -109,10 +109,14 @@ def main():
                     display_name="公开用户", bio="这是公开用户的一句话简介")
 
     # e2e_partial: only skill_radar visible, display_name="部分隐藏用户"
+    # BR5 auto-enables all when is_public first set → need second call to disable
     token = login("e2e_partial@test.com")
     if token:
         set_profile(token, "e2e_partial", is_public=True,
-                    display_name="部分隐藏用户",
+                    display_name="部分隐藏用户")
+        # Second call: disable labs, certs, basic_info; keep skill_radar
+        set_profile(token, "e2e_partial",
+                    show_labs=False, show_certificates=False, show_basic_info=False,
                     show_skill_radar=True)
 
     # e2e_hidden_all: profile ON but all dimensions hidden

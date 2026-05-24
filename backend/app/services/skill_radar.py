@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from app.models import (
     AnalyticsEvent,
     Chapter,
-    Course,
     Lab,
     LabSubmission,
     LearningProgress,

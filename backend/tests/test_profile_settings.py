@@ -11,8 +11,6 @@ Covers:
   - bio exceeds 200 chars validation
 """
 
-import pytest
-from fastapi.testclient import TestClient
 
 from app.core.security import create_access_token, get_password_hash
 from app.models import User

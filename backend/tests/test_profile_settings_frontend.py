@@ -11,12 +11,9 @@ Covers:
   - Navigation entry for "我的公开主页" exists
 """
 
-import pytest
-from fastapi.testclient import TestClient
 
 from app.core.security import create_access_token, get_password_hash
 from app.models import User
-from app.models.user_profile import UserProfile
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 

@@ -11,9 +11,8 @@ Covers:
   - AnalyticsEvent records created in DB
 """
 
-import logging
-import pytest
 from unittest.mock import patch
+
 
 from app.core.security import create_access_token, get_password_hash
 from app.models import AnalyticsEvent, User

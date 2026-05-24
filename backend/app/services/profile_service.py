@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session
 from app.models import (
     Chapter,
     Course,
-    Lab,
     LabSubmission,
     LearningProgress,
     User,

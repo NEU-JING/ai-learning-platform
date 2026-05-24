@@ -1,6 +1,5 @@
 """Analytics service — event ingestion with optional Redis Streams publishing."""
 
-import json
 import logging
 from datetime import datetime, timezone
 

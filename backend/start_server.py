@@ -5,8 +5,8 @@ This script handles proper signal handling for background execution.
 """
 
 import os
-import sys
 import signal
+import sys
 
 # Must set before any imports
 os.environ["DISABLE_DOCKER_SANDBOX"] = "1"
