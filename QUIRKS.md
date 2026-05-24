@@ -1,95 +1,73 @@
-# QUIRKS.md — AILP 项目已知陷阱
+# QUIRKS.md — AILP（AI Learning Platform）
 
-> 每次踩坑后自动追加。Stop Hook 负责维护。
-> 开始任何工作前搜索本文档，避免重复踩坑。
-
----
-
-## 数据库
-
-### 1. JWT sub 必须是 string
-- **现象**：python-jose 按 RFC 7519 要求 sub 是 string，传 int 导致 decode 返回 None
-- **修复**：`str(user.id)` 而非 `user.id`
-- **发现日期**：2026-05-13
-
-### 2. bcrypt 版本锁定 <5.0
-- **现象**：bcrypt 5.0+ 默认禁止 >72 字节密码
-- **修复**：`pip install "bcrypt<5.0"`
-- **发现日期**：2026-05-13
-
-### 3. SQLite 内存 DB 测试需 StaticPool
-- **现象**：普通 `sqlite://` 每个连接是独立空 DB
-- **修复**：`create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)`
-- **发现日期**：2026-05-13
-
-### 4. courses_extended_fixed.py 不可直接 pop
-- **现象**：`init_phase3_6_data` 用 `.pop("chapters")` 会破坏模块级数据
-- **修复**：使用 `copy.deepcopy()` 后再 pop
-- **发现日期**：2026-05-15
-
-### 5. Phase 3-6 DB 为真相源
-- **现象**：种子文件内容可能落后于 DB 中的手动深化数据
-- **规则**：`create_only` 行为保护 DB 内容，不覆盖
-- **发现日期**：2026-05-15
+> 项目陷阱与怪癖记录。随着开发过程持续更新，避免踩同样的坑。
 
 ---
 
-## 缓存
+## 已知陷阱
 
-### 6. Redis 缓存需手动清理
-- **现象**：修改种子数据后 Redis 缓存仍是旧数据
-- **修复**：`redis-cli FLUSHDB` 或在 lifespan 中自动清理
-- **注意**：Redis 不可用时 lifespan 不报错，但缓存不生效
-- **发现日期**：2026-05-15
+### JWT sub 必须 string
 
----
+**现象**：JWT decode 返回 None，认证失败
+**原因**：python-jose 按 RFC 7519 要求 sub 是 string，传 int 导致解码失败
+**修复方式**：`user_id` 转为 string 后再传入 JWT payload
+**预防措施**：类型检查和单元测试覆盖 JWT encode/decode
 
-## API & Schema
+### bcrypt < 5.0 版本锁定
 
-### 7. 登录用 email 字段
-- **现象**：UserLogin schema 要求 email 字段，不是 username
-- **注意**：前端提交的字段名必须是 `email`
-- **发现日期**：2026-05-13
+**现象**：bcrypt 5.0+ 默认禁止 >72 字节密码，长密码验证失败
+**原因**：bcrypt 5.0+ 的默认 truncation 策略变更
+**修复方式**：锁定 `bcrypt<5.0` 版本
+**预防措施**：密码哈希测试覆盖边界长度
 
-### 8. 注册不返回 token
-- **现象**：注册接口返回 UserResponse，不包含 token
-- **注意**：前端需在注册后走登录流程
-- **发现日期**：2026-05-13
+### SQLite 内存 DB 测试需 StaticPool
 
-### 9. 课程列表返回 PaginatedResponse
-- **现象**：响应结构是 `{items, total, page, ...}` 而非数组
-- **注意**：前端取 `.items` 获取课程列表
-- **发现日期**：2026-05-13
+**现象**：pytest 中不同测试函数看到不同的数据库
+**原因**：普通 `sqlite://` 每个连接是独立空 DB
+**修复方式**：测试 DB 使用 `StaticPool` 确保单连接共享
+**预防措施**：conftest.py 中固定使用 StaticPool
 
----
+### courses_extended_fixed.py 不可直接 pop
 
-## 前端
+**现象**：`init_phase3_6_data` 调用后，后续调用获取不到数据
+**原因**：Python 模块级列表被 `pop()` 破坏，多次 import 共享同一对象
+**修复方式**：使用 `copy.deepcopy()` 防止修改模块级数据
+**预防措施**：数据加载函数不应修改入参
 
-### 10. React 组件缺 prop → 全页崩溃
-- **现象**：组件调用遗漏必传的 array/object prop，.reduce()/.map() 在 undefined 上抛 TypeError
-- **修复**：组件内部加 `= []` 默认值，或调用方确保传入 prop
-- **发现日期**：2026-05-20
+### Redis 缓存需手动清理
 
-### 11. API 路径硬编码 → 生产 404
-- **现象**：前端 data.js 硬编码路径与后端路由不匹配
-- **修复**：修改 API 路径时同步 grep 前端引用
-- **发现日期**：2026-05-20
-
-### 12. V2 构建硬编码 /v2/assets/ 路径
-- **现象**：Vite 构建产物引用 /v2/assets/ 路径，需双 mount
-- **修复**：浏览器缓存掩码部署需加 cache-bust 参数
-- **发现日期**：2026-05-20
+**现象**：修改种子数据后前端仍显示旧数据
+**原因**：Redis 缓存未自动失效
+**修复方式**：`redis-cli FLUSHDB` 或重启服务（lifespan 中有自动清理）
+**预防措施**：修改种子数据后验证缓存已清理
 
 ---
 
-## 沙箱
+## 环境怪癖
 
-### 13. Docker 不可用需回退 Subprocess
-- **现象**：2核4G 服务器 Docker 构建超时
-- **修复**：code_executor.py 实现 subprocess 回退模式
-- **建议**：升级到 4核8G+80GB 后启用 Docker
-- **发现日期**：2026-05-13
+| 怪癖 | 影响 | 处理方式 |
+|------|------|---------|
+| Docker 不可用 | 沙盒运行在 subprocess fallback 模式，Phase 3+ 需要 4核8G+ | 生产环境升级服务器配置 |
+| venv 在 `/tmp/ailp-venv` | 系统重启后 venv 可能丢失 | 重建：`python3.11 -m venv /tmp/ailp-venv` |
+| 静态文件由后端直接服务 | 前端部署时需确认 `SERVE_STATIC=True` | 生产环境建议用 nginx 反向代理静态文件 |
+| GitHub push 网络不稳定 | HTTPS 连接间歇性超时 | 使用 `gh auth setup-git` + 重试 |
 
 ---
 
-*最后更新：2026-05-21*
+## 工具链注意事项
+
+| 工具 | 版本 | 注意事项 |
+|------|------|---------|
+| Python | 3.11 | venv 路径 `/tmp/ailp-venv` |
+| FastAPI | — | `SERVE_STATIC=True` 时由 uvicorn 直接服务 |
+| SQLite | — | 生产环境迁移至 PostgreSQL（Schema 兼容） |
+| pytest | — | 契约测试 `test_data_contract.py` 为 CI 门禁 |
+| Playwright | — | 前端冒烟测试 `smoke.spec.js`，E2E 走 CI |
+
+---
+
+## 更新规则
+
+- 每发现一个新陷阱 → 添加到本文档
+- 每修复一个陷阱 → 更新状态（✓ 已修复）
+- post-commit hook 自动检测本次 commit 是否包含 fix/修复/ bug 关键词 → 提示更新 QUIRKS.md
