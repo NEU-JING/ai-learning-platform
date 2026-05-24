@@ -352,6 +352,8 @@ class LearningPathModule(Base):
     course = relationship("Course")
 
 
+from app.models.user_profile import UserProfile  # noqa: F401 — V4: public profile settings
+
 __all__ = [
     "Base",
     "User",
@@ -371,5 +373,7 @@ __all__ = [
     "UserAchievement",
     "LearningPath",
     "LearningPathModule",
+    # V4 additions
+    "UserProfile",
 ]
 
