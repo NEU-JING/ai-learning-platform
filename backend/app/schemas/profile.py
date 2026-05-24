@@ -9,7 +9,6 @@ from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-
 # ── Public profile page response (Task-2) ───────────────────────────────────
 
 

@@ -19,8 +19,8 @@ from app.core.security import create_access_token, get_password_hash
 from app.models import AnalyticsEvent, User
 from app.models.user_profile import UserProfile
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def _make_user(test_db, username="analyticsuser", email="analytics@example.com"):
     """Create a user and return (user_obj, auth_headers)."""
@@ -45,14 +45,11 @@ PUBLIC_URL = "/api/v1/profile/{username}"
 
 def _get_profile_events(test_db, event_type: str) -> list[AnalyticsEvent]:
     """Query AnalyticsEvent records for profile-related events."""
-    return (
-        test_db.query(AnalyticsEvent)
-        .filter(AnalyticsEvent.event_type == event_type)
-        .all()
-    )
+    return test_db.query(AnalyticsEvent).filter(AnalyticsEvent.event_type == event_type).all()
 
 
 # ── Analytics event tests (DB records) ──────────────────────────────────────
+
 
 class TestProfileEnabledEvent:
     """profile_enabled event when is_public transitions false→true."""
@@ -192,6 +189,7 @@ class TestProfileViewEvent:
 
 
 # ── Observability logging tests ─────────────────────────────────────────────
+
 
 class TestObservabilityLogs:
     """Verify structured log messages are emitted at the right times.

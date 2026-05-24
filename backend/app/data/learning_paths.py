@@ -35,11 +35,11 @@ LEARNING_PATHS = [
         "estimated_weeks": 16,
         "order_index": 1,
         "modules": [
-            {"course_id": 5, "requirement": "required"},   # P1 Python
-            {"course_id": 6, "requirement": "required"},   # P2 数学
-            {"course_id": 7, "requirement": "required"},   # P3 ML
-            {"course_id": 8, "requirement": "required"},   # P4 DL
-            {"course_id": 9, "requirement": "required"},   # P5 LLM
+            {"course_id": 5, "requirement": "required"},  # P1 Python
+            {"course_id": 6, "requirement": "required"},  # P2 数学
+            {"course_id": 7, "requirement": "required"},  # P3 ML
+            {"course_id": 8, "requirement": "required"},  # P4 DL
+            {"course_id": 9, "requirement": "required"},  # P5 LLM
             {"course_id": 10, "requirement": "required"},  # P6 工程化
         ],
     },
@@ -57,10 +57,10 @@ LEARNING_PATHS = [
         "estimated_weeks": 10,
         "order_index": 2,
         "modules": [
-            {"course_id": 5, "requirement": "required"},   # P1 Python
-            {"course_id": 6, "requirement": "required"},   # P2 数学
-            {"course_id": 7, "requirement": "optional"},   # P3 ML（选学）
-            {"course_id": 9, "requirement": "required"},   # P5 LLM
+            {"course_id": 5, "requirement": "required"},  # P1 Python
+            {"course_id": 6, "requirement": "required"},  # P2 数学
+            {"course_id": 7, "requirement": "optional"},  # P3 ML（选学）
+            {"course_id": 9, "requirement": "required"},  # P5 LLM
             {"course_id": 10, "requirement": "required"},  # P6 工程化
         ],
     },
@@ -78,9 +78,9 @@ LEARNING_PATHS = [
         "estimated_weeks": 6,
         "order_index": 3,
         "modules": [
-            {"course_id": 5, "requirement": "required"},    # P1 Python
-            {"course_id": 9, "requirement": "required"},    # P5 LLM
-            {"course_id": 10, "requirement": "recommended"}, # P6 工程化
+            {"course_id": 5, "requirement": "required"},  # P1 Python
+            {"course_id": 9, "requirement": "required"},  # P5 LLM
+            {"course_id": 10, "requirement": "recommended"},  # P6 工程化
         ],
     },
     {
@@ -97,9 +97,9 @@ LEARNING_PATHS = [
         "estimated_weeks": 4,
         "order_index": 4,
         "modules": [
-            {"course_id": 5, "requirement": "optional"},     # P1 Python（选学）
+            {"course_id": 5, "requirement": "optional"},  # P1 Python（选学）
             {"course_id": 9, "requirement": "recommended"},  # P5 LLM
-            {"course_id": 10, "requirement": "required"},    # P6 工程化
+            {"course_id": 10, "requirement": "required"},  # P6 工程化
         ],
     },
 ]
@@ -137,9 +137,9 @@ def init_learning_paths(db, behavior=BEHAVIOR_UPSERT):
                 stats["updated"] += 1
 
                 # Remove old modules and recreate
-                db.query(LearningPathModule).filter(
-                    LearningPathModule.path_id == path_id
-                ).delete(synchronize_session=False)
+                db.query(LearningPathModule).filter(LearningPathModule.path_id == path_id).delete(
+                    synchronize_session=False
+                )
             else:
                 # CREATE_ONLY: skip entirely
                 continue

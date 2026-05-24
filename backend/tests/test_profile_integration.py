@@ -39,11 +39,17 @@ from app.models import (
 )
 from app.models.user_profile import UserProfile
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _make_user(test_db, username="intuser", email="int@example.com",
-               is_active=True, avatar_url=None, with_auth=False):
+
+def _make_user(
+    test_db,
+    username="intuser",
+    email="int@example.com",
+    is_active=True,
+    avatar_url=None,
+    with_auth=False,
+):
     """Create a user. Returns (user_obj, auth_headers) if with_auth=True, else user_obj only."""
     user = User(
         email=email,
@@ -85,23 +91,38 @@ def _enable_profile(test_db, user, **overrides):
 def _make_course_with_lab(test_db, title="Test Course", level="beginner"):
     """Create course + chapter + lab. Returns dict."""
     course = Course(
-        title=title, description="desc", level=level,
-        category="python", duration_hours=10, is_published=True, order_index=1,
+        title=title,
+        description="desc",
+        level=level,
+        category="python",
+        duration_hours=10,
+        is_published=True,
+        order_index=1,
     )
     test_db.add(course)
     test_db.flush()
 
     chapter = Chapter(
-        course_id=course.id, title=f"Ch-{title}",
-        content="# c", order_index=1, chapter_type="lab", duration_minutes=30,
+        course_id=course.id,
+        title=f"Ch-{title}",
+        content="# c",
+        order_index=1,
+        chapter_type="lab",
+        duration_minutes=30,
     )
     test_db.add(chapter)
     test_db.flush()
 
     lab = Lab(
-        chapter_id=chapter.id, title=f"Lab-{title}",
-        description="d", starter_code="# s", solution_code="pass",
-        test_cases=[], hints=[], time_limit_seconds=30, memory_limit_mb=256,
+        chapter_id=chapter.id,
+        title=f"Lab-{title}",
+        description="d",
+        starter_code="# s",
+        solution_code="pass",
+        test_cases=[],
+        hints=[],
+        time_limit_seconds=30,
+        memory_limit_mb=256,
     )
     test_db.add(lab)
     test_db.commit()
@@ -120,26 +141,31 @@ PUBLIC_URL = "/api/v1/profile/{username}"
 # AC1: Full visibility — visitor sees complete data
 # ════════════════════════════════════════════════════════════════════════════
 
+
 class TestAC1FullVisibility:
     """AC1: All dimensions visible → visitor sees complete profile."""
 
     def test_visitor_sees_all_data_without_login(self, client, test_db):
-        user = _make_user(test_db, username="ac1user",
-                          avatar_url="https://img.test/ac1.png")
-        _enable_profile(test_db, user, display_name="AC1张三",
-                        bio="专注CV方向的AI工程师")
+        user = _make_user(test_db, username="ac1user", avatar_url="https://img.test/ac1.png")
+        _enable_profile(test_db, user, display_name="AC1张三", bio="专注CV方向的AI工程师")
         d = _make_course_with_lab(test_db, title="Python L2", level="intermediate")
 
         # Add passed lab
         sub = LabSubmission(
-            user_id=user.id, lab_id=d["lab"].id, code="pass",
-            status="passed", score=95.0, passed=True,
+            user_id=user.id,
+            lab_id=d["lab"].id,
+            code="pass",
+            status="passed",
+            score=95.0,
+            passed=True,
         )
         test_db.add(sub)
 
         # Complete course for certificate
         lp = LearningProgress(
-            user_id=user.id, chapter_id=d["chapter"].id, status="completed",
+            user_id=user.id,
+            chapter_id=d["chapter"].id,
+            status="completed",
         )
         test_db.add(lp)
         test_db.commit()
@@ -158,8 +184,10 @@ class TestAC1FullVisibility:
 
         # All visibility flags true
         vis = data["visibility"]
-        assert all(vis[k] is True for k in
-                   ["show_basic_info", "show_skill_radar", "show_labs", "show_certificates"])
+        assert all(
+            vis[k] is True
+            for k in ["show_basic_info", "show_skill_radar", "show_labs", "show_certificates"]
+        )
 
         # Skill radar present
         assert data["skill_radar"] is not None
@@ -179,13 +207,15 @@ class TestAC1FullVisibility:
 # AC2: Partial visibility — hidden dimensions excluded
 # ════════════════════════════════════════════════════════════════════════════
 
+
 class TestAC2PartialVisibility:
     """AC2: Some dimensions hidden → hidden fields null, others normal."""
 
     def test_labs_and_certs_hidden_but_basic_info_and_radar_shown(self, client, test_db):
         user = _make_user(test_db, username="ac2lisi", avatar_url="https://img.test/lisi.png")
-        _enable_profile(test_db, user, display_name="李四",
-                        show_labs=False, show_certificates=False)
+        _enable_profile(
+            test_db, user, display_name="李四", show_labs=False, show_certificates=False
+        )
 
         resp = client.get(PUBLIC_URL.format(username="ac2lisi"))
         assert resp.status_code == 200
@@ -205,6 +235,7 @@ class TestAC2PartialVisibility:
 # ════════════════════════════════════════════════════════════════════════════
 # AC3: First-time enable — all dimensions auto-set to true
 # ════════════════════════════════════════════════════════════════════════════
+
 
 class TestAC3FirstTimeEnable:
     """AC3: User enables profile for the first time → all dimensions auto true."""
@@ -240,14 +271,15 @@ class TestAC3FirstTimeEnable:
 # AC4: Adjust visibility → preview → share (copy link)
 # ════════════════════════════════════════════════════════════════════════════
 
+
 class TestAC4AdjustAndPreview:
     """AC4: User adjusts visibility, previews, and shares."""
 
     def test_hide_basic_info_then_visit_matches_preview(self, client, test_db):
-        user, headers = _make_user(test_db, username="ac4zhaoliu",
-                                   avatar_url="https://img.test/zl.png", with_auth=True)
-        _enable_profile(test_db, user, display_name="赵六",
-                        bio="AC4 bio")
+        user, headers = _make_user(
+            test_db, username="ac4zhaoliu", avatar_url="https://img.test/zl.png", with_auth=True
+        )
+        _enable_profile(test_db, user, display_name="赵六", bio="AC4 bio")
 
         # Hide basic_info
         resp = client.put(SETTINGS_URL, json={"show_basic_info": False}, headers=headers)
@@ -282,14 +314,20 @@ class TestAC4AdjustAndPreview:
 # AC5: All dimensions hidden — profile still loads with username only
 # ════════════════════════════════════════════════════════════════════════════
 
+
 class TestAC5AllDimensionsHidden:
     """AC5: All dimensions hidden → only username + AILP branding."""
 
     def test_all_hidden_still_returns_200_with_username(self, client, test_db):
         user = _make_user(test_db, username="ac5sunqi")
-        _enable_profile(test_db, user,
-                        show_basic_info=False, show_skill_radar=False,
-                        show_labs=False, show_certificates=False)
+        _enable_profile(
+            test_db,
+            user,
+            show_basic_info=False,
+            show_skill_radar=False,
+            show_labs=False,
+            show_certificates=False,
+        )
 
         resp = client.get(PUBLIC_URL.format(username="ac5sunqi"))
         assert resp.status_code == 200
@@ -312,9 +350,14 @@ class TestAC5AllDimensionsHidden:
         """AC5 explicitly states: no '尚未公开' message when profile IS enabled
         but all dimensions are hidden."""
         user = _make_user(test_db, username="ac5nohint")
-        _enable_profile(test_db, user,
-                        show_basic_info=False, show_skill_radar=False,
-                        show_labs=False, show_certificates=False)
+        _enable_profile(
+            test_db,
+            user,
+            show_basic_info=False,
+            show_skill_radar=False,
+            show_labs=False,
+            show_certificates=False,
+        )
 
         resp = client.get(PUBLIC_URL.format(username="ac5nohint"))
         assert resp.status_code == 200  # Not 403
@@ -323,6 +366,7 @@ class TestAC5AllDimensionsHidden:
 # ════════════════════════════════════════════════════════════════════════════
 # AC6: Nonexistent user → 404
 # ════════════════════════════════════════════════════════════════════════════
+
 
 class TestAC6NonexistentUser:
     """AC6: Username does not exist → 404 with proper message."""
@@ -336,6 +380,7 @@ class TestAC6NonexistentUser:
 # ════════════════════════════════════════════════════════════════════════════
 # AC7: Profile not enabled → 403
 # ════════════════════════════════════════════════════════════════════════════
+
 
 class TestAC7ProfileNotEnabled:
     """AC7: User exists but profile not enabled → 403."""
@@ -351,9 +396,12 @@ class TestAC7ProfileNotEnabled:
     def test_disabled_profile_returns_403(self, client, test_db):
         user = _make_user(test_db, username="ac7disabled")
         profile = UserProfile(
-            user_id=user.id, is_public=False,
-            show_basic_info=True, show_skill_radar=True,
-            show_labs=True, show_certificates=True,
+            user_id=user.id,
+            is_public=False,
+            show_basic_info=True,
+            show_skill_radar=True,
+            show_labs=True,
+            show_certificates=True,
         )
         test_db.add(profile)
         test_db.commit()
@@ -366,6 +414,7 @@ class TestAC7ProfileNotEnabled:
 # ════════════════════════════════════════════════════════════════════════════
 # AC8: Zero labs / zero certs — empty state display
 # ════════════════════════════════════════════════════════════════════════════
+
 
 class TestAC8ZeroData:
     """AC8: User with no labs/certs sees empty state."""
@@ -398,6 +447,7 @@ class TestAC8ZeroData:
 # AC9: Large dataset — labs_total reflects full count
 # ════════════════════════════════════════════════════════════════════════════
 
+
 class TestAC9LargeDataset:
     """AC9: User with many labs — labs_total accurate, data complete."""
 
@@ -409,8 +459,12 @@ class TestAC9LargeDataset:
         for i in range(10):
             d = _make_course_with_lab(test_db, title=f"Course-{i}")
             sub = LabSubmission(
-                user_id=user.id, lab_id=d["lab"].id, code="pass",
-                status="passed", score=80.0 + i, passed=True,
+                user_id=user.id,
+                lab_id=d["lab"].id,
+                code="pass",
+                status="passed",
+                score=80.0 + i,
+                passed=True,
             )
             test_db.add(sub)
         test_db.commit()
@@ -432,8 +486,13 @@ class TestAC9LargeDataset:
             d = _make_course_with_lab(test_db, title=f"Order-Course-{i}")
             ts = datetime.now(timezone.utc) - timedelta(days=2 - i)
             sub = LabSubmission(
-                user_id=user.id, lab_id=d["lab"].id, code="pass",
-                status="passed", score=80.0, passed=True, created_at=ts,
+                user_id=user.id,
+                lab_id=d["lab"].id,
+                code="pass",
+                status="passed",
+                score=80.0,
+                passed=True,
+                created_at=ts,
             )
             test_db.add(sub)
         test_db.commit()
@@ -449,6 +508,7 @@ class TestAC9LargeDataset:
 # ════════════════════════════════════════════════════════════════════════════
 # AC10: OG tags — social media preview (tested in test_profile_frontend.py)
 # ════════════════════════════════════════════════════════════════════════════
+
 
 class TestAC10OGTags:
     """AC10: OG meta tags present for public profile (API-level check)."""
@@ -469,6 +529,7 @@ class TestAC10OGTags:
 # ════════════════════════════════════════════════════════════════════════════
 # AC11: Close profile → previously shared link returns 403
 # ════════════════════════════════════════════════════════════════════════════
+
 
 class TestAC11CloseProfileLinkInvalidated:
     """AC11: User closes profile → old link shows 403."""
@@ -533,6 +594,7 @@ class TestAC11CloseProfileLinkInvalidated:
 # AC12: Concurrent access consistency
 # ════════════════════════════════════════════════════════════════════════════
 
+
 class TestAC12ConcurrentAccess:
     """AC12: Multiple concurrent visitors see consistent data."""
 
@@ -542,8 +604,12 @@ class TestAC12ConcurrentAccess:
         d = _make_course_with_lab(test_db, title="Concurrent Course")
 
         sub = LabSubmission(
-            user_id=user.id, lab_id=d["lab"].id, code="pass",
-            status="passed", score=88.0, passed=True,
+            user_id=user.id,
+            lab_id=d["lab"].id,
+            code="pass",
+            status="passed",
+            score=88.0,
+            passed=True,
         )
         test_db.add(sub)
         test_db.commit()
@@ -586,20 +652,27 @@ class TestAC12ConcurrentAccess:
 # Full lifecycle: Enable → Visit → Adjust → Preview → Share → Close → Fail
 # ════════════════════════════════════════════════════════════════════════════
 
+
 class TestFullLifecycle:
     """Complete lifecycle: enable → visit → adjust → preview → close → fail."""
 
     def test_complete_lifecycle_chain(self, client, test_db):
-        user, headers = _make_user(test_db, username="lifecycle_user",
-                                   avatar_url="https://img.test/life.png", with_auth=True)
+        user, headers = _make_user(
+            test_db,
+            username="lifecycle_user",
+            avatar_url="https://img.test/life.png",
+            with_auth=True,
+        )
 
         # ── Step 1: Enable profile (AC3) ──
         resp = client.put(SETTINGS_URL, json={"is_public": True}, headers=headers)
         assert resp.status_code == 200
         settings = resp.json()
         assert settings["is_public"] is True
-        assert all(settings[d] is True for d in
-                   ["show_basic_info", "show_skill_radar", "show_labs", "show_certificates"])
+        assert all(
+            settings[d] is True
+            for d in ["show_basic_info", "show_skill_radar", "show_labs", "show_certificates"]
+        )
         profile_url = settings["profile_url"]
         assert "lifecycle_user" in profile_url
 
@@ -643,6 +716,7 @@ class TestFullLifecycle:
 # Security: Data leakage prevention
 # ════════════════════════════════════════════════════════════════════════════
 
+
 class TestSecurityDataLeakage:
     """Security: Users without enabled profile cannot have data probed via API."""
 
@@ -652,8 +726,12 @@ class TestSecurityDataLeakage:
         # User has lab submissions but no profile
         d = _make_course_with_lab(test_db, title="Secret Course")
         sub = LabSubmission(
-            user_id=user.id, lab_id=d["lab"].id, code="pass",
-            status="passed", score=100.0, passed=True,
+            user_id=user.id,
+            lab_id=d["lab"].id,
+            code="pass",
+            status="passed",
+            score=100.0,
+            passed=True,
         )
         test_db.add(sub)
         test_db.commit()
@@ -688,16 +766,27 @@ class TestSecurityDataLeakage:
 
     def test_hidden_dimension_data_not_in_response(self, client, test_db):
         """When a dimension is hidden, its data must not appear in the response."""
-        user = _make_user(test_db, username="sec_hidden_dim",
-                          avatar_url="https://img.test/secret.png")
-        _enable_profile(test_db, user, display_name="Secret Name", bio="Secret bio",
-                        show_basic_info=False, show_labs=False)
+        user = _make_user(
+            test_db, username="sec_hidden_dim", avatar_url="https://img.test/secret.png"
+        )
+        _enable_profile(
+            test_db,
+            user,
+            display_name="Secret Name",
+            bio="Secret bio",
+            show_basic_info=False,
+            show_labs=False,
+        )
 
         # Add data that should be hidden
         d = _make_course_with_lab(test_db, title="Hidden Lab")
         sub = LabSubmission(
-            user_id=user.id, lab_id=d["lab"].id, code="pass",
-            status="passed", score=99.0, passed=True,
+            user_id=user.id,
+            lab_id=d["lab"].id,
+            code="pass",
+            status="passed",
+            score=99.0,
+            passed=True,
         )
         test_db.add(sub)
         test_db.commit()
@@ -727,10 +816,12 @@ class TestSecurityDataLeakage:
 
     def test_user_cannot_modify_another_users_settings(self, client, test_db):
         """User A cannot change User B's settings."""
-        user_a, headers_a = _make_user(test_db, username="userA",
-                                        email="a@test.com", with_auth=True)
-        user_b, headers_b = _make_user(test_db, username="userB",
-                                        email="b@test.com", with_auth=True)
+        user_a, headers_a = _make_user(
+            test_db, username="userA", email="a@test.com", with_auth=True
+        )
+        user_b, headers_b = _make_user(
+            test_db, username="userB", email="b@test.com", with_auth=True
+        )
 
         # User B enables their profile
         client.put(SETTINGS_URL, json={"is_public": True}, headers=headers_b)

@@ -200,7 +200,6 @@ class LabSubmissionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-
 # ── Learning Path ────────────────────────────────────────
 
 
@@ -229,6 +228,7 @@ class LearningPathDetailResponse(LearningPathResponse):
 
 
 # ── Code Execution ───────────────────────────────────────
+
 
 class CodeExecutionRequest(BaseModel):
     code: str

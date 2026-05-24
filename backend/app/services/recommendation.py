@@ -84,9 +84,7 @@ class RecommendationService:
 
         # Compute progress percentage for the course
         total_chapters = (
-            db.query(func.count(Chapter.id))
-            .filter(Chapter.course_id == course.id)
-            .scalar()
+            db.query(func.count(Chapter.id)).filter(Chapter.course_id == course.id).scalar()
         ) or 0
 
         completed = (
@@ -116,7 +114,9 @@ class RecommendationService:
 
     @staticmethod
     def get_daily_recommendations(
-        user_id: int, db: Session, limit: int = 3,
+        user_id: int,
+        db: Session,
+        limit: int = 3,
     ) -> list[dict]:
         """Return top-N recommended chapters for today.
 
@@ -126,10 +126,12 @@ class RecommendationService:
         # Collect IDs of already-completed chapters
         completed_ids = {
             row[0]
-            for row in db.query(LearningProgress.chapter_id).filter(
+            for row in db.query(LearningProgress.chapter_id)
+            .filter(
                 LearningProgress.user_id == user_id,
                 LearningProgress.status == "completed",
-            ).all()
+            )
+            .all()
         }
 
         # Fetch all published chapters
@@ -150,24 +152,28 @@ class RecommendationService:
         for ch in incomplete:
             score = RecommendationService.compute_recommendation_score(user_id, ch.id, db)
             explanation = RecommendationService._explain_recommendation(user_id, ch.id, db)
-            scored.append({
-                "chapter_id": ch.id,
-                "title": ch.title,
-                "course_id": ch.course_id,
-                "course_title": ch.course.title if ch.course else "",
-                "course_cover": ch.course.cover_image if ch.course else None,
-                "score": round(score, 4),
-                "reason": explanation["primary_reason"],
-                "reason_detail": explanation["detail"],
-                "component_scores": explanation["scores"],
-            })
+            scored.append(
+                {
+                    "chapter_id": ch.id,
+                    "title": ch.title,
+                    "course_id": ch.course_id,
+                    "course_title": ch.course.title if ch.course else "",
+                    "course_cover": ch.course.cover_image if ch.course else None,
+                    "score": round(score, 4),
+                    "reason": explanation["primary_reason"],
+                    "reason_detail": explanation["detail"],
+                    "component_scores": explanation["scores"],
+                }
+            )
 
         scored.sort(key=lambda x: x["score"], reverse=True)
         return scored[:limit]
 
     @staticmethod
     def get_post_lab_recommendations(
-        user_id: int, lab_id: int, db: Session,
+        user_id: int,
+        lab_id: int,
+        db: Session,
     ) -> list[dict]:
         """Generate recommendations after a lab attempt.
 
@@ -211,17 +217,19 @@ class RecommendationService:
             )
 
             if next_chapter:
-                recommendations.append({
-                    "chapter_id": next_chapter.id,
-                    "title": next_chapter.title,
-                    "course_id": next_chapter.course_id,
-                    "course_title": course.title if course else "",
-                    "course_cover": course.cover_image if course else None,
-                    "reason": "继续下一章",
-                    "reason_detail": "实验通过！继续学习同一课程的下一章节",
-                    "score": 1.0,
-                    "recommendation_type": "next_chapter",
-                })
+                recommendations.append(
+                    {
+                        "chapter_id": next_chapter.id,
+                        "title": next_chapter.title,
+                        "course_id": next_chapter.course_id,
+                        "course_title": course.title if course else "",
+                        "course_cover": course.cover_image if course else None,
+                        "reason": "继续下一章",
+                        "reason_detail": "实验通过！继续学习同一课程的下一章节",
+                        "score": 1.0,
+                        "recommendation_type": "next_chapter",
+                    }
+                )
 
             # Reinforcement: top daily rec from weakest area
             daily_recs = RecommendationService.get_daily_recommendations(user_id, db, limit=1)
@@ -244,30 +252,34 @@ class RecommendationService:
                     .all()
                 )
                 for ch in same_course_chapters:
-                    recommendations.append({
-                        "chapter_id": ch.id,
-                        "title": ch.title,
-                        "course_id": ch.course_id,
-                        "course_title": course.title,
-                        "course_cover": course.cover_image,
-                        "reason": "建议复习",
-                        "reason_detail": "实验未通过，建议复习相关章节后再尝试",
-                        "score": 0.9,
-                        "recommendation_type": "review",
-                    })
+                    recommendations.append(
+                        {
+                            "chapter_id": ch.id,
+                            "title": ch.title,
+                            "course_id": ch.course_id,
+                            "course_title": course.title,
+                            "course_cover": course.cover_image,
+                            "reason": "建议复习",
+                            "reason_detail": "实验未通过，建议复习相关章节后再尝试",
+                            "score": 0.9,
+                            "recommendation_type": "review",
+                        }
+                    )
 
             # Retry entry
-            recommendations.append({
-                "chapter_id": chapter.id,
-                "title": f"重试: {chapter.title}",
-                "course_id": chapter.course_id,
-                "course_title": course.title if course else "",
-                "course_cover": course.cover_image if course else None,
-                "reason": "重新挑战",
-                "reason_detail": "复习后重新挑战本实验",
-                "score": 0.8,
-                "recommendation_type": "retry",
-            })
+            recommendations.append(
+                {
+                    "chapter_id": chapter.id,
+                    "title": f"重试: {chapter.title}",
+                    "course_id": chapter.course_id,
+                    "course_title": course.title if course else "",
+                    "course_cover": course.cover_image if course else None,
+                    "reason": "重新挑战",
+                    "reason_detail": "复习后重新挑战本实验",
+                    "score": 0.8,
+                    "recommendation_type": "retry",
+                }
+            )
 
         return recommendations
 
@@ -285,9 +297,11 @@ class RecommendationService:
         weakest_score: float = 0.0
 
         if weakest_dim and weakest_dim in radar.get("skills", {}):
-            weakest_score = float(radar["skills"][weakest_dim].get("score", 0)
-                                  if isinstance(radar["skills"][weakest_dim], dict)
-                                  else 0)
+            weakest_score = float(
+                radar["skills"][weakest_dim].get("score", 0)
+                if isinstance(radar["skills"][weakest_dim], dict)
+                else 0
+            )
 
         weekly_hours, hours_trend = RecommendationService._compute_weekly_hours(user_id, db)
         streak_days = RecommendationService._compute_streak(user_id, db)
@@ -306,7 +320,9 @@ class RecommendationService:
 
     @staticmethod
     def compute_recommendation_score(
-        user_id: int, chapter_id: int, db: Session,
+        user_id: int,
+        chapter_id: int,
+        db: Session,
     ) -> float:
         """Core algorithm — compute the recommendation score for one chapter.
 
@@ -388,9 +404,7 @@ class RecommendationService:
         Looks up the chapter's course in learning_path_modules for the user's
         active learning_path.  Courses not in the path get 0.1 baseline.
         """
-        user_settings = (
-            db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
-        )
+        user_settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
 
         if not user_settings or not user_settings.learning_path:
             return 0.5  # no path configured → neutral
@@ -420,9 +434,7 @@ class RecommendationService:
         Finds similar users (same path + industry + language) and returns the
         fraction who have completed at least one chapter in this course.
         """
-        user_settings = (
-            db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
-        )
+        user_settings = db.query(UserSettings).filter(UserSettings.user_id == user_id).first()
         if not user_settings:
             return 0.0
 
@@ -431,13 +443,9 @@ class RecommendationService:
         if user_settings.learning_path:
             filters.append(UserSettings.learning_path == user_settings.learning_path)
         if user_settings.background_industry:
-            filters.append(
-                UserSettings.background_industry == user_settings.background_industry
-            )
+            filters.append(UserSettings.background_industry == user_settings.background_industry)
         if user_settings.background_language:
-            filters.append(
-                UserSettings.background_language == user_settings.background_language
-            )
+            filters.append(UserSettings.background_language == user_settings.background_language)
 
         if not filters:
             return 0.0
@@ -512,7 +520,9 @@ class RecommendationService:
 
     @staticmethod
     def _explain_recommendation(
-        user_id: int, chapter_id: int, db: Session,
+        user_id: int,
+        chapter_id: int,
+        db: Session,
     ) -> dict:
         """Produce a human-readable explanation for why a chapter is recommended."""
         weakness = RecommendationService._compute_weakness(user_id, chapter_id, db)
@@ -625,7 +635,9 @@ class RecommendationService:
 
     @staticmethod
     def _generate_advice_text(
-        weakest_dim: str | None, weakest_score: float, radar: dict,
+        weakest_dim: str | None,
+        weakest_score: float,
+        radar: dict,
     ) -> str:
         """Generate personalized Chinese-language coaching advice."""
         _DIM_LABEL: dict[str, str] = {
@@ -652,8 +664,7 @@ class RecommendationService:
             )
         if weakest_score < 60:
             return (
-                f"你的 {label} 部分评分偏低（{weakest_score} 分），"
-                f"建议本周重点复习相关章节。"
+                f"你的 {label} 部分评分偏低（{weakest_score} 分），" f"建议本周重点复习相关章节。"
             )
         if weakest_score < 80:
             return (

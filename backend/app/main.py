@@ -7,7 +7,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api.v1 import analytics, auth, certificates, courses, discussions, labs, profile, progress, recommendations, skills
+from app.api.v1 import (
+    analytics,
+    auth,
+    certificates,
+    courses,
+    discussions,
+    labs,
+    profile,
+    progress,
+    recommendations,
+    skills,
+)
 from app.core.config import settings
 from app.core.database import SessionLocal, init_db
 from app.data.courses import PHASE_TITLES, init_courses_data
@@ -201,8 +212,14 @@ if SERVE_STATIC and os.path.exists(STATIC_DIR):
 
 # V2 作为主前端——assets 和 index.html 都从 dist 目录服务
 if SERVE_STATIC and os.path.exists(STATIC_DIR_V2):
-    app.mount("/assets", StaticFiles(directory=os.path.join(STATIC_DIR_V2, "assets")), name="v2-assets")
-    app.mount("/v2/assets", StaticFiles(directory=os.path.join(STATIC_DIR_V2, "assets")), name="v2-assets-legacy")
+    app.mount(
+        "/assets", StaticFiles(directory=os.path.join(STATIC_DIR_V2, "assets")), name="v2-assets"
+    )
+    app.mount(
+        "/v2/assets",
+        StaticFiles(directory=os.path.join(STATIC_DIR_V2, "assets")),
+        name="v2-assets-legacy",
+    )
     print(f"✅ V2前端 (dist): {STATIC_DIR_V2}")
 
 
@@ -237,7 +254,24 @@ def root():
 async def public_profile_spa(full_path: str, request: Request):
     """SPA fallback for public profile pages /p/{username}."""
     # Serve static assets (js/css/png/...) under /p/ directly
-    static_ext = (".js",".mjs",".css",".map",".png",".jpg",".jpeg",".gif",".svg",".ico",".woff",".woff2",".ttf",".eot",".json",".webp")
+    static_ext = (
+        ".js",
+        ".mjs",
+        ".css",
+        ".map",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+        ".ico",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
+        ".json",
+        ".webp",
+    )
     if full_path and any(full_path.endswith(e) for e in static_ext):
         file_path = os.path.normpath(os.path.join(STATIC_DIR, full_path))
         if file_path.startswith(os.path.abspath(STATIC_DIR)) and os.path.isfile(file_path):
@@ -316,7 +350,7 @@ def _build_og_tags(username: str) -> str:
         tags.append(f'<meta property="profile:username" content="{_html_escape(username)}">')
 
         # Update page title
-        tags.append(f'<title>{_html_escape(display_name)} - AILP能力主页</title>')
+        tags.append(f"<title>{_html_escape(display_name)} - AILP能力主页</title>")
 
         return "\n    ".join(tags)
     except Exception:
@@ -328,7 +362,13 @@ def _build_og_tags(username: str) -> str:
 
 def _html_escape(s: str) -> str:
     """Minimal HTML escaping for attribute values."""
-    return (s or "").replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+    return (
+        (s or "")
+        .replace("&", "&amp;")
+        .replace('"', "&quot;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+    )
 
 
 @app.get("/health")
@@ -349,7 +389,9 @@ def v2_index():
     index_file = os.path.join(STATIC_DIR_V2, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
-    return HTMLResponse(content="<h1>V2 Frontend not built</h1><p>Run: cd frontend-v2 && npm run build</p>")
+    return HTMLResponse(
+        content="<h1>V2 Frontend not built</h1><p>Run: cd frontend-v2 && npm run build</p>"
+    )
 
 
 @app.get("/v2/{full_path:path}", response_class=HTMLResponse)
@@ -382,6 +424,7 @@ async def spa_fallback(request: Request, full_path: str):
     """
     # DEBUG: log what the catch-all sees
     import sys
+
     print(f"[DEBUG catch-all] full_path='{full_path}'", file=sys.stderr)
     # V2 routes are handled by their own route handlers — never fall through here
     if full_path == "v2/" or full_path == "v2":

@@ -103,9 +103,7 @@ def upgrade() -> None:
         sa.UniqueConstraint("path_id"),
     )
     op.create_index(op.f("ix_learning_paths_id"), "learning_paths", ["id"], unique=False)
-    op.create_index(
-        op.f("ix_learning_paths_path_id"), "learning_paths", ["path_id"], unique=True
-    )
+    op.create_index(op.f("ix_learning_paths_path_id"), "learning_paths", ["path_id"], unique=True)
 
     # ── learning_path_modules ──────────────────────────────────────────────────
     op.create_table(
@@ -141,9 +139,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     # ── learning_path_modules ──────────────────────────────────────────────────
-    op.drop_index(
-        op.f("ix_learning_path_modules_course_id"), table_name="learning_path_modules"
-    )
+    op.drop_index(op.f("ix_learning_path_modules_course_id"), table_name="learning_path_modules")
     op.drop_index(op.f("ix_learning_path_modules_path_id"), table_name="learning_path_modules")
     op.drop_index(op.f("ix_learning_path_modules_id"), table_name="learning_path_modules")
     op.drop_table("learning_path_modules")

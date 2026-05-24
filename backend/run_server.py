@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Start server in a separate process that won't be affected by parent signals"""
+
 import os
 import sys
 import subprocess

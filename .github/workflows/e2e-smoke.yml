@@ -56,6 +56,9 @@ jobs:
           echo "Server failed to start"
           exit 1
 
+      - name: Seed E2E test users
+        run: python tests/e2e/seed_test_users.py
+
       - name: Run E2E tests (12 AC coverage)
         run: npx playwright test tests/e2e/public-profile.spec.js
 

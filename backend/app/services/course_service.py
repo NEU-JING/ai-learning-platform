@@ -69,9 +69,19 @@ class CourseService:
         if page is not None:
             _per_page = min(per_page or 20, 100)
             offset = (page - 1) * _per_page
-            courses = query.options(selectinload(Course.chapters).selectinload(Chapter.lab)).order_by(Course.order_index).offset(offset).limit(_per_page).all()
+            courses = (
+                query.options(selectinload(Course.chapters).selectinload(Chapter.lab))
+                .order_by(Course.order_index)
+                .offset(offset)
+                .limit(_per_page)
+                .all()
+            )
         else:
-            courses = query.options(selectinload(Course.chapters).selectinload(Chapter.lab)).order_by(Course.order_index).all()
+            courses = (
+                query.options(selectinload(Course.chapters).selectinload(Chapter.lab))
+                .order_by(Course.order_index)
+                .all()
+            )
 
         # Write to cache
         try:

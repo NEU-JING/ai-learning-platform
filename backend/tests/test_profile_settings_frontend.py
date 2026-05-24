@@ -18,8 +18,8 @@ from app.core.security import create_access_token, get_password_hash
 from app.models import User
 from app.models.user_profile import UserProfile
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def _make_user(test_db, username="settingsuser", email="settings@example.com"):
     """Create a user and return (user_obj, auth_headers)."""
@@ -42,6 +42,7 @@ BATCH_URL = "/api/v1/profile/me/settings/batch"
 
 
 # ── Test classes ─────────────────────────────────────────────────────────────
+
 
 class TestSettingsPageRoute:
     """/#/profile/settings hash route should be accessible via SPA."""

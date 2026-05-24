@@ -109,11 +109,7 @@ class SkillRadarService:
         """
         # Fetch previous scores for trend calculation
         prev_scores: dict[str, float] = {}
-        prev_records = (
-            db.query(UserSkillScore)
-            .filter(UserSkillScore.user_id == user_id)
-            .all()
-        )
+        prev_records = db.query(UserSkillScore).filter(UserSkillScore.user_id == user_id).all()
         for rec in prev_records:
             prev_scores[rec.dimension] = rec.score
 
@@ -250,16 +246,10 @@ class SkillRadarService:
         return round((total_best / total_labs), 1)
 
     @staticmethod
-    def _compute_chapter_completion_rate(
-        user_id: int, course_ids: list[int], db: Session
-    ) -> float:
+    def _compute_chapter_completion_rate(user_id: int, course_ids: list[int], db: Session) -> float:
         """Completed / total chapters ratio (0-100) in the given courses."""
         # Total chapters in these courses
-        total_chapters = (
-            db.query(Chapter.id)
-            .filter(Chapter.course_id.in_(course_ids))
-            .count()
-        )
+        total_chapters = db.query(Chapter.id).filter(Chapter.course_id.in_(course_ids)).count()
 
         if total_chapters == 0:
             return 0.0

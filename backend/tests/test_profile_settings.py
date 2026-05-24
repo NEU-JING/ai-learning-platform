@@ -17,8 +17,8 @@ from fastapi.testclient import TestClient
 from app.core.security import create_access_token, get_password_hash
 from app.models import User
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def _make_user(test_db, username="profileuser", email="profile@example.com"):
     """Create a user and return (user_obj, auth_headers)."""
@@ -41,6 +41,7 @@ BATCH_URL = "/api/v1/profile/me/settings/batch"
 
 
 # ── Test classes ─────────────────────────────────────────────────────────────
+
 
 class TestGetSettings:
     """GET /api/v1/profile/me/settings"""

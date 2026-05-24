@@ -255,6 +255,7 @@ class AnalyticsEvent(Base):
 
 # ── V3: User Profile & Learning Paths ──────────────────────────────────────────
 
+
 class UserSettings(Base):
     """用户画像设置 — 每个用户一条记录，存储学习路径偏好和背景信息。"""
 
@@ -262,9 +263,13 @@ class UserSettings(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
-    learning_path = Column(String(50), nullable=True)  # ai_expert / ai_engineer / ai_practitioner / ai_manager
+    learning_path = Column(
+        String(50), nullable=True
+    )  # ai_expert / ai_engineer / ai_practitioner / ai_manager
     background_language = Column(String(50), nullable=True)  # java / python / javascript / other
-    background_industry = Column(String(50), nullable=True)  # finance / internet / manufacturing / other
+    background_industry = Column(
+        String(50), nullable=True
+    )  # finance / internet / manufacturing / other
     ai_experience_level = Column(String(20), nullable=True)  # beginner / concept_aware / api_user
     assessment_completed = Column(Boolean, default=False)
     assessment_score = Column(Integer, nullable=True)
@@ -283,7 +288,9 @@ class UserSkillScore(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    dimension = Column(String(30), nullable=False)  # python / math / ml / dl / llm / engineering / coding_harness / ai_application / ai_strategy
+    dimension = Column(
+        String(30), nullable=False
+    )  # python / math / ml / dl / llm / engineering / coding_harness / ai_application / ai_strategy
     score = Column(Float, default=0.0)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
@@ -296,11 +303,15 @@ class UserAchievement(Base):
     """用户成就/徽章 — 每个用户可拥有多个成就。"""
 
     __tablename__ = "user_achievements"
-    __table_args__ = (UniqueConstraint("user_id", "achievement_type", name="uq_user_achievement_type"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "achievement_type", name="uq_user_achievement_type"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    achievement_type = Column(String(50), nullable=False)  # streak_7 / first_lab_pass / all_labs_phase1 / speed_demon / perfect_score
+    achievement_type = Column(
+        String(50), nullable=False
+    )  # streak_7 / first_lab_pass / all_labs_phase1 / speed_demon / perfect_score
     title = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
     icon = Column(String(50), nullable=True)
@@ -318,7 +329,9 @@ class LearningPath(Base):
     __tablename__ = "learning_paths"
 
     id = Column(Integer, primary_key=True, index=True)
-    path_id = Column(String(30), unique=True, index=True, nullable=False)  # ai_expert / ai_engineer / ai_practitioner / ai_manager
+    path_id = Column(
+        String(30), unique=True, index=True, nullable=False
+    )  # ai_expert / ai_engineer / ai_practitioner / ai_manager
     title = Column(String(100), nullable=False)
     subtitle = Column(String(200), nullable=True)
     description = Column(Text, nullable=False)
@@ -376,4 +389,3 @@ __all__ = [
     # V4 additions
     "UserProfile",
 ]
-

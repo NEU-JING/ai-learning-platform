@@ -3,6 +3,7 @@
 Start the AILP backend server with Docker sandbox disabled.
 This script handles proper signal handling for background execution.
 """
+
 import os
 import sys
 import signal
@@ -14,9 +15,11 @@ os.environ["PYTHONUNBUFFERED"] = "1"
 # Add backend to path
 sys.path.insert(0, "/root/workspace/ai-learning-platform/backend")
 
+
 # Signal handlers to prevent SIGTERM/SIGINT from stopping the server immediately
 def signal_handler(signum, frame):
     print(f"\nReceived signal {signum}, ignoring for background execution")
+
 
 signal.signal(signal.SIGTERM, signal_handler)
 signal.signal(signal.SIGINT, signal_handler)

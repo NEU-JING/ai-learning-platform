@@ -76,7 +76,9 @@ class ProfileService:
 
     # ── Settings (Task-1) ──────────────────────────────────────────────────
 
-    def get_settings(self, db: Session, user_id: int, username: str, avatar_url: Optional[str] = None) -> dict:
+    def get_settings(
+        self, db: Session, user_id: int, username: str, avatar_url: Optional[str] = None
+    ) -> dict:
         """Return settings dict. If no UserProfile exists, return defaults."""
         profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
 
@@ -154,30 +156,44 @@ class ProfileService:
 
         # profile_enabled: is_public transitioned false→true
         if is_now_public and not was_public:
-            self._emit_event(db, "profile_enabled", user_id=user_id,
-                             properties={"username": username}, request_info=request_info)
+            self._emit_event(
+                db,
+                "profile_enabled",
+                user_id=user_id,
+                properties={"username": username},
+                request_info=request_info,
+            )
             logger.info("profile_enabled user_id=%s username=%s", user_id, username)
 
         # profile_disabled: is_public transitioned true→false
         if not is_now_public and was_public:
-            self._emit_event(db, "profile_disabled", user_id=user_id,
-                             properties={"username": username}, request_info=request_info)
+            self._emit_event(
+                db,
+                "profile_disabled",
+                user_id=user_id,
+                properties={"username": username},
+                request_info=request_info,
+            )
             logger.info("profile_disabled user_id=%s username=%s", user_id, username)
 
         # privacy_toggle: any dimension changed
         changed_dims = [
-            dim for dim in _DIMENSIONS
-            if getattr(profile, dim) != prev_dimensions.get(dim)
+            dim for dim in _DIMENSIONS if getattr(profile, dim) != prev_dimensions.get(dim)
         ]
         if changed_dims:
-            self._emit_event(db, "privacy_toggle", user_id=user_id,
-                             properties={"changed_dimensions": changed_dims,
-                                         "username": username},
-                             request_info=request_info)
+            self._emit_event(
+                db,
+                "privacy_toggle",
+                user_id=user_id,
+                properties={"changed_dimensions": changed_dims, "username": username},
+                request_info=request_info,
+            )
             logger.info("privacy_toggle user_id=%s dimensions=%s", user_id, changed_dims)
 
         # profile_settings_update: observability log for any settings change
-        logger.info("profile_settings_update user_id=%s fields=%s", user_id, list(update_data.keys()))
+        logger.info(
+            "profile_settings_update user_id=%s fields=%s", user_id, list(update_data.keys())
+        )
 
         return self.get_settings(db, user_id, username, avatar_url)
 
@@ -210,17 +226,22 @@ class ProfileService:
         db.refresh(profile)
 
         # ── Analytics event ──────────────────────────────────────────────
-        self._emit_event(db, "profile_batch_action", user_id=user_id,
-                         properties={"action": action, "username": username},
-                         request_info=request_info)
+        self._emit_event(
+            db,
+            "profile_batch_action",
+            user_id=user_id,
+            properties={"action": action, "username": username},
+            request_info=request_info,
+        )
         logger.info("profile_batch_action user_id=%s action=%s", user_id, action)
 
         return self.get_settings(db, user_id, username, avatar_url)
 
     # ── Public profile (Task-2) ────────────────────────────────────────────
 
-    def get_public_profile(self, db: Session, username: str,
-                            request_info: dict | None = None) -> dict:
+    def get_public_profile(
+        self, db: Session, username: str, request_info: dict | None = None
+    ) -> dict:
         """Get public profile data for a given username.
 
         Returns dict on success, or raises an appropriate exception.
@@ -271,9 +292,13 @@ class ProfileService:
         response = self._apply_visibility(response, profile)
 
         # ── Analytics: profile_view (anonymous viewer, viewer IP from request_info) ──
-        self._emit_event(db, "profile_view", user_id=None,
-                         properties={"viewed_username": username, "viewed_user_id": user.id},
-                         request_info=request_info)
+        self._emit_event(
+            db,
+            "profile_view",
+            user_id=None,
+            properties={"viewed_username": username, "viewed_user_id": user.id},
+            request_info=request_info,
+        )
         # Observability log with anonymous viewer context
         viewer_ip = (request_info or {}).get("ip_address", "unknown")
         logger.info("profile_view username=%s viewer_ip=%s", username, viewer_ip)
@@ -337,16 +362,21 @@ class ProfileService:
             chapter = lab.chapter
             course = chapter.course if chapter else None
 
-            result.append({
-                "lab_id": lab.id,
-                "lab_title": lab.title,
-                "course_title": course.title if course else "未知课程",
-                "score": sub.score,
-                "completed_at": sub.created_at,
-            })
+            result.append(
+                {
+                    "lab_id": lab.id,
+                    "lab_title": lab.title,
+                    "course_title": course.title if course else "未知课程",
+                    "score": sub.score,
+                    "completed_at": sub.created_at,
+                }
+            )
 
         # Sort by completed_at DESC
-        result.sort(key=lambda x: x["completed_at"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+        result.sort(
+            key=lambda x: x["completed_at"] or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
         return result
 
     @staticmethod
@@ -390,14 +420,16 @@ class ProfileService:
             level_label = _LEVEL_LABELS.get(course.level, "学习认证")
             verify_url = f"/api/v1/certificates/verify/{cert_id}"
 
-            result.append({
-                "cert_id": cert_id,
-                "course_title": course.title,
-                "level": course.level,
-                "level_label": level_label,
-                "issue_date": now,
-                "verify_url": verify_url,
-            })
+            result.append(
+                {
+                    "cert_id": cert_id,
+                    "course_title": course.title,
+                    "level": course.level,
+                    "level_label": level_label,
+                    "issue_date": now,
+                    "verify_url": verify_url,
+                }
+            )
 
         return result
 

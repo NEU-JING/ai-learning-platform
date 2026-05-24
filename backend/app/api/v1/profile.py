@@ -36,6 +36,7 @@ def _request_info(request: Request) -> dict:
 
 # ── Settings (Task-1) ──────────────────────────────────────────────────────
 
+
 @router.get("/me/settings", response_model=ProfileSettingsResponse)
 def get_settings(
     current_user: User = Depends(get_current_user),
@@ -96,6 +97,7 @@ def batch_action(
 
 # ── Public profile (Task-2) ────────────────────────────────────────────────
 
+
 @router.get("/{username}", response_model=PublicProfileResponse)
 def get_public_profile(
     username: str,
@@ -108,8 +110,7 @@ def get_public_profile(
       404: User does not exist or is inactive (BR9)
       403: User exists but has not enabled public profile
     """
-    result = profile_service.get_public_profile(db, username,
-                                                  request_info=_request_info(request))
+    result = profile_service.get_public_profile(db, username, request_info=_request_info(request))
 
     # Service returns error dict when access should be denied
     if "error" in result:

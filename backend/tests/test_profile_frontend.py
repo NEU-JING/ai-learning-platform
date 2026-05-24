@@ -15,11 +15,10 @@ from app.core.security import get_password_hash
 from app.models import User
 from app.models.user_profile import UserProfile
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _make_user(test_db, username="oguser", email="og@example.com",
-               is_active=True, avatar_url=None):
+
+def _make_user(test_db, username="oguser", email="og@example.com", is_active=True, avatar_url=None):
     """Create a user and return user_obj."""
     user = User(
         email=email,
@@ -56,6 +55,7 @@ def _enable_profile(test_db, user, **overrides):
 
 
 # ── Test classes ─────────────────────────────────────────────────────────────
+
 
 class TestProfileSPAFallback:
     """GET /p/{username} returns index.html for SPA client-side routing."""
@@ -136,7 +136,8 @@ class TestOGTagInjection:
         """Public user with all dimensions hidden still gets basic OG tags."""
         user = _make_user(test_db, username="ogallhidden")
         _enable_profile(
-            test_db, user,
+            test_db,
+            user,
             show_basic_info=False,
             show_skill_radar=False,
             show_labs=False,

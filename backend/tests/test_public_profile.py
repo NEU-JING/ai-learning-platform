@@ -24,11 +24,12 @@ from app.models import (
 )
 from app.models.user_profile import UserProfile
 
-
 # ── helpers ──────────────────────────────────────────────────────────────────
 
-def _make_user(test_db, username="publicuser", email="public@example.com",
-               is_active=True, avatar_url=None):
+
+def _make_user(
+    test_db, username="publicuser", email="public@example.com", is_active=True, avatar_url=None
+):
     """Create a user and return user_obj."""
     user = User(
         email=email,
@@ -64,8 +65,7 @@ def _enable_profile(test_db, user, **overrides):
     return profile
 
 
-def _make_course_with_lab(test_db, title="Python Basics", level="beginner",
-                          course_id=None):
+def _make_course_with_lab(test_db, title="Python Basics", level="beginner", course_id=None):
     """Create a course + chapter + lab. Returns dict with all three."""
     course = Course(
         id=course_id,
@@ -115,6 +115,7 @@ PUBLIC_URL = "/api/v1/profile/{username}"
 
 
 # ── Test classes ─────────────────────────────────────────────────────────────
+
 
 class TestFullVisibility:
     """All dimensions visible → returns complete data."""
@@ -196,7 +197,9 @@ class TestPartialVisibility:
 
     def test_basic_info_hidden(self, client, test_db):
         user = _make_user(test_db, username="partial1")
-        _enable_profile(test_db, user, show_basic_info=False, display_name="Hidden", bio="Hidden bio")
+        _enable_profile(
+            test_db, user, show_basic_info=False, display_name="Hidden", bio="Hidden bio"
+        )
 
         resp = client.get(PUBLIC_URL.format(username="partial1"))
         assert resp.status_code == 200
@@ -249,7 +252,8 @@ class TestPartialVisibility:
         """AC5: All dimensions hidden, only username visible."""
         user = _make_user(test_db, username="allhidden")
         _enable_profile(
-            test_db, user,
+            test_db,
+            user,
             show_basic_info=False,
             show_skill_radar=False,
             show_labs=False,
@@ -360,6 +364,7 @@ class TestLabListOrdering:
 
         # Submission for lab 1 (earlier)
         from datetime import datetime, timezone, timedelta
+
         yesterday = datetime.now(timezone.utc) - timedelta(days=1)
         sub1 = LabSubmission(
             user_id=user.id,

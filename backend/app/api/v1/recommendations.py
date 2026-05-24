@@ -68,7 +68,9 @@ def get_daily_recommendations(
     返回 top N 推荐章节。
     """
     recommendations = RecommendationService.get_daily_recommendations(
-        current_user.id, db, limit=limit,
+        current_user.id,
+        db,
+        limit=limit,
     )
 
     # Count total incomplete chapters for context
@@ -76,10 +78,12 @@ def get_daily_recommendations(
 
     completed_ids = {
         row[0]
-        for row in db.query(LearningProgress.chapter_id).filter(
+        for row in db.query(LearningProgress.chapter_id)
+        .filter(
             LearningProgress.user_id == current_user.id,
             LearningProgress.status == "completed",
-        ).all()
+        )
+        .all()
     }
     total_published = (
         db.query(Chapter.id)
@@ -113,7 +117,9 @@ def get_post_lab_recommendations(
     from app.models import LabSubmission
 
     recommendations = RecommendationService.get_post_lab_recommendations(
-        current_user.id, lab_id, db,
+        current_user.id,
+        lab_id,
+        db,
     )
 
     # Determine pass/fail from latest submission
@@ -130,9 +136,7 @@ def get_post_lab_recommendations(
     return PostLabRecommendationsResponse(
         lab_id=lab_id,
         passed=latest_sub.passed if latest_sub else None,
-        recommendations=[
-            RecommendationItem(**r) for r in recommendations
-        ],
+        recommendations=[RecommendationItem(**r) for r in recommendations],
     )
 
 
@@ -158,7 +162,5 @@ def get_learning_coach_advice(
         weakest_score=result["weakest_score"],
         streak_days=result["streak_days"],
         advice=result["advice"],
-        recommended_chapters=[
-            RecommendationItem(**r) for r in result["recommended_chapters"]
-        ],
+        recommended_chapters=[RecommendationItem(**r) for r in result["recommended_chapters"]],
     )

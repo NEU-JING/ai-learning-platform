@@ -432,7 +432,9 @@ print("===RESULT_END===")
                 pass
 
 
-async def execute_code_docker(code: str, timeout: int = DEFAULT_TIMEOUT, *, skip_security: bool = False) -> Dict:
+async def execute_code_docker(
+    code: str, timeout: int = DEFAULT_TIMEOUT, *, skip_security: bool = False
+) -> Dict:
     """
     使用Docker沙箱执行Python代码
 
