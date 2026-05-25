@@ -87,7 +87,8 @@ export default async function Progress() {
         <ul class="navbar-nav">
           <li><a href="#/">首页</a></li>
           <li><a href="#/courses">课程</a></li>
-          <li><a href="#/progress" class="active">学习进度</a></li>
+<li><a href="#/progress">学习进度</a></li>
+          <li><a href="#/profile/settings">我的公开主页</a></li>
         </ul>
         <div class="navbar-right">
           <span class="user-name">${store.state.user?.email || ''}</span>

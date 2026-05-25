@@ -171,6 +171,12 @@ const routes = [
     requiresAuth: true
   },
   {
+    path: '/profile/settings',
+    component: () => import('./pages/ProfileSettingsPage.js'),
+    title: '我的公开主页',
+    requiresAuth: true
+  },
+  {
     path: '/discussions',
     component: () => import('./views/Discussion.js'),
     title: '讨论区'
@@ -260,6 +266,17 @@ async function initApp() {
   // 初始化懒加载
   lazyImage.observeAll('img[data-src]');
   
+  // ── Check for public profile route (/p/:username) ──────────────
+  // This runs BEFORE hash router init because /p/:username uses
+  // history mode (real URLs) for OG tag support.
+  const isPublicProfile = await initPublicProfileRoute();
+  if (isPublicProfile) {
+    // Public profile page is its own standalone experience.
+    // No need for mobile nav, auth check, or hash routing.
+    console.log('🚀 AI学习平台 - 公开主页已加载');
+    return;
+  }
+  
   // 初始化移动端导航
   if (window.innerWidth <= 768) {
     const mobileNav = new MobileNav();
@@ -299,3 +316,40 @@ async function initApp() {
 
 // DOM加载完成后初始化
 document.addEventListener('DOMContentLoaded', initApp);
+
+// ── Public profile route (history mode) ────────────────────────────────
+// /p/:username is served as a real URL (not hash route) for OG tag support.
+// When the browser loads /p/someuser, the backend serves index.html,
+// and this code detects the pathname and renders PublicProfilePage directly.
+async function initPublicProfileRoute() {
+  const pathname = window.location.pathname;
+  const match = pathname.match(/^\/p\/([^/]+)$/);
+  if (!match) return false;
+
+  const username = decodeURIComponent(match[1]);
+  const { default: PublicProfilePage } = await import('./pages/PublicProfilePage.js');
+  const app = document.getElementById('app');
+  if (!app) return true;
+
+  app.innerHTML = '<div class="loading">加载中...</div>';
+  try {
+    const result = await PublicProfilePage({ params: { username } });
+    if (typeof result === 'string') {
+      app.innerHTML = result;
+    } else if (result && result.template) {
+      app.innerHTML = result.template;
+      if (result.onMount) result.onMount();
+    }
+  } catch (error) {
+    console.error('公开主页加载失败:', error);
+    app.innerHTML = `
+      <div class="error-page">
+        <h1>加载失败</h1>
+        <p>${error.message}</p>
+        <a href="/" class="btn btn-primary">返回首页</a>
+      </div>
+    `;
+  }
+  document.title = `${username} 的能力主页 - AI学习平台`;
+  return true;
+}

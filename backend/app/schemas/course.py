@@ -154,6 +154,7 @@ class CourseListResponse(CourseBase):
     id: int
     order_index: int
     chapters_count: int = 0
+    labs_count: int = 0
     created_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -197,6 +198,33 @@ class LabSubmissionResponse(BaseModel):
         return v
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ── Learning Path ────────────────────────────────────────
+
+
+class LearningPathModuleResponse(BaseModel):
+    course_id: int
+    course_title: str
+    requirement: str
+    order_index: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LearningPathResponse(BaseModel):
+    path_id: str
+    title: str
+    subtitle: Optional[str] = None
+    target_role: str
+    estimated_weeks: int
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LearningPathDetailResponse(LearningPathResponse):
+    description: str
+    modules: list[LearningPathModuleResponse]
 
 
 # ── Code Execution ───────────────────────────────────────

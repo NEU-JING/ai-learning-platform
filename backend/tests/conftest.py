@@ -1,5 +1,6 @@
 """Shared test fixtures for the AI Learning Platform test suite."""
 
+import os
 from unittest.mock import patch
 
 import pytest
@@ -60,6 +61,7 @@ def client(test_db):
         patch("app.core.database.SessionLocal", _TestSessionLocal),
         patch("app.main.SessionLocal", _TestSessionLocal),
         patch("app.main._assert_data_contract"),
+        patch.dict(os.environ, {"DISABLE_DOCKER_SANDBOX": "1"}),
     ):
         with TestClient(app) as c:
             yield c

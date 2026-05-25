@@ -1,21 +1,71 @@
 /* Chapter reading screen — Breadcrumb + sticky progress + TOC + content + prev/next */
 import React, { useState, useEffect } from 'react';
 import { Icon } from '../icons';
-import { loadChapter, loadCourses, CURRENT, MOCK_CHAPTER, MOCK_COURSES, PROGRESS_STATS, LEVEL_MAP, CATEGORY_MAP } from '../data';
+import { loadChapter, loadCourseDetail, CURRENT, LEVEL_MAP, CATEGORY_MAP } from '../data';
 import { useNavigate, useParams } from 'react-router-dom';
+import { marked } from 'marked';
+
+// Configure marked for safe rendering
+marked.setOptions({
+  gfm: true,
+  breaks: true,
+  headerIds: true,
+  mangle: false,
+});
 
 const ScreenChapter = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [chapter, setChapter] = useState(MOCK_CHAPTER);
-  const [courses, setCourses] = useState(MOCK_COURSES);
+  const [chapter, setChapter] = useState(null);
+  const [course, setCourse] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   useEffect(() => {
-    loadChapter(id).then(ch => { if (ch) setChapter(ch); });
-    loadCourses().then(setCourses);
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    
+    loadChapter(id).then(ch => {
+      if (cancelled) return;
+      if (ch) {
+        setChapter(ch);
+        loadCourseDetail(ch.course_id).then(courseData => {
+          if (!cancelled) {
+            setCourse(courseData);
+            setLoading(false);
+          }
+        }).catch(err => {
+          if (!cancelled) {
+            setError('加载课程信息失败');
+            setLoading(false);
+          }
+        });
+      } else {
+        setError('章节不存在或加载失败');
+        setLoading(false);
+      }
+    }).catch(err => {
+      if (!cancelled) {
+        setError('加载章节失败');
+        setLoading(false);
+      }
+    });
+    
+    return () => { cancelled = true; };
   }, [id]);
-  const course = courses.find(c => c.id === chapter.course_id) || courses[2];
-  const chapterList = course.chapters || [];
-  const currentIdx = chapterList.findIndex(c => c.id === chapter.id);
+  
+  // Loading state
+  if (loading) return <ChapterSkeleton />;
+  
+  // Error state
+  if (error) return <ChapterError message={error} onRetry={() => window.location.reload()} />;
+  
+  // Empty state
+  if (!chapter) return <ChapterError message="章节不存在" onRetry={() => navigate('/courses')} />;
+  
+  const chapterList = course?.chapters || [];
+  const currentIdx = chapterList.findIndex(c => c.id === chapter?.id);
   const prev = currentIdx > 0 ? chapterList[currentIdx - 1] : null;
   const next = currentIdx >= 0 && currentIdx < chapterList.length - 1 ? chapterList[currentIdx + 1] : null;
   const pct = chapterList.length ? Math.round((currentIdx + 1) / chapterList.length * 100) : 0;
@@ -105,9 +155,11 @@ const ScreenChapter = () => {
         {/* Main content */}
         <main style={{ paddingTop: 8 }}>
           <ChapterHeader chapter={chapter} />
-          <article className="md-body" style={{ marginTop: 24 }}>
-            {chapter.blocks.map((b, i) => <Block key={i} block={b} />)}
-          </article>
+          <article 
+            className="md-body markdown-content" 
+            style={{ marginTop: 24 }}
+            dangerouslySetInnerHTML={{ __html: marked.parse(chapter.content || chapter.sections?.map(s => s.content).join('\n\n') || '') }}
+          />
 
           {/* Lab entry / chapter complete actions */}
           <div className="card" style={{
@@ -122,7 +174,7 @@ const ScreenChapter = () => {
                 完成《信用卡欺诈检测》实验巩固本章知识。Recall ≥ 0.85，Precision ≥ 0.70。
               </div>
             </div>
-            <button className="btn btn-primary" onClick={() => navigate('/lab/35')}>
+            <button className="btn btn-primary" onClick={() => chapter?.lab_id && navigate('/lab/' + chapter.lab_id)} disabled={!chapter?.lab_id}>
               <Icon name="flask" size={13} /> 进入实验
             </button>
           </div>
@@ -236,9 +288,9 @@ const Block = ({ block }) => {
 };
 
 const ChapterSidebar = ({ course, chapters, currentId, toc, activeSection, setActiveSection, onNavigate }) => {
-  const [tab, setTab] = React.useState("toc"); // toc | chapters
+  const [tab, setTab] = React.useState("chapters"); // chapters | toc (default to chapters since it has data)
   return (
-    <div>
+    <div style={{ position: "sticky", top: 120, maxHeight: "calc(100vh - 140px)", overflowY: "auto" }}>
       {/* Tab switch */}
       <div className="hstack" style={{ gap: 2, padding: 2, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 6, marginBottom: 14 }}>
         {[
@@ -413,7 +465,123 @@ const ChapterMarkdownStyle = () => (
       overflow-x: auto;
     }
     .md-body code { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+    
+    /* Markdown content styles */
+    .markdown-content h1 { font-size: 28px; font-weight: 700; margin: 32px 0 20px; color: var(--fg); }
+    .markdown-content h2 { font-size: 22px; font-weight: 600; margin: 28px 0 16px; color: var(--fg); border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    .markdown-content h3 { font-size: 18px; font-weight: 600; margin: 24px 0 12px; color: var(--fg); }
+    .markdown-content h4 { font-size: 16px; font-weight: 600; margin: 20px 0 10px; color: var(--fg); }
+    .markdown-content p { margin: 0 0 16px; color: var(--fg-2); line-height: 1.75; }
+    .markdown-content ul, .markdown-content ol { margin: 0 0 16px 24px; color: var(--fg-2); }
+    .markdown-content li { margin-bottom: 8px; }
+    .markdown-content code {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      background: var(--code-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+      color: var(--fg);
+    }
+    .markdown-content pre {
+      background: var(--code-bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 16px;
+      overflow-x: auto;
+      margin: 20px 0;
+    }
+    .markdown-content pre code {
+      background: transparent;
+      padding: 0;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .markdown-content blockquote {
+      border-left: 4px solid var(--brand);
+      margin: 20px 0;
+      padding: 12px 20px;
+      background: var(--brand-soft);
+      border-radius: 0 8px 8px 0;
+    }
+    .markdown-content table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 14px;
+    }
+    .markdown-content th,
+    .markdown-content td {
+      border: 1px solid var(--line);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    .markdown-content th {
+      background: var(--surface);
+      font-weight: 600;
+      color: var(--fg);
+    }
+    .markdown-content tr:nth-child(even) {
+      background: var(--surface-2);
+    }
+    .markdown-content strong { color: var(--fg); font-weight: 600; }
+    .markdown-content em { font-style: italic; }
+    .markdown-content a { color: var(--brand); text-decoration: none; }
+    .markdown-content a:hover { text-decoration: underline; }
+    
+    /* Skeleton loading animation */
+    @keyframes skeleton-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .skeleton {
+      background: var(--surface);
+      border-radius: 6px;
+      animation: skeleton-pulse 1.5s ease-in-out infinite;
+    }
+    .skeleton-text { height: 16px; margin-bottom: 12px; }
+    .skeleton-title { height: 24px; margin-bottom: 16px; width: 60%; }
+    .skeleton-line { height: 12px; margin-bottom: 8px; }
   `}</style>
+);
+
+/* Loading skeleton component */
+const ChapterSkeleton = () => (
+  <div className="screen">
+    <div style={{ position: "sticky", top: 56, zIndex: 40, background: "var(--bg)", borderBottom: "1px solid var(--line)" }}>
+      <div className="container hstack" style={{ height: 48 }}>
+        <div className="skeleton" style={{ width: 120, height: 16 }} />
+      </div>
+    </div>
+    <div className="container layout-2col-left" style={{ paddingTop: 24 }}>
+      <aside className="sidebar">
+        <div className="skeleton" style={{ width: "100%", height: 200 }} />
+      </aside>
+      <main>
+        <div className="skeleton skeleton-title" />
+        <div className="skeleton skeleton-text" style={{ width: "80%" }} />
+        <div className="skeleton skeleton-line" />
+        <div className="skeleton skeleton-line" style={{ width: "90%" }} />
+        <div className="skeleton skeleton-line" />
+        <div className="skeleton skeleton-line" style={{ width: "70%" }} />
+      </main>
+    </div>
+    <ChapterMarkdownStyle />
+  </div>
+);
+
+/* Error state component */
+const ChapterError = ({ message, onRetry }) => (
+  <div className="screen" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+    <div className="card" style={{ padding: 40, textAlign: "center", maxWidth: 400 }}>
+      <Icon name="alertCircle" size={48} style={{ color: "var(--warn)", marginBottom: 16 }} />
+      <h3 style={{ marginBottom: 8 }}>加载失败</h3>
+      <p className="dim" style={{ marginBottom: 24 }}>{message}</p>
+      <button className="btn btn-primary" onClick={onRetry}>
+        <Icon name="refresh" size={14} /> 重试
+      </button>
+    </div>
+    <ChapterMarkdownStyle />
+  </div>
 );
 
 export default ScreenChapter;

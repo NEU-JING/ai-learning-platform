@@ -14,12 +14,80 @@ from app.schemas.course import (
     LabPublicResponse,
     LabSubmissionCreate,
     LabSubmissionResponse,
+    LearningPathDetailResponse,
+    LearningPathModuleResponse,
+    LearningPathResponse,
 )
 from app.schemas.pagination import PaginatedResponse
 from app.services.course_service import course_service
 from app.services.lab_service import lab_service
 
 router = APIRouter()
+
+
+# ── Learning Paths ─────────────────────────────────────────────────────
+
+
+@router.get("/paths", response_model=list[LearningPathResponse])
+def list_learning_paths(db: Session = Depends(get_db)):
+    """列出所有学习路径"""
+    from app.models import LearningPath
+
+    paths = (
+        db.query(LearningPath)
+        .filter(LearningPath.is_published.is_(True))
+        .order_by(LearningPath.order_index)
+        .all()
+    )
+    return paths
+
+
+@router.get("/paths/{path_id}", response_model=LearningPathDetailResponse)
+def get_learning_path(path_id: str, db: Session = Depends(get_db)):
+    """获取学习路径详情（含关联课程）"""
+    from app.models import Course, LearningPath, LearningPathModule
+
+    path = (
+        db.query(LearningPath)
+        .filter(LearningPath.path_id == path_id, LearningPath.is_published.is_(True))
+        .first()
+    )
+    if not path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="学习路径不存在")
+
+    # Load modules with course titles
+    modules = (
+        db.query(LearningPathModule)
+        .filter(LearningPathModule.path_id == path_id)
+        .order_by(LearningPathModule.order_index)
+        .all()
+    )
+
+    # Build response with course titles
+    module_responses = []
+    for mod in modules:
+        course = db.query(Course).filter(Course.id == mod.course_id).first()
+        module_responses.append(
+            LearningPathModuleResponse(
+                course_id=mod.course_id,
+                course_title=course.title if course else "",
+                requirement=mod.requirement,
+                order_index=mod.order_index,
+            )
+        )
+
+    return LearningPathDetailResponse(
+        path_id=path.path_id,
+        title=path.title,
+        subtitle=path.subtitle,
+        description=path.description,
+        target_role=path.target_role,
+        estimated_weeks=path.estimated_weeks,
+        modules=module_responses,
+    )
+
+
+# ── Courses ─────────────────────────────────────────────────────────────
 
 
 @router.get("/", response_model=PaginatedResponse[CourseListResponse])
@@ -88,6 +156,12 @@ def get_chapter(chapter_id: int, db: Session = Depends(get_db)):
 def get_chapter_lab(chapter_id: int, db: Session = Depends(get_db)):
     """Get the lab associated with a chapter (public view, no solution)."""
     return course_service.get_chapter_lab(db, chapter_id)
+
+
+@router.get("/labs/{lab_id}", response_model=Optional[LabPublicResponse])
+def get_lab_by_id(lab_id: int, db: Session = Depends(get_db)):
+    """Get lab detail by lab ID (public view, no solution)."""
+    return lab_service.get_lab(db, lab_id)
 
 
 @router.post("/labs/{lab_id}/submit", response_model=LabSubmissionResponse)

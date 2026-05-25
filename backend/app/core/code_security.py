@@ -719,7 +719,9 @@ class CodeSecurityChecker:
         if isinstance(mode_arg, ast.Constant) and isinstance(mode_arg.value, str):
             mode_str = mode_arg.value
             if mode_str in WRITE_MODES or any(m in mode_str for m in ("w", "a", "x", "+")):
-                self.errors.append(f"禁止以写入模式打开文件: open(..., '{mode_str}') — 仅允许只读模式")
+                self.errors.append(
+                    f"禁止以写入模式打开文件: open(..., '{mode_str}') — 仅允许只读模式"
+                )
                 return
         elif isinstance(mode_arg, ast.Name):
             # mode 是变量，无法静态判断 → 警告但不阻止

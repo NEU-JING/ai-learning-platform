@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '../icons';
-import { loadCourses, CATEGORY_MAP, LEVEL_MAP, MOCK_COURSES } from '../data';
+import { loadCourseDetail, CATEGORY_MAP, LEVEL_MAP } from '../data';
 
 const ScreenCourseDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [courses, setCourses] = useState(MOCK_COURSES);
-  useEffect(() => { loadCourses().then(setCourses); }, []);
-  const course = courses.find(c => c.id === Number(id)) || courses[0];
+  const [course, setCourse] = useState(null);
+  useEffect(() => { loadCourseDetail(Number(id)).then(setCourse); }, [id]);
+  if (!course) return <div className="screen container" style={{ paddingTop: 80, textAlign: 'center' }}><p className="muted">加载中…</p></div>;
   const lvl = LEVEL_MAP[course.level];
   const pct = Math.round(course.chapters_done / course.chapters_total * 100);
   const totalMinutes = (course.chapters || []).reduce((s, c) => s + (c.duration || 0), 0);

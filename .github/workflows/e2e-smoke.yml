@@ -1,4 +1,4 @@
-name: E2E Smoke Tests
+name: E2E Tests (Public Profile)
 
 on:
   pull_request:
@@ -43,7 +43,7 @@ jobs:
       - name: Start backend server
         run: |
           cd backend
-          PYTHONPATH=. SERVE_STATIC=True uvicorn app.main:app --host 0.0.0.0 --port 8000 &
+          PYTHONPATH=. DISABLE_DOCKER_SANDBOX=1 SERVE_STATIC=True uvicorn app.main:app --host 0.0.0.0 --port 8000 &
           echo "BACKEND_PID=$!" >> $GITHUB_ENV
 
       - name: Wait for server
@@ -56,8 +56,11 @@ jobs:
           echo "Server failed to start"
           exit 1
 
-      - name: Run E2E smoke tests
-        run: npx playwright test tests/e2e/smoke.spec.js
+      - name: Seed E2E test users
+        run: python tests/e2e/seed_test_users.py
+
+      - name: Run E2E tests (12 AC coverage)
+        run: npx playwright test tests/e2e/public-profile.spec.js
 
       - name: Cleanup backend server
         if: always()

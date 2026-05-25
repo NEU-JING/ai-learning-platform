@@ -1,23 +1,37 @@
 /* Lab screen — Code editor + test runner + AI hint sidebar */
 import React, { useState, useEffect } from 'react';
 import { Icon } from '../icons';
-import { loadLab, loadCourses, CURRENT, MOCK_LAB, MOCK_COURSES, PROGRESS_STATS, LEVEL_MAP, CATEGORY_MAP } from '../data';
+import { loadLab, loadCourses, CURRENT, LEVEL_MAP, CATEGORY_MAP } from '../data';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const ScreenLab = () => {
   const navigate = useNavigate();
   const { id } = useParams();
-  const [lab, setLab] = useState(MOCK_LAB);
-  const [courses, setCourses] = useState(MOCK_COURSES);
-  useEffect(() => {
-    loadLab(id).then(l => { if (l) setLab(l); });
-    loadCourses().then(setCourses);
-  }, [id]);
-  const [code, setCode] = useState(lab.starter_code || lab.starter || '');
-  const [tab, setTab] = useState("output"); // output | tests | console
+  const [lab, setLab] = useState(null);
+  const [courses, setCourses] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [results, setResults] = useState([]);
+  const [code, setCode] = useState('');
+  const [tab, setTab] = useState("output");
   const [running, setRunning] = useState(false);
-  const [results, setResults] = useState(lab.test_cases || lab.tests || []);
   const [aiOpen, setAiOpen] = useState(false);
+  
+  useEffect(() => {
+    setLoading(true);
+    Promise.all([
+      loadLab(id),
+      loadCourses(),
+    ]).then(([labData, coursesData]) => {
+      if (labData) {
+        setLab(labData);
+        const testCases = labData.test_cases || labData.tests || [];
+        setResults(testCases);
+        setCode(labData.starter_code || labData.starter || '');
+      }
+      setCourses(coursesData || []);
+      setLoading(false);
+    });
+  }, [id]);
   const [output, setOutput] = React.useState(
 `>>> 加载数据集 creditcard.csv
 shape = (284807, 31)

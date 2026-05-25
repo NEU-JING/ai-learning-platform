@@ -106,7 +106,7 @@ class TestCodeSecurity:
         from app.core.code_security import is_safe_code
 
         assert is_safe_code("x = 1 + 2") is True
-        assert is_safe_code("import os") is True   # os is now allowed (learning-essential)
+        assert is_safe_code("import os") is True  # os is now allowed (learning-essential)
         assert is_safe_code("import subprocess") is False  # subprocess still forbidden
 
 

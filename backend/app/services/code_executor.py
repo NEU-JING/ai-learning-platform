@@ -130,7 +130,8 @@ async def ensure_sandbox_image(force_rebuild: bool = False) -> bool:
                     needs_rebuild = True
 
             # 构建镜像
-            sandbox_dir = Path(__file__).parent.parent.parent.parent.parent / "sandbox"
+            # 从backend/app/services/code_executor.py -> 项目根目录/sandbox
+            sandbox_dir = Path(__file__).parent.parent.parent.parent / "sandbox"
             if not sandbox_dir.exists():
                 print(f"❌ 沙箱目录不存在: {sandbox_dir}")
                 _image_checked = True
@@ -179,6 +180,12 @@ async def ensure_sandbox_image(force_rebuild: bool = False) -> bool:
                         print(f"   {log['stream'].strip()}")
                     if "error" in log:
                         print(f"   ERROR: {log['error']}")
+                _image_checked = True
+                _image_exists = False
+                return False
+            except Exception as e:
+                # 捕获所有其他构建异常（如网络超时）
+                print(f"❌ 镜像构建异常: {e}")
                 _image_checked = True
                 _image_exists = False
                 return False
@@ -287,7 +294,6 @@ async def execute_code_subprocess_fallback(code: str, timeout: int = DEFAULT_TIM
         # 包装代码，限制资源和输出
         # 包装代码，限制资源和输出
         # 用户代码通过 exec() 执行，避免函数外 return/yield 导致 SyntaxError
-        indented_code = chr(10).join("    " + line for line in code.split(chr(10)))
         wrapped_code = f"""import sys
 import io
 import resource
@@ -425,7 +431,9 @@ print("===RESULT_END===")
                 pass
 
 
-async def execute_code_docker(code: str, timeout: int = DEFAULT_TIMEOUT, *, skip_security: bool = False) -> Dict:
+async def execute_code_docker(
+    code: str, timeout: int = DEFAULT_TIMEOUT, *, skip_security: bool = False
+) -> Dict:
     """
     使用Docker沙箱执行Python代码
 

@@ -15,9 +15,15 @@ from app.core.code_security import check_code_security
 from app.models import Lab, LabSubmission, LearningProgress
 from app.services.code_executor import execute_code_docker
 from app.services.grader import CodeGrader
+from app.services.skill_radar import SkillRadarService
 
 
 class LabService:
+    @staticmethod
+    def get_lab(db: Session, lab_id: int) -> Lab | None:
+        """Get lab by ID (public view, no solution)."""
+        return db.query(Lab).filter(Lab.id == lab_id).first()
+
     @staticmethod
     def submit_and_grade(
         db: Session,
@@ -117,6 +123,13 @@ class LabService:
                 )
                 db.add(progress)
             db.commit()
+
+        # 8. Auto-refresh skill radar scores when lab is passed
+        if grading_result["passed"]:
+            try:
+                SkillRadarService.refresh_skill_scores(user_id, db)
+            except Exception:
+                pass  # Non-critical — don't fail the submission over scoring
 
         return submission
 
