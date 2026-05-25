@@ -2,7 +2,6 @@
 代码执行测试
 """
 
-
 from app.core.database import get_db
 from app.main import app
 from tests.test_auth import client, override_get_db
