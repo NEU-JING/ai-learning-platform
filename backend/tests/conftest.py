@@ -14,6 +14,24 @@ from app.core.security import create_access_token, get_password_hash
 from app.main import app
 from app.models import Base, Chapter, Course, Lab, User
 
+# SDD: CI-only marker support — auto-skip locally, run only in CI
+# Requires: pytest.ini with "ci_only" marker registered
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "ci_only: tests that require CI environment resources")
+
+
+def pytest_collection_modifyitems(config, items):
+    if os.environ.get("CI", "").lower() not in ("true", "1"):
+        skip_ci_only = pytest.mark.skip(reason="CI-only test, skipped locally")
+        for item in items:
+            if "ci_only" in item.keywords:
+                item.add_marker(skip_ci_only)
+
+
+# End SDD: CI-only
+
 # In-memory SQLite shared across all connections via StaticPool.
 # Without StaticPool, each SQLite connection gets its own empty DB.
 _test_engine = create_engine(

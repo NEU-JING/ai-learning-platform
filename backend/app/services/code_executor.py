@@ -755,12 +755,14 @@ if __name__ == "__main__":
 
         # 测试3: 计算代码
         print("\n测试3 - 计算代码:")
-        result = await execute_code_sandbox("""
+        result = await execute_code_sandbox(
+            """
 import math
 result = sum(range(1, 101))
 print(f"1到100的和: {result}")
 print(f"平方根: {math.sqrt(result)}")
-""")
+"""
+        )
         print(f"结果: {result}")
 
         # 测试4: 超时测试
@@ -782,12 +784,14 @@ print("这行不会执行")
 
         # 测试6: 使用numpy
         print("\n测试6 - 使用numpy:")
-        result = await execute_code_sandbox("""
+        result = await execute_code_sandbox(
+            """
 import numpy as np
 arr = np.array([1, 2, 3, 4, 5])
 print(f"数组: {arr}")
 print(f"平均值: {np.mean(arr)}")
-""")
+"""
+        )
         print(f"结果: {result}")
 
     asyncio.run(test())

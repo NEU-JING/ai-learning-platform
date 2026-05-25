@@ -11,21 +11,21 @@ AI学习平台 - 完整测试用例集
 运行方式:
     cd backend
     pytest ../tests/test_complete.py -v
-    
+
 或运行所有测试:
     pytest ../tests/ -v
 """
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.main import app
-from app.models import Base
 from app.core.database import get_db
 from app.data.courses import init_courses_data
-
+from app.main import app
+from app.models import Base
 
 # ============================================================================
 # 测试配置 - 所有测试共享
@@ -72,19 +72,11 @@ def auth_token(setup_db):
     # 注册用户
     client.post(
         "/api/v1/auth/register",
-        json={
-            "username": "testuser",
-            "email": "test@example.com",
-            "password": "testpassword123"
-        }
+        json={"username": "testuser", "email": "test@example.com", "password": "testpassword123"},
     )
     # 登录获取token
     login_response = client.post(
-        "/api/v1/auth/login",
-        json={
-            "email": "test@example.com",
-            "password": "testpassword123"
-        }
+        "/api/v1/auth/login", json={"email": "test@example.com", "password": "testpassword123"}
     )
     return login_response.json()["access_token"]
 
@@ -93,10 +85,11 @@ def auth_token(setup_db):
 # 模块A: 认证测试 (Auth)
 # ============================================================================
 
+
 class TestAuth:
     """
     PRD参考: 6.1 认证模块验收
-    
+
     验收标准:
     - AC-01: 用户注册 - 填写正确信息后成功注册，返回用户信息
     - AC-02: 重复邮箱 - 注册重复邮箱返回400错误
@@ -113,14 +106,10 @@ class TestAuth:
         """
         response = client.post(
             "/api/v1/auth/register",
-            json={
-                "username": "newuser",
-                "email": "newuser@example.com",
-                "password": "password123"
-            }
+            json={"username": "newuser", "email": "newuser@example.com", "password": "password123"},
         )
         assert response.status_code == 201, f"注册失败: {response.json()}"
-        
+
         data = response.json()
         assert data["username"] == "newuser"
         assert data["email"] == "newuser@example.com"
@@ -135,21 +124,13 @@ class TestAuth:
         # 首次注册
         client.post(
             "/api/v1/auth/register",
-            json={
-                "username": "user1",
-                "email": "duplicate@example.com",
-                "password": "password123"
-            }
+            json={"username": "user1", "email": "duplicate@example.com", "password": "password123"},
         )
-        
+
         # 重复注册
         response = client.post(
             "/api/v1/auth/register",
-            json={
-                "username": "user2",
-                "email": "duplicate@example.com",
-                "password": "password123"
-            }
+            json={"username": "user2", "email": "duplicate@example.com", "password": "password123"},
         )
         assert response.status_code == 400, "重复邮箱应返回400"
         assert "邮箱已注册" in response.json()["detail"]
@@ -165,18 +146,18 @@ class TestAuth:
             json={
                 "username": "duplicate_user",
                 "email": "user1@example.com",
-                "password": "password123"
-            }
+                "password": "password123",
+            },
         )
-        
+
         # 重复注册
         response = client.post(
             "/api/v1/auth/register",
             json={
                 "username": "duplicate_user",
                 "email": "user2@example.com",
-                "password": "password123"
-            }
+                "password": "password123",
+            },
         )
         assert response.status_code == 400, "重复用户名应返回400"
         assert "用户名已存在" in response.json()["detail"]
@@ -193,20 +174,16 @@ class TestAuth:
             json={
                 "username": "loginuser",
                 "email": "login@example.com",
-                "password": "mypassword123"
-            }
+                "password": "mypassword123",
+            },
         )
-        
+
         # 登录 - 使用form-data格式 (这是PRD中的关键点)
         response = client.post(
-            "/api/v1/auth/login",
-            json={
-                "email": "login@example.com",
-                "password": "mypassword123"
-            }
+            "/api/v1/auth/login", json={"email": "login@example.com", "password": "mypassword123"}
         )
         assert response.status_code == 200, f"登录失败: {response.json()}"
-        
+
         data = response.json()
         assert "access_token" in data, "应返回access_token"
         assert data["token_type"] == "bearer"
@@ -223,17 +200,14 @@ class TestAuth:
             json={
                 "username": "testuser",
                 "email": "wrongpass@example.com",
-                "password": "correctpassword"
-            }
+                "password": "correctpassword",
+            },
         )
-        
+
         # 错误密码登录
         response = client.post(
             "/api/v1/auth/login",
-            json={
-                "email": "wrongpass@example.com",
-                "password": "wrongpassword"
-            }
+            json={"email": "wrongpass@example.com", "password": "wrongpassword"},
         )
         assert response.status_code == 401, "错误密码应返回401"
         assert "邮箱或密码错误" in response.json()["detail"]
@@ -243,11 +217,7 @@ class TestAuth:
         T-AUTH-006: 测试不存在的用户登录
         """
         response = client.post(
-            "/api/v1/auth/login",
-            json={
-                "email": "notexist@example.com",
-                "password": "anypassword"
-            }
+            "/api/v1/auth/login", json={"email": "notexist@example.com", "password": "anypassword"}
         )
         assert response.status_code == 401, "不存在的用户应返回401"
 
@@ -267,26 +237,15 @@ class TestAuth:
         # 注册并登录
         client.post(
             "/api/v1/auth/register",
-            json={
-                "username": "authtest",
-                "email": "auth@example.com",
-                "password": "test123456"
-            }
+            json={"username": "authtest", "email": "auth@example.com", "password": "test123456"},
         )
         login_response = client.post(
-            "/api/v1/auth/login",
-            json={
-                "email": "auth@example.com",
-                "password": "test123456"
-            }
+            "/api/v1/auth/login", json={"email": "auth@example.com", "password": "test123456"}
         )
         token = login_response.json()["access_token"]
-        
+
         # 访问用户信息
-        response = client.get(
-            "/api/v1/auth/me",
-            headers={"Authorization": f"Bearer {token}"}
-        )
+        response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == "auth@example.com"
@@ -298,8 +257,7 @@ class TestAuth:
         PRD参考: 安全验收 SC-02
         """
         response = client.get(
-            "/api/v1/auth/me",
-            headers={"Authorization": "Bearer invalid_token_12345"}
+            "/api/v1/auth/me", headers={"Authorization": "Bearer invalid_token_12345"}
         )
         assert response.status_code == 401, "无效Token应返回401"
 
@@ -310,11 +268,7 @@ class TestAuth:
         # 空邮箱
         response = client.post(
             "/api/v1/auth/register",
-            json={
-                "username": "user",
-                "email": "",
-                "password": "password123"
-            }
+            json={"username": "user", "email": "", "password": "password123"},
         )
         assert response.status_code in [400, 422], "空邮箱应拒绝"
 
@@ -324,32 +278,37 @@ class TestAuth:
         """
         # First test that validation works with schema directly
         from app.schemas.user import UserCreate
+
         try:
             UserCreate(username="shortpw", email="short@example.com", password="123")
             print("ERROR: Schema should have rejected short password!")
         except Exception as e:
             print(f"Schema correctly rejected: {e}")
-        
+
         response = client.post(
             "/api/v1/auth/register",
             json={
                 "username": "shortpw2",
                 "email": "short2@example.com",
-                "password": "123"  # 小于8字符
-            }
+                "password": "123",  # 小于8字符
+            },
         )
         # Pydantic验证会返回422
-        assert response.status_code in [400, 422], f"短密码应拒绝, got {response.status_code}: {response.text}"
+        assert response.status_code in [
+            400,
+            422,
+        ], f"短密码应拒绝, got {response.status_code}: {response.text}"
 
 
 # ============================================================================
 # 模块B: 课程测试 (Course)
 # ============================================================================
 
+
 class TestCourses:
     """
     PRD参考: 6.2 课程模块验收
-    
+
     验���标准:
     - CC-01: 课程列表 - 返回所有已发布课程
     - CC-02: 课程详情 - 返回课程详细信息
@@ -364,11 +323,11 @@ class TestCourses:
         """
         response = client.get("/api/v1/courses/")
         assert response.status_code == 200
-        
+
         data = response.json()
         assert isinstance(data, list), "应返回数组"
         assert len(data) > 0, "应有内置课程数据"
-        
+
         # 验证课程数据结构
         course = data[0]
         assert "id" in course
@@ -382,7 +341,7 @@ class TestCourses:
         """
         response = client.get("/api/v1/courses/")
         courses = response.json()
-        
+
         for course in courses:
             assert course.get("is_published") is True, "应只返回已发布课程"
 
@@ -395,10 +354,10 @@ class TestCourses:
         list_response = client.get("/api/v1/courses/")
         courses = list_response.json()
         assert len(courses) > 0, "需要有课程"
-        
+
         course_id = courses[0]["id"]
         response = client.get(f"/api/v1/courses/{course_id}")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == course_id
@@ -423,14 +382,14 @@ class TestCourses:
         list_response = client.get("/api/v1/courses/")
         courses = list_response.json()
         assert len(courses) > 0, "需要有课程"
-        
+
         # 获取第一个课程的章节
         chapters = courses[0].get("chapters", [])
         assert len(chapters) > 0, "课程需要有章节"
-        
+
         chapter_id = chapters[0]["id"]
         response = client.get(f"/api/v1/courses/chapters/{chapter_id}")
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["id"] == chapter_id
@@ -454,7 +413,7 @@ class TestCourses:
         """
         response = client.get("/api/v1/courses/")
         courses = response.json()
-        
+
         for course in courses:
             # 必填字段
             assert "id" in course
@@ -463,7 +422,7 @@ class TestCourses:
             assert "level" in course
             assert "category" in course
             assert "chapters" in course
-            
+
             # 类型验证
             assert isinstance(course["chapters"], list)
 
@@ -473,7 +432,7 @@ class TestCourses:
         """
         response = client.get("/api/v1/courses/")
         courses = response.json()
-        
+
         for course in courses:
             for chapter in course.get("chapters", []):
                 assert "id" in chapter
@@ -486,7 +445,7 @@ class TestCourses:
         """
         response = client.get("/api/v1/courses/")
         courses = response.json()
-        
+
         # 验证按order_index升序排列
         order_indices = [c.get("order_index", 0) for c in courses]
         assert order_indices == sorted(order_indices), "应按order_index排序"
@@ -496,17 +455,18 @@ class TestCourses:
 # 模块C: 实验/代码执行测试 (Lab/Code Execution)
 # ============================================================================
 
+
 class TestCodeExecution:
     """
     PRD参考: 6.3 实验模块验收
-    
+
     验收标准:
     - EC-01: 代码执行 - 执行成功返回输出
     - EC-2: 执行超时 - 超时自动终止
     - EC-03: 危险代码 - 危险操作被拦截
     - EC-04: 实验提交 - 提交记录被保存
     - EC-05: 结果返回 - 正确返回执行结果
-    
+
     安全验收:
     - SC-01: 未授权访问
     - SC-02: Token伪造
@@ -520,13 +480,10 @@ class TestCodeExecution:
         """
         response = client.post(
             "/api/v1/labs/execute",
-            json={
-                "code": "print('Hello, World!')",
-                "timeout": 5
-            },
-            headers={"Authorization": f"Bearer {auth_token}"}
+            json={"code": "print('Hello, World!')", "timeout": 5},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
@@ -539,13 +496,10 @@ class TestCodeExecution:
         """
         response = client.post(
             "/api/v1/labs/execute",
-            json={
-                "code": "print(undefined_variable)",
-                "timeout": 5
-            },
-            headers={"Authorization": f"Bearer {auth_token}"}
+            json={"code": "print(undefined_variable)", "timeout": 5},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
@@ -558,13 +512,10 @@ class TestCodeExecution:
         """
         response = client.post(
             "/api/v1/labs/execute",
-            json={
-                "code": "import time; time.sleep(10)",
-                "timeout": 1  # 1秒超时
-            },
-            headers={"Authorization": f"Bearer {auth_token}"}
+            json={"code": "import time; time.sleep(10)", "timeout": 1},  # 1秒超时
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is False
@@ -575,13 +526,7 @@ class TestCodeExecution:
         T-LAB-004: 测试未授权执行代码
         验收标准: SC-01
         """
-        response = client.post(
-            "/api/v1/labs/execute",
-            json={
-                "code": "print('test')",
-                "timeout": 5
-            }
-        )
+        response = client.post("/api/v1/labs/execute", json={"code": "print('test')", "timeout": 5})
         assert response.status_code == 401, "未授权应返回401"
 
     def test_C05_execute_dangerous_subprocess(self, auth_token):
@@ -591,13 +536,10 @@ class TestCodeExecution:
         """
         response = client.post(
             "/api/v1/labs/execute",
-            json={
-                "code": "import os; os.system('echo hacked')",
-                "timeout": 5
-            },
-            headers={"Authorization": f"Bearer {auth_token}"}
+            json={"code": "import os; os.system('echo hacked')", "timeout": 5},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         # 危险代码应被拦截
         assert response.status_code == 200
         data = response.json()
@@ -616,12 +558,12 @@ class TestCodeExecution:
             "eval('__import__(\"os\")')",
             "__import__('subprocess').run(['ls'], shell=True)",
         ]
-        
+
         for code in dangerous_codes:
             response = client.post(
                 "/api/v1/labs/execute",
                 json={"code": code, "timeout": 5},
-                headers={"Authorization": f"Bearer {auth_token}"}
+                headers={"Authorization": f"Bearer {auth_token}"},
             )
             # 应返回200但执行失败或被限制
             assert response.status_code == 200
@@ -633,13 +575,10 @@ class TestCodeExecution:
         """
         response = client.post(
             "/api/v1/labs/execute",
-            json={
-                "code": "import numpy as np; print(np.array([1,2,3]).sum())",
-                "timeout": 10
-            },
-            headers={"Authorization": f"Bearer {auth_token}"}
+            json={"code": "import numpy as np; print(np.array([1,2,3]).sum())", "timeout": 10},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
 
     def test_C08_execute_empty_code(self, auth_token):
@@ -649,7 +588,7 @@ class TestCodeExecution:
         response = client.post(
             "/api/v1/labs/execute",
             json={"code": "", "timeout": 5},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
         assert response.status_code in [200, 422]
 
@@ -659,13 +598,10 @@ class TestCodeExecution:
         """
         response = client.post(
             "/api/v1/labs/execute",
-            json={
-                "code": "while True: pass",
-                "timeout": 2
-            },
-            headers={"Authorization": f"Bearer {auth_token}"}
+            json={"code": "while True: pass", "timeout": 2},
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         data = response.json()
         assert data["success"] is False
 
@@ -674,10 +610,11 @@ class TestCodeExecution:
 # 模块D: 学习进度测试 (Progress)
 # ============================================================================
 
+
 class TestProgress:
     """
     PRD参考: 6.4 进度模块验收
-    
+
     验收标准:
     - PC-01: 获取进度 - 返回用户所有进度
     - PC-02: 更新进度 - 进度状态正确更新
@@ -690,10 +627,9 @@ class TestProgress:
         验收标准: PC-01
         """
         response = client.get(
-            "/api/v1/progress/",
-            headers={"Authorization": f"Bearer {auth_token}"}
+            "/api/v1/progress/", headers={"Authorization": f"Bearer {auth_token}"}
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list), "应返回数组"
@@ -714,13 +650,13 @@ class TestProgress:
         courses_response = client.get("/api/v1/courses/")
         chapters = courses_response.json()[0]["chapters"]
         chapter_id = chapters[0]["id"]
-        
+
         response = client.post(
             f"/api/v1/progress/chapters/{chapter_id}",
             json={"status": "in_progress"},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         assert response.json()["status"] == "in_progress"
 
@@ -733,13 +669,13 @@ class TestProgress:
         courses_response = client.get("/api/v1/courses/")
         chapters = courses_response.json()[0]["chapters"]
         chapter_id = chapters[0]["id"]
-        
+
         response = client.post(
             f"/api/v1/progress/chapters/{chapter_id}",
             json={"status": "completed"},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
 
     def test_D05_update_progress_not_started(self, auth_token):
@@ -749,13 +685,13 @@ class TestProgress:
         courses_response = client.get("/api/v1/courses/")
         chapters = courses_response.json()[0]["chapters"]
         chapter_id = chapters[0]["id"]
-        
+
         response = client.post(
             f"/api/v1/progress/chapters/{chapter_id}",
             json={"status": "not_started"},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
 
     def test_D06_update_progress_invalid_status(self, auth_token):
@@ -765,19 +701,20 @@ class TestProgress:
         courses_response = client.get("/api/v1/courses/")
         chapters = courses_response.json()[0]["chapters"]
         chapter_id = chapters[0]["id"]
-        
+
         response = client.post(
             f"/api/v1/progress/chapters/{chapter_id}",
             json={"status": "invalid_status"},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code in [400, 422]
 
 
 # ============================================================================
 # 模块E: 实验提交测试 (Lab Submission)
 # ============================================================================
+
 
 class TestLabSubmission:
     """
@@ -793,7 +730,7 @@ class TestLabSubmission:
         """
         # 获取课程列表
         courses_response = client.get("/api/v1/courses/")
-        
+
         # 查找有实验的章节
         chapter_id = None
         for course in courses_response.json():
@@ -803,23 +740,23 @@ class TestLabSubmission:
                     break
             if chapter_id:
                 break
-        
+
         if chapter_id is None:
             pytest.skip("没有实验章节可提交")
-        
+
         # 获取章节对应的实验ID
         lab_response = client.get(f"/api/v1/courses/chapters/{chapter_id}/lab")
         if lab_response.status_code != 200 or lab_response.json() is None:
             pytest.skip("章节没有关联实验")
-        
+
         lab_id = lab_response.json()["id"]
-        
+
         response = client.post(
             f"/api/v1/courses/labs/{lab_id}/submit",
             json={"lab_id": lab_id, "code": "print('test')"},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert "id" in data or "submission_id" in data or "success" in data
@@ -831,9 +768,9 @@ class TestLabSubmission:
         response = client.post(
             "/api/v1/courses/labs/99999/submit",
             json={"lab_id": 99999, "code": "print('test')"},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 404
 
     def test_E03_submit_lab_unauthorized(self, setup_db):
@@ -841,8 +778,7 @@ class TestLabSubmission:
         T-LAB_SUB-003: 测试未授权提交
         """
         response = client.post(
-            "/api/v1/courses/labs/1/submit",
-            json={"lab_id": 1, "code": "print('test')"}
+            "/api/v1/courses/labs/1/submit", json={"lab_id": 1, "code": "print('test')"}
         )
         assert response.status_code == 401
 
@@ -851,10 +787,11 @@ class TestLabSubmission:
 # 模块F: 安全测试 (Security)
 # ============================================================================
 
+
 class TestSecurity:
     """
     PRD参考: 6.6 安全验收
-    
+
     安全验收:
     - SC-01: 未授权访问
     - SC-02: Token伪造
@@ -870,8 +807,8 @@ class TestSecurity:
             json={
                 "username": "test'; DROP TABLE users; --",
                 "email": "sqlinject@example.com",
-                "password": "password123"
-            }
+                "password": "password123",
+            },
         )
         # 应该成功转义，不应执行恶意代码
         assert response.status_code in [201, 400]
@@ -883,17 +820,13 @@ class TestSecurity:
         # 注册用户
         client.post(
             "/api/v1/auth/register",
-            json={
-                "username": "xssuser",
-                "email": "xss@example.com",
-                "password": "password123"
-            }
+            json={"username": "xssuser", "email": "xss@example.com", "password": "password123"},
         )
-        
+
         # 获取课程内容，验证HTML转义
         response = client.get("/api/v1/courses/")
         courses = response.json()
-        
+
         for course in courses:
             for chapter in course.get("chapters", []):
                 content = chapter.get("content", "")
@@ -908,10 +841,7 @@ class TestSecurity:
         # 测试预检请求
         response = client.options(
             "/api/v1/courses/",
-            headers={
-                "Origin": "http://localhost:3000",
-                "Access-Control-Request-Method": "GET"
-            }
+            headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"},
         )
         # 应返回200或允许跨域
         assert response.status_code in [200, 204]
@@ -921,10 +851,11 @@ class TestSecurity:
 # 模块G: 性能测试 (Performance)
 # ============================================================================
 
+
 class TestPerformance:
     """
     PRD参考: 6.5 性能验收
-    
+
     性能验收:
     - PC-01: API响应 < 200ms
     """
@@ -934,11 +865,11 @@ class TestPerformance:
         T-PERF-001: 测试API响应时间
         """
         import time
-        
+
         start = time.time()
         response = client.get("/api/v1/courses/")
         elapsed = (time.time() - start) * 1000  # 转为毫秒
-        
+
         assert response.status_code == 200
         # 注意: SQLite内存数据库可能比生产环境快
         # 实际生产环境应测试PostgreSQL
@@ -955,18 +886,15 @@ class TestPerformance:
                 json={
                     "username": f"user{i}",
                     "email": f"user{i}@example.com",
-                    "password": "password123"
-                }
+                    "password": "password123",
+                },
             )
-        
+
         # 并发登录
         for i in range(5):
             response = client.post(
                 "/api/v1/auth/login",
-                json={
-                    "email": f"user{i}@example.com",
-                    "password": "password123"
-                }
+                json={"email": f"user{i}@example.com", "password": "password123"},
             )
             assert response.status_code == 200
 
@@ -974,6 +902,7 @@ class TestPerformance:
 # ============================================================================
 # 模块H: 边界测试 (Edge Cases)
 # ============================================================================
+
 
 class TestEdgeCases:
     """
@@ -985,13 +914,13 @@ class TestEdgeCases:
         T-EDGE-001: 测试超长代码
         """
         long_code = "print('a' * 10000)"
-        
+
         response = client.post(
             "/api/v1/labs/execute",
             json={"code": long_code, "timeout": 5},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
 
     def test_H02_unicode_code(self, auth_token):
@@ -1001,9 +930,9 @@ class TestEdgeCases:
         response = client.post(
             "/api/v1/labs/execute",
             json={"code": "print('你好世界')", "timeout": 5},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         if data["success"]:
@@ -1016,9 +945,9 @@ class TestEdgeCases:
         response = client.post(
             "/api/v1/labs/execute",
             json={"code": "print(bytes([72, 101, 108, 108, 111]))", "timeout": 5},
-            headers={"Authorization": f"Bearer {auth_token}"}
+            headers={"Authorization": f"Bearer {auth_token}"},
         )
-        
+
         assert response.status_code == 200
 
 

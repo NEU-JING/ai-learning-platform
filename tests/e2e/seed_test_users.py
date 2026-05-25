@@ -4,12 +4,15 @@ Seed E2E test users and their profile states for CI.
 Run AFTER backend server is up:
     python tests/e2e/seed_test_users.py [--base-url http://localhost:8000]
 """
+
 import json
 import sys
-import urllib.request
 import urllib.error
+import urllib.request
 
-BASE_URL = sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "--base-url" else "http://localhost:8000"
+BASE_URL = (
+    sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "--base-url" else "http://localhost:8000"
+)
 API = f"{BASE_URL}/api/v1"
 PASSWORD = "Pass1234"
 
@@ -31,11 +34,15 @@ def api(method, path, data=None, token=None):
 
 def register(username, email):
     """Register a user. Ignore 400 (already exists)."""
-    status, body = api("POST", "/auth/register", {
-        "username": username,
-        "email": email,
-        "password": PASSWORD,
-    })
+    status, body = api(
+        "POST",
+        "/auth/register",
+        {
+            "username": username,
+            "email": email,
+            "password": PASSWORD,
+        },
+    )
     if status in (201, 200):
         print(f"  ✓ registered {username}")
     elif status == 400 and "already" in str(body).lower():
@@ -46,10 +53,14 @@ def register(username, email):
 
 def login(email):
     """Login and return access_token."""
-    status, body = api("POST", "/auth/login", {
-        "email": email,
-        "password": PASSWORD,
-    })
+    status, body = api(
+        "POST",
+        "/auth/login",
+        {
+            "email": email,
+            "password": PASSWORD,
+        },
+    )
     if status == 200:
         return body.get("access_token")
     print(f"  ✗ login {email}: {status} {body}")
@@ -105,19 +116,23 @@ def main():
     # e2e_public: all visible, display_name="公开用户", bio="这是公开用户的一句话简介"
     token = login("e2e_public@test.com")
     if token:
-        set_profile(token, "e2e_public", is_public=True,
-                    display_name="公开用户", bio="这是公开用户的一句话简介")
+        set_profile(
+            token,
+            "e2e_public",
+            is_public=True,
+            display_name="公开用户",
+            bio="这是公开用户的一句话简介",
+        )
 
     # e2e_partial: only skill_radar visible, display_name="部分隐藏用户"
     # BR5 auto-enables all when is_public first set → need second call to disable
     token = login("e2e_partial@test.com")
     if token:
-        set_profile(token, "e2e_partial", is_public=True,
-                    display_name="部分隐藏用户")
+        set_profile(token, "e2e_partial", is_public=True, display_name="部分隐藏用户")
         # Second call: disable labs, certs; keep basic_info + skill_radar
-        set_profile(token, "e2e_partial",
-                    show_labs=False, show_certificates=False,
-                    show_skill_radar=True)
+        set_profile(
+            token, "e2e_partial", show_labs=False, show_certificates=False, show_skill_radar=True
+        )
 
     # e2e_hidden_all: profile ON but all dimensions hidden
     token = login("e2e_hidden_all@test.com")
@@ -130,8 +145,7 @@ def main():
     # e2e_empty: profile ON, zero labs/certs, display_name="空数据用户"
     token = login("e2e_empty@test.com")
     if token:
-        set_profile(token, "e2e_empty", is_public=True,
-                    display_name="空数据用户")
+        set_profile(token, "e2e_empty", is_public=True, display_name="空数据用户")
 
     # e2e_first_enable: not enabled (for AC3 test)
 
