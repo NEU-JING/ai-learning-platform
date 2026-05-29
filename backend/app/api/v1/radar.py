@@ -1,11 +1,13 @@
 """Radar API — GET /api/v1/radar with path specialization.
 
 T8: Radar query with path type highlighting.
+T9: Snapshot and comparison endpoints for AC12.
 
 AC覆盖:
 - AC8: GET /api/v1/radar 端点
 - AC11: 路径特化高亮
 - AC14: percentile 和 confidence 返回
+- AC12: 快照和对比功能
 """
 
 from typing import Optional
@@ -16,7 +18,12 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_active_user
 from app.core.database import get_db
 from app.models import User
-from app.services.radar_service import RadarService
+from app.schemas.skill_radar import (
+    RadarComparisonResponse,
+    RadarSnapshotCreate,
+    RadarSnapshotResponse,
+)
+from app.services.radar_service import RadarService, SnapshotService
 
 router = APIRouter()
 
@@ -55,3 +62,72 @@ def get_radar(
     data = RadarService.get_radar(user_id=current_user.id, db=db, path_type=path_type)
 
     return data
+
+
+@router.post("/radar/snapshots", response_model=RadarSnapshotResponse, status_code=201)
+def create_snapshot(
+    data: RadarSnapshotCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """创建当前技能快照。
+
+    AC12: 保存当前技能状态，用于后续对比。
+
+    Args:
+        data: 快照创建请求，包含可选的名称和路径ID
+
+    Returns:
+        创建的快照信息，包含ID、名称、日期和分数
+    """
+    # Validate name length
+    if data.name and len(data.name) > 64:
+        raise HTTPException(
+            status_code=400,
+            detail="Snapshot name must be at most 64 characters",
+        )
+
+    snapshot = SnapshotService.create_snapshot(
+        user_id=current_user.id,
+        name=data.name,
+        path_id=data.path_id,
+        db=db,
+    )
+
+    return {
+        "snapshot_id": snapshot.id,
+        "name": snapshot.snapshot_name,
+        "snapshot_date": snapshot.created_at.isoformat() if snapshot.created_at else None,
+        "scores": snapshot.scores,
+    }
+
+
+@router.get("/radar/compare", response_model=RadarComparisonResponse)
+def compare_snapshot(
+    snapshot_id: int = Query(..., description="快照ID用于对比"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """对比当前技能与历史快照。
+
+    AC12: 显示当前技能与历史快照的差异和趋势。
+
+    Args:
+        snapshot_id: 要对比的历史快照ID
+
+    Returns:
+        包含当前分数、历史分数、对比结果和评估的响应
+    """
+    if snapshot_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="snapshot_id is required",
+        )
+
+    result = SnapshotService.compare_with_snapshot(
+        user_id=current_user.id,
+        snapshot_id=snapshot_id,
+        db=db,
+    )
+
+    return result

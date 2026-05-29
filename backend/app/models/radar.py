@@ -69,3 +69,22 @@ class SkillEvent(Base):
 
     def __repr__(self):
         return f"<SkillEvent(user={self.user_id}, type={self.event_type})>"
+
+
+class UserSkillSnapshot(Base):
+    """用户技能分数历史快照 — 用于对比功能 (AC12)."""
+
+    __tablename__ = "user_skill_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    snapshot_name = Column(String(64), nullable=True)  # 用户自定义名称，如 "入职前"
+    scores = Column(JSON, nullable=False)  # {dimension_slug: score, ...}
+    path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=True)
+    created_at = Column(DateTime, default=_utcnow)
+
+    # relationships
+    user = relationship("User")
+
+    def __repr__(self):
+        return f"<UserSkillSnapshot(user={self.user_id}, name={self.snapshot_name})>"

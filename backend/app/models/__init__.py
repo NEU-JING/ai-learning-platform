@@ -375,6 +375,7 @@ from app.models.path import (  # noqa: E402, F401 — V4 Path module
 from app.models.radar import (  # noqa: E402, F401 — T6: Radar module
     SkillDimension,
     SkillEvent,
+    UserSkillSnapshot,  # T9: Snapshot model for AC12
 )
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
 
@@ -408,4 +409,5 @@ __all__ = [
     # T6: Radar module
     "SkillDimension",
     "SkillEvent",
+    "UserSkillSnapshot",  # T9
 ]

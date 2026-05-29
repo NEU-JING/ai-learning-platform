@@ -15,7 +15,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.models import UserSkillScore
-from app.models.radar import SkillDimension, SkillEvent
+from app.models.radar import SkillDimension, SkillEvent, UserSkillSnapshot
 
 logger = logging.getLogger(__name__)
 
@@ -523,6 +523,177 @@ class RadarService:
         # Use "nearest rank" method for percentile calculation
         # Percentile = (below_count + 0.5 * equal_count) / total_count * 100
         total = len(all_scores)
-        percentile = (below_count + 0.5 * equal_count) / total * 100
+        percentile = ((total_users - higher_scores) / total_users) * 100
 
         return min(max(percentile, 0.0), 100.0)
+
+
+class SnapshotService:
+    """T9: Service for creating and comparing skill snapshots.
+
+    AC覆盖:
+    - AC12: 历史版本对比功能
+    """
+
+    @staticmethod
+    def create_snapshot(
+        user_id: int,
+        name: Optional[str],
+        path_id: Optional[int],
+        db: Session,
+    ) -> UserSkillSnapshot:
+        """Create a new skill snapshot for the user.
+
+        Args:
+            user_id: The user's ID
+            name: Optional name for the snapshot
+            path_id: Optional associated path ID
+            db: Database session
+
+        Returns:
+            The created UserSkillSnapshot record
+        """
+        from datetime import datetime, timezone
+
+        # Get current radar data to capture scores
+        radar_data = RadarService.get_radar(user_id, db)
+
+        # Build scores dictionary from dimensions
+        scores = {}
+        for dim in radar_data.get("dimensions", []):
+            scores[dim["slug"]] = dim["score"]
+
+        # Generate default name if not provided
+        if not name:
+            now = datetime.now(timezone.utc)
+            name = f"快照 {now.strftime('%Y-%m-%d %H:%M')}"
+
+        # Create snapshot record
+        snapshot = UserSkillSnapshot(
+            user_id=user_id,
+            snapshot_name=name,
+            scores=scores,
+            path_id=path_id,
+        )
+
+        db.add(snapshot)
+        db.commit()
+        db.refresh(snapshot)
+
+        return snapshot
+
+    @staticmethod
+    def compare_with_snapshot(
+        user_id: int,
+        snapshot_id: int,
+        db: Session,
+    ) -> dict:
+        """Compare current skills with a historical snapshot.
+
+        Args:
+            user_id: The user's ID
+            snapshot_id: The snapshot ID to compare with
+            db: Database session
+
+        Returns:
+            Dictionary containing current scores, snapshot scores, comparison, and assessment
+
+        Raises:
+            HTTPException: 404 if snapshot not found, 403 if not owned by user
+        """
+        from fastapi import HTTPException
+
+        # Get the snapshot
+        snapshot = db.query(UserSkillSnapshot).filter_by(id=snapshot_id).first()
+
+        if not snapshot:
+            raise HTTPException(status_code=404, detail="Snapshot not found")
+
+        # Verify ownership
+        if snapshot.user_id != user_id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this snapshot")
+
+        # Get current radar data
+        current_radar = RadarService.get_radar(user_id, db)
+        current_scores = {d["slug"]: d["score"] for d in current_radar.get("dimensions", [])}
+
+        # Get snapshot scores
+        snapshot_scores = snapshot.scores or {}
+
+        # Build comparison list
+        comparison = []
+        all_dimensions = set(current_scores.keys()) | set(snapshot_scores.keys())
+
+        for dim_slug in all_dimensions:
+            current = current_scores.get(dim_slug, 0.0)
+            snap = snapshot_scores.get(dim_slug, 0.0)
+            change = current - snap
+
+            # Determine trend
+            if change > 0.1:
+                trend = "up"
+            elif change < -0.1:
+                trend = "down"
+            else:
+                trend = "flat"
+
+            comparison.append({
+                "dimension": dim_slug,
+                "current": round(current, 1),
+                "snapshot": round(snap, 1),
+                "change": round(change, 1),
+                "trend": trend,
+            })
+
+        # Sort by dimension name for consistency
+        comparison.sort(key=lambda x: x["dimension"])
+
+        # Generate assessment
+        assessment = SnapshotService._generate_assessment(comparison)
+
+        return {
+            "current": current_scores,
+            "snapshot": snapshot_scores,
+            "comparison": comparison,
+            "assessment": assessment,
+            "snapshot_info": {
+                "name": snapshot.snapshot_name,
+                "date": snapshot.created_at.isoformat() if snapshot.created_at else None,
+            },
+        }
+
+    @staticmethod
+    def _generate_assessment(comparison: list[dict]) -> str:
+        """Generate an assessment text based on comparison results.
+
+        Args:
+            comparison: List of dimension comparison results
+
+        Returns:
+            Assessment text
+        """
+        if not comparison:
+            return "暂无技能数据"
+
+        # Count improvements and declines
+        improvements = [c for c in comparison if c["trend"] == "up"]
+        declines = [c for c in comparison if c["trend"] == "down"]
+
+        # Find biggest improvements and declines
+        improvements.sort(key=lambda x: x["change"], reverse=True)
+        declines.sort(key=lambda x: x["change"])
+
+        parts = []
+
+        if improvements:
+            top_improvement = improvements[0]
+            parts.append(f"{top_improvement['dimension']}提升{top_improvement['change']:.1f}分")
+
+        if declines:
+            top_decline = declines[0]
+            parts.append(f"{top_decline['dimension']}下降{abs(top_decline['change']):.1f}分")
+
+        if not parts:
+            return "技能水平保持稳定"
+
+        return "，".join(parts) + "。继续加油！"

@@ -55,3 +55,48 @@ class SkillRefreshResponse(BaseModel):
     user_id: int
     updated_dimensions: int = Field(..., description="更新的维度数量")
     message: str = Field(default="技能评分已刷新")
+
+
+# T9: Snapshot and Comparison schemas for AC12
+
+class RadarSnapshotCreate(BaseModel):
+    """Request to create a skill snapshot."""
+
+    name: Optional[str] = Field(None, description="快照名称，如 '入职前'")
+    path_id: Optional[int] = Field(None, description="关联的路径ID")
+
+
+class RadarSnapshotResponse(BaseModel):
+    """Response after creating a snapshot."""
+
+    snapshot_id: int
+    name: Optional[str] = Field(None, description="快照名称")
+    snapshot_date: Optional[str] = Field(None, description="快照创建时间 ISO格式")
+    scores: dict[str, float] = Field(..., description="各维度分数 {slug: score}")
+
+
+class DimensionComparison(BaseModel):
+    """Single dimension comparison result."""
+
+    dimension: str = Field(..., description="维度标识符")
+    current: float = Field(..., description="当前分数")
+    snapshot: float = Field(..., description="快照分数")
+    change: float = Field(..., description="变化值 (current - snapshot)")
+    trend: str = Field(..., description="趋势: up, down, flat")
+
+
+class SnapshotInfo(BaseModel):
+    """Snapshot metadata in comparison response."""
+
+    name: Optional[str] = Field(None, description="快照名称")
+    date: Optional[str] = Field(None, description="快照创建日期")
+
+
+class RadarComparisonResponse(BaseModel):
+    """Response for radar snapshot comparison — AC12."""
+
+    current: dict[str, float] = Field(..., description="当前各维度分数")
+    snapshot: dict[str, float] = Field(..., description="快照各维度分数")
+    comparison: list[DimensionComparison] = Field(..., description="各维度对比详情")
+    assessment: str = Field(..., description="整体评估文本")
+    snapshot_info: SnapshotInfo = Field(..., description="快照信息")

@@ -14,6 +14,7 @@ from app.core.security import create_access_token, get_password_hash
 from app.main import app
 from app.models import PathTemplate  # noqa: F401 — Ensure path tables are registered
 from app.models import SkillDimension  # noqa: F401 — T6: Radar tables
+from app.models import UserSkillSnapshot  # noqa: F401 — T9: Radar snapshots
 from app.models import Base, Chapter, Course, Lab, User
 
 # SDD: CI-only marker support — auto-skip locally, run only in CI
