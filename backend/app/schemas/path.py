@@ -83,6 +83,30 @@ class PathProgressSummary(BaseModel):
     total_courses: int
 
 
+class MilestoneProgress(BaseModel):
+    """里程碑进度."""
+
+    order: int
+    name: str
+    status: str
+    completed_at: Optional[str] = None
+    progress: Optional[int] = None
+
+
+class PathProgressResponse(BaseModel):
+    """路径进度响应.
+
+    GET /api/v1/paths/{id}/progress
+    """
+
+    path_id: int
+    status: str
+    progress: PathProgressSummary
+    milestones: List[MilestoneProgress]
+    estimated_remaining_days: int
+    ahead_behind_schedule: str  # ahead, on_track, behind
+
+
 class UserPathCreateResponse(BaseModel):
     """创建用户路径响应."""
 

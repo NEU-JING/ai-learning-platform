@@ -9,8 +9,11 @@ from app.models import User
 from app.schemas.path import (
     DiagnosisRequest,
     DiagnosisResponse,
+    PathProgressResponse,
+    UserPathCreateRequest,
+    UserPathCreateResponse,
 )
-from app.services.path_service import DiagnosisService
+from app.services.path_service import DiagnosisService, PathService
 
 router = APIRouter()
 
@@ -36,3 +39,60 @@ def create_diagnosis(
     # 执行诊断
     result = DiagnosisService.diagnose(request)
     return result
+
+
+@router.post("", response_model=UserPathCreateResponse, status_code=status.HTTP_201_CREATED)
+def create_path(
+    request: UserPathCreateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """创建学习路径 — 根据诊断结果或手动选择创建用户路径.
+
+    AC1, AC5: 创建路径，支持 fast_track 模式
+    """
+    service = PathService(db)
+
+    try:
+        user_path = service.create_user_path(
+            user_id=current_user.id,
+            template_slug=request.template_slug,
+            mode=request.mode,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+    # 构建响应
+    return service.build_create_response(user_path)
+
+
+@router.get("/{path_id}/progress", response_model=PathProgressResponse)
+def get_path_progress(
+    path_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """获取路径进度 — 返回进度详情、里程碑状态、预估剩余时间.
+
+    AC3: 路径进度追踪
+    """
+    service = PathService(db)
+
+    # 验证路径存在且属于当前用户
+    user_path = service.get_user_path(path_id)
+    if not user_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Path not found: {path_id}",
+        )
+
+    if user_path.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this path",
+        )
+
+    return service.get_progress(user_path)

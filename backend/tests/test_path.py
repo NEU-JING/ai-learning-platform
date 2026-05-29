@@ -85,6 +85,156 @@ class TestTablesExist:
         assert required_pm <= pm_cols, f"path_milestones missing columns: {required_pm - pm_cols}"
 
 
+class TestPathCreate:
+    """T3: 路径创建与进度 API 测试 — AC1, AC3, AC5."""
+
+    def test_create_path(self, client, auth_headers, test_db):
+        """验证创建路径 API.
+
+        AC1: 根据模板创建用户路径
+        """
+        # 先获取一个有效的模板
+        from app.models.path import PathTemplate
+
+        template = test_db.query(PathTemplate).filter_by(slug="ai-engineer").first()
+        assert template is not None, "Template not found"
+
+        create_data = {
+            "template_slug": "ai-engineer",
+            "mode": "standard",
+        }
+
+        response = client.post(
+            "/api/v1/paths",
+            json=create_data,
+            headers=auth_headers,
+        )
+
+        assert (
+            response.status_code == 201
+        ), f"Expected 201, got {response.status_code}: {response.text}"
+        result = response.json()
+
+        # 验证响应结构
+        assert "path_id" in result
+        assert "template" in result
+        assert result["status"] == "active"
+        assert "start_date" in result
+        assert "target_end_date" in result
+        assert "progress" in result
+
+        # 验证进度摘要
+        progress = result["progress"]
+        assert "percent" in progress
+        assert "completed_courses" in progress
+        assert "total_courses" in progress
+
+        # 验证 template 数据
+        assert result["template"]["slug"] == "ai-engineer"
+
+    def test_path_progress(self, client, auth_headers, test_db):
+        """验证进度追踪 API.
+
+        AC3: 路径进度追踪
+        """
+        # 先创建一个路径
+        from app.services.path_service import PathService
+
+        # 使用 PathService 创建路径
+        service = PathService(test_db)
+        user_path = service.create_user_path(
+            user_id=1,  # 测试用户的 ID
+            template_slug="ai-engineer",
+            mode="standard",
+        )
+
+        path_id = user_path.id
+
+        # 获取进度
+        response = client.get(
+            f"/api/v1/paths/{path_id}/progress",
+            headers=auth_headers,
+        )
+
+        assert (
+            response.status_code == 200
+        ), f"Expected 200, got {response.status_code}: {response.text}"
+        result = response.json()
+
+        # 验证响应结构
+        assert result["path_id"] == path_id
+        assert result["status"] == "active"
+        assert "progress" in result
+        assert "milestones" in result
+        assert "estimated_remaining_days" in result
+        assert "ahead_behind_schedule" in result
+
+        # 验证进度数据
+        progress = result["progress"]
+        assert "percent" in progress
+        assert "completed_courses" in progress
+        assert "in_progress_courses" in progress
+        assert "total_courses" in progress
+
+    def test_fast_track_mode(self, client, auth_headers, test_db):
+        """验证 fast_track 模式创建路径.
+
+        AC5: Fast Track 模式缩短学习周期
+        """
+        # 创建 standard 模式路径
+        response_standard = client.post(
+            "/api/v1/paths",
+            json={"template_slug": "ai-engineer", "mode": "standard"},
+            headers=auth_headers,
+        )
+        assert response_standard.status_code == 201
+        standard_result = response_standard.json()
+
+        # 创建 fast_track 模式路径
+        # 注意：需要先删除之前的路径，因为用户只能有一个 active 路径
+        from app.models.path import UserPath
+
+        test_db.query(UserPath).filter_by(user_id=1).delete()
+        test_db.commit()
+
+        response_fast = client.post(
+            "/api/v1/paths",
+            json={"template_slug": "ai-engineer", "mode": "fast_track"},
+            headers=auth_headers,
+        )
+        assert response_fast.status_code == 201
+        fast_result = response_fast.json()
+
+        # 验证 fast_track 的目标结束日期更短
+        from datetime import datetime
+
+        standard_end = datetime.strptime(standard_result["target_end_date"], "%Y-%m-%d")
+        fast_end = datetime.strptime(fast_result["target_end_date"], "%Y-%m-%d")
+
+        # fast_track 应该比 standard 周期更短
+        assert fast_end < standard_end, "Fast track should have shorter duration"
+
+    def test_create_path_invalid_template(self, client, auth_headers):
+        """验证无效模板返回 400 错误."""
+        response = client.post(
+            "/api/v1/paths",
+            json={"template_slug": "invalid-template", "mode": "standard"},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 400
+        assert "Template not found" in response.json()["detail"]
+
+    def test_get_progress_not_found(self, client, auth_headers):
+        """验证获取不存在路径的进度返回 404."""
+        response = client.get(
+            "/api/v1/paths/99999/progress",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+
+
 class TestPathDiagnosis:
     """T2: 入学诊断 API 测试."""
 

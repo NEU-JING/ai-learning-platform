@@ -166,6 +166,10 @@ class PathService:
     def __init__(self, db: Session):
         self.db = db
 
+    def get_user_path(self, path_id: int) -> Optional[UserPath]:
+        """根据 ID 获取用户路径."""
+        return self.db.query(UserPath).filter(UserPath.id == path_id).first()
+
     def get_template_by_slug(self, slug: str) -> Optional[PathTemplate]:
         """根据 slug 获取路径模板."""
         return self.db.query(PathTemplate).filter(PathTemplate.slug == slug).first()
@@ -222,3 +226,109 @@ class PathService:
         self.db.refresh(user_path)
 
         return user_path
+
+    def build_create_response(self, user_path: UserPath) -> dict:
+        """构建创建路径的响应数据."""
+        from app.schemas.path import PathProgressSummary
+
+        template = user_path.template
+        required_count = len(template.required_courses) if template.required_courses else 0
+        elective_count = len(template.elective_courses) if template.elective_courses else 0
+        total_courses = required_count + elective_count
+
+        return {
+            "path_id": user_path.id,
+            "template": {
+                "slug": template.slug,
+                "name": template.name,
+                "description": template.description,
+                "duration_weeks": template.duration_weeks,
+                "target_role": template.target_role,
+            },
+            "status": user_path.status,
+            "start_date": user_path.start_date.isoformat() if user_path.start_date else None,
+            "target_end_date": (
+                user_path.target_end_date.isoformat() if user_path.target_end_date else None
+            ),
+            "progress": PathProgressSummary(
+                percent=0.0,
+                completed_courses=0,
+                in_progress_courses=0,
+                total_courses=total_courses,
+            ),
+            "next_course": None,
+        }
+
+    def get_progress(self, user_path: UserPath) -> dict:
+        """获取路径进度详情."""
+        from datetime import date
+
+        from app.schemas.path import MilestoneProgress, PathProgressSummary
+
+        # 计算课程进度
+        total_courses = 0
+        completed_courses = 0
+        in_progress_courses = 0
+
+        if user_path.courses:
+            total_courses = len(user_path.courses)
+            completed_courses = sum(1 for c in user_path.courses if c.status == "completed")
+            in_progress_courses = sum(1 for c in user_path.courses if c.status == "in_progress")
+
+        # 计算百分比（完成的按100%，进行中的按50%）
+        if total_courses > 0:
+            percent = ((completed_courses * 1.0 + in_progress_courses * 0.5) / total_courses) * 100
+        else:
+            # 如果没有关联课程，使用 path 的 progress_percent
+            percent = user_path.progress_percent or 0.0
+
+        # 计算剩余天数
+        if user_path.target_end_date:
+            remaining_days = (user_path.target_end_date - date.today()).days
+            if remaining_days < 0:
+                remaining_days = 0
+        else:
+            remaining_days = 0
+
+        # 计算是否超前/落后
+        if user_path.target_end_date and user_path.start_date:
+            total_days = (user_path.target_end_date - user_path.start_date).days
+            elapsed_days = (date.today() - user_path.start_date).days
+            if total_days > 0 and elapsed_days > 0:
+                expected_progress = (elapsed_days / total_days) * 100
+                if percent > expected_progress + 5:
+                    ahead_behind = "ahead"
+                elif percent < expected_progress - 5:
+                    ahead_behind = "behind"
+                else:
+                    ahead_behind = "on_track"
+            else:
+                ahead_behind = "on_track"
+        else:
+            ahead_behind = "on_track"
+
+        # 获取里程碑列表
+        milestones = []
+        if user_path.template and user_path.template.milestones:
+            for m in sorted(user_path.template.milestones, key=lambda x: x.sequence_order):
+                milestones.append(
+                    MilestoneProgress(
+                        order=m.sequence_order,
+                        name=m.name,
+                        status="pending",
+                    )
+                )
+
+        return {
+            "path_id": user_path.id,
+            "status": user_path.status,
+            "progress": PathProgressSummary(
+                percent=round(percent, 2),
+                completed_courses=completed_courses,
+                in_progress_courses=in_progress_courses,
+                total_courses=total_courses,
+            ),
+            "milestones": milestones,
+            "estimated_remaining_days": remaining_days,
+            "ahead_behind_schedule": ahead_behind,
+        }
