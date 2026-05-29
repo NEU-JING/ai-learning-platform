@@ -354,3 +354,112 @@ class TestPathDiagnosis:
         # beginner 不能跳过 Phase 1
         assert result["diagnosis"]["can_skip_phase1"] is False
         assert result["diagnosis"]["start_from"] == 1
+
+
+class TestSkillGapDetection:
+    """T4: 能力缺口诊断测试 — AC4."""
+
+    def test_skill_gap_detection_returns_weak_skills(self, client, auth_headers, test_db):
+        """验证技能缺口检测能识别薄弱技能.
+
+        AC4: 基于实验通过率 < 60% 判定为薄弱
+        """
+        # 创建用户路径
+        from app.services.path_service import PathService
+
+        service = PathService(test_db)
+        user_path = service.create_user_path(
+            user_id=1,
+            template_slug="ai-engineer",
+            mode="standard",
+        )
+        path_id = user_path.id
+
+        # 获取技能缺口
+        response = client.get(
+            f"/api/v1/paths/{path_id}/gaps",
+            headers=auth_headers,
+        )
+
+        assert (
+            response.status_code == 200
+        ), f"Expected 200, got {response.status_code}: {response.text}"
+        result = response.json()
+
+        # 验证响应结构
+        assert "path_id" in result
+        assert "weak_skills" in result
+        assert "recommendations" in result
+        assert "summary" in result
+
+        # weak_skills 应该是一个列表
+        assert isinstance(result["weak_skills"], list)
+
+        # 验证每个弱技能项的结构
+        for skill in result["weak_skills"]:
+            assert "dimension" in skill
+            assert "pass_rate" in skill
+            assert "status" in skill
+            assert skill["status"] == "weak"
+            assert skill["pass_rate"] < 60.0
+
+    def test_skill_gap_detection_algorithm(self, client, auth_headers, test_db):
+        """验证缺口检测算法的正确性.
+
+        算法规则：实验通过率 < 60% 判定为薄弱
+        """
+        from app.services.path_service import PathService
+
+        service = PathService(test_db)
+
+        # 测试算法：低于 60% 应该返回 weak
+        result = service._determine_gap_status(55.0)
+        assert result == "weak"
+
+        result = service._determine_gap_status(59.9)
+        assert result == "weak"
+
+        # 测试算法：等于或高于 60% 应该返回 normal 或 strong
+        result = service._determine_gap_status(60.0)
+        assert result == "normal"
+
+        result = service._determine_gap_status(75.0)
+        assert result == "normal"
+
+        # 100% 返回 strong (优秀)
+        result = service._determine_gap_status(100.0)
+        assert result == "strong"
+
+        # >= 85% 都返回 strong
+        result = service._determine_gap_status(85.0)
+        assert result == "strong"
+
+    def test_skill_gap_not_found(self, client, auth_headers):
+        """验证获取不存在路径的技能缺口返回 404."""
+        response = client.get(
+            "/api/v1/paths/99999/gaps",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+
+    def test_skill_gap_unauthorized(self, client, auth_headers, test_db):
+        """验证不能访问其他用户的技能缺口."""
+        # 创建一个路径，但设置给其他用户（user_id=999）
+        from app.services.path_service import PathService
+
+        service = PathService(test_db)
+        user_path = service.create_user_path(
+            user_id=999,  # 不同的用户
+            template_slug="ai-engineer",
+            mode="standard",
+        )
+        path_id = user_path.id
+
+        # 当前用户（user_id=1）尝试访问
+        response = client.get(
+            f"/api/v1/paths/{path_id}/gaps",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 403

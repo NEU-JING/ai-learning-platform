@@ -117,3 +117,32 @@ class UserPathCreateResponse(BaseModel):
     target_end_date: Optional[str]
     progress: PathProgressSummary
     next_course: Optional[dict]
+
+
+class SkillGapItem(BaseModel):
+    """技能缺口项."""
+
+    dimension: str = Field(..., description="技能维度: python, math, ml, dl, etc.")
+    pass_rate: float = Field(..., ge=0.0, le=100.0, description="实验通过率 %")
+    status: str = Field(..., description="状态: weak, normal, strong")
+
+
+class SkillGapRecommendation(BaseModel):
+    """技能补强建议."""
+
+    dimension: str
+    priority: str = Field(..., description="优先级: high, medium, low")
+    recommended_actions: List[str] = Field(default_factory=list)
+    estimated_hours: int = Field(default=0, description="建议学习时长（小时）")
+
+
+class SkillGapResponse(BaseModel):
+    """技能缺口诊断响应.
+
+    GET /api/v1/paths/{id}/gaps
+    """
+
+    path_id: int
+    weak_skills: List[SkillGapItem]
+    recommendations: List[SkillGapRecommendation]
+    summary: dict = Field(..., description="诊断摘要")

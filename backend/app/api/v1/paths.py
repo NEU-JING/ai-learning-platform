@@ -10,6 +10,7 @@ from app.schemas.path import (
     DiagnosisRequest,
     DiagnosisResponse,
     PathProgressResponse,
+    SkillGapResponse,
     UserPathCreateRequest,
     UserPathCreateResponse,
 )
@@ -96,3 +97,33 @@ def get_path_progress(
         )
 
     return service.get_progress(user_path)
+
+
+@router.get("/{path_id}/gaps", response_model=SkillGapResponse)
+def get_skill_gaps(
+    path_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """获取能力缺口诊断 — 基于实验通过率识别薄弱技能.
+
+    AC4: 实验通过率 < 60% 判定为薄弱
+    """
+    service = PathService(db)
+
+    # 验证路径存在
+    user_path = service.get_user_path(path_id)
+    if not user_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Path not found: {path_id}",
+        )
+
+    # 验证权限
+    if user_path.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this path",
+        )
+
+    return service.detect_skill_gaps(user_path)
