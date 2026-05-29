@@ -9,9 +9,9 @@ AC覆盖:
 
 import logging
 from datetime import datetime, timezone
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 
-from sqlalchemy import desc
+from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.models import UserSkillScore
@@ -39,6 +39,22 @@ LAB_DIMENSION_MAPPING: dict[str, list[str]] = {
 
 # Default dimension for unknown lab types
 DEFAULT_DIMENSION = "coding_thinking"
+
+# Path type to dimension highlighting mapping (T8)
+PATH_HIGHLIGHT_MAPPING: dict[str, list[str]] = {
+    "ai-engineer": ["coding_thinking", "system_design", "engineering_practice"],
+    "ai-researcher": ["algorithm_understanding", "research_depth", "data_analysis"],
+    "ai-applier": ["ai_application", "prompt_engineering", "ai_collaboration"],
+    "ai-manager": ["problem_solving", "ai_collaboration", "ai_application"],
+}
+
+# Path type display names
+PATH_TYPE_NAMES: dict[str, str] = {
+    "ai-engineer": "AI工程师路径",
+    "ai-researcher": "AI专家路径",
+    "ai-applier": "AI应用者路径",
+    "ai-manager": "AI管理者路径",
+}
 
 
 class EventListener:
@@ -338,3 +354,175 @@ class SkillUpdateService:
             callback: The callback to remove
         """
         _event_listener.off("lab_completed", callback)
+
+
+class RadarService:
+    """T8: Service for querying radar data with path specialization.
+
+    AC覆盖:
+    - AC7: 10维技能模型落地
+    - AC8: GET /api/v1/radar 端点
+    - AC11: 路径特化高亮
+    - AC14: percentile 和 confidence 返回
+    """
+
+    # Minimum events for maximum confidence
+    MAX_CONFIDENCE_EVENTS = 10
+
+    @staticmethod
+    def get_radar(
+        user_id: int,
+        db: Session,
+        path_type: Optional[str] = None,
+    ) -> dict:
+        """Get radar data for a user with optional path specialization.
+
+        Args:
+            user_id: The user's ID
+            db: Database session
+            path_type: Optional path type for highlighting (e.g., 'ai-engineer')
+
+        Returns:
+            Dictionary containing 10-dimension radar data with percentile and confidence
+        """
+        # Get all skill dimensions
+        dimensions = db.query(SkillDimension).order_by(SkillDimension.id).all()
+
+        # Calculate dimension stats for percentile
+        all_dimension_scores = RadarService._get_all_user_dimension_scores(db)
+
+        # Build dimension details
+        dimension_details = []
+        total_score = 0.0
+
+        # Get highlighted dimensions for the path type
+        highlighted_slugs = set()
+        if path_type and path_type in PATH_HIGHLIGHT_MAPPING:
+            highlighted_slugs = set(PATH_HIGHLIGHT_MAPPING[path_type])
+
+        for dim in dimensions:
+            # Calculate score for this dimension
+            score = SkillUpdateService.calculate_dimension_score(user_id, dim.id, db)
+
+            # Calculate confidence based on event count
+            confidence = RadarService._calculate_confidence(user_id, dim.id, db)
+
+            # Calculate percentile
+            percentile = RadarService._calculate_percentile(
+                score, all_dimension_scores.get(dim.slug, [])
+            )
+
+            # Check if this dimension should be highlighted
+            highlighted = dim.slug in highlighted_slugs
+
+            dimension_details.append(
+                {
+                    "slug": dim.slug,
+                    "name": dim.name,
+                    "score": round(score, 1),
+                    "percentile": round(percentile, 1),
+                    "confidence": round(confidence, 2),
+                    "category": dim.category,
+                    "highlighted": highlighted,
+                }
+            )
+
+            total_score += score
+
+        # Calculate overall score
+        overall_score = round(total_score / len(dimensions), 1) if dimensions else 0.0
+
+        # Get latest update time
+        latest_event = (
+            db.query(SkillEvent)
+            .filter(SkillEvent.user_id == user_id)
+            .order_by(desc(SkillEvent.created_at))
+            .first()
+        )
+        updated_at = latest_event.created_at if latest_event else None
+
+        return {
+            "user_id": user_id,
+            "dimensions": dimension_details,
+            "overall_score": overall_score,
+            "path_type": path_type,
+            "updated_at": updated_at.isoformat() if updated_at else None,
+        }
+
+    @staticmethod
+    def _calculate_confidence(user_id: int, dimension_id: int, db: Session) -> float:
+        """Calculate confidence score based on event count.
+
+        Confidence increases with more data points, up to a maximum.
+
+        Args:
+            user_id: The user's ID
+            dimension_id: The dimension's ID
+            db: Database session
+
+        Returns:
+            Confidence value between 0 and 1
+        """
+        event_count = (
+            db.query(func.count(SkillEvent.id))
+            .filter(
+                SkillEvent.user_id == user_id,
+                SkillEvent.dimension_id == dimension_id,
+            )
+            .scalar()
+        )
+
+        # Confidence = min(event_count / MAX_CONFIDENCE_EVENTS, 1.0)
+        confidence = min(event_count / RadarService.MAX_CONFIDENCE_EVENTS, 1.0)
+        return max(confidence, 0.1)  # Minimum confidence of 0.1
+
+    @staticmethod
+    def _get_all_user_dimension_scores(db: Session) -> dict[str, list[float]]:
+        """Get all dimension scores across all users for percentile calculation.
+
+        Args:
+            db: Database session
+
+        Returns:
+            Dictionary mapping dimension slug to list of all user scores
+        """
+        # Get all skill dimensions
+        dimensions = db.query(SkillDimension).all()
+
+        scores_by_dimension: dict[str, list[float]] = {}
+
+        for dim in dimensions:
+            # Query scores for this dimension
+            # UserSkillScore.dimension stores dimension_id as string
+            dim_id_str = str(dim.id)
+            scores = (
+                db.query(UserSkillScore.score).filter(UserSkillScore.dimension == dim_id_str).all()
+            )
+            scores_by_dimension[dim.slug] = [s[0] for s in scores]
+
+        return scores_by_dimension
+
+    @staticmethod
+    def _calculate_percentile(score: float, all_scores: list[float]) -> float:
+        """Calculate percentile rank for a score.
+
+        Args:
+            score: The user's score
+            all_scores: List of all scores for this dimension
+
+        Returns:
+            Percentile rank (0-100)
+        """
+        if not all_scores:
+            return 50.0  # Default to median if no data
+
+        # Count how many scores are below the user's score
+        below_count = sum(1 for s in all_scores if s < score)
+        equal_count = sum(1 for s in all_scores if s == score)
+
+        # Use "nearest rank" method for percentile calculation
+        # Percentile = (below_count + 0.5 * equal_count) / total_count * 100
+        total = len(all_scores)
+        percentile = (below_count + 0.5 * equal_count) / total * 100
+
+        return min(max(percentile, 0.0), 100.0)
