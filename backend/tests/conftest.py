@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
+from app.models import PathTemplate  # noqa: F401 — Ensure path tables are registered
 from app.models import Base, Chapter, Course, Lab, User
 
 # SDD: CI-only marker support — auto-skip locally, run only in CI
@@ -48,6 +49,10 @@ def test_db():
     Base.metadata.create_all(bind=_test_engine)
     db = _TestSessionLocal()
     try:
+        # Seed path templates for tests
+        from app.data.path_templates import seed_all_path_data
+
+        seed_all_path_data(db)
         yield db
     finally:
         db.expire_all()  # Clear session identity map before drop

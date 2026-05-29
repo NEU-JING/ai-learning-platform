@@ -365,6 +365,13 @@ class LearningPathModule(Base):
     course = relationship("Course")
 
 
+from app.models.path import (  # noqa: E402, F401 — V4 Path module
+    PathCourse,
+    PathMilestone,
+    PathTemplate,
+    SkillGapDiagnosis,
+    UserPath,
+)
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
 
 __all__ = [
@@ -388,4 +395,10 @@ __all__ = [
     "LearningPathModule",
     # V4 additions
     "UserProfile",
+    # V4 Path module
+    "PathTemplate",
+    "UserPath",
+    "PathCourse",
+    "PathMilestone",
+    "SkillGapDiagnosis",
 ]
