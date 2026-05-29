@@ -128,6 +128,10 @@ async def lifespan(app: FastAPI):
             pass
         # Step 5: Assert data contract — refuse to start if violated
         _assert_data_contract(db)
+        # T6: Initialize skill dimensions for radar module
+        from app.data.skill_dimensions import seed_skill_dimensions
+
+        seed_skill_dimensions(db)
     finally:
         db.close()
     print("✅ 数据库初始化完成（数据契约校验通过）")

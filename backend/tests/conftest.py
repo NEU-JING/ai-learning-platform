@@ -13,6 +13,7 @@ from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
 from app.models import PathTemplate  # noqa: F401 — Ensure path tables are registered
+from app.models import SkillDimension  # noqa: F401 — T6: Radar tables
 from app.models import Base, Chapter, Course, Lab, User
 
 # SDD: CI-only marker support — auto-skip locally, run only in CI
@@ -51,8 +52,11 @@ def test_db():
     try:
         # Seed path templates for tests
         from app.data.path_templates import seed_all_path_data
+        from app.data.skill_dimensions import seed_skill_dimensions
 
         seed_all_path_data(db)
+        # T6: Seed skill dimensions
+        seed_skill_dimensions(db)
         yield db
     finally:
         db.expire_all()  # Clear session identity map before drop
