@@ -14,6 +14,7 @@ from app.api.v1 import (
     courses,
     discussions,
     labs,
+    paths,
     profile,
     progress,
     recommendations,
@@ -234,6 +235,7 @@ app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["数据�
 app.include_router(skills.router, prefix="/api/v1/skills", tags=["技能雷达"])
 app.include_router(profile.router, prefix="/api/v1/profile", tags=["公开主页"])
 app.include_router(recommendations.router, prefix="/api/v1", tags=["个性化推荐"])
+app.include_router(paths.router, prefix="/api/v1/paths", tags=["学习路径"])
 
 
 @app.get("/", response_class=HTMLResponse)

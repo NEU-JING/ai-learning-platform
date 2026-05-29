@@ -83,3 +83,124 @@ class TestTablesExist:
         pm_cols = {c["name"] for c in inspector.get_columns("path_milestones")}
         required_pm = {"id", "template_id", "name", "description", "sequence_order"}
         assert required_pm <= pm_cols, f"path_milestones missing columns: {required_pm - pm_cols}"
+
+
+class TestPathDiagnosis:
+    """T2: 入学诊断 API 测试."""
+
+    def test_diagnosis_recommend_path(self, client, auth_headers):
+        """验证诊断能推荐正确路径.
+
+        AC1: 根据目标角色推荐对应的路径模板
+        """
+        diagnosis_data = {
+            "target_role": "ai-engineer",
+            "experience_years": 3,
+            "python_level": "intermediate",
+            "math_level": "intermediate",
+            "current_job": "Java开发",
+            "time_commitment": "part_time",
+            "goal_timeline": "6_months",
+        }
+
+        response = client.post(
+            "/api/v1/paths/diagnosis",
+            json=diagnosis_data,
+            headers=auth_headers,
+        )
+
+        assert (
+            response.status_code == 200
+        ), f"Expected 200, got {response.status_code}: {response.text}"
+        result = response.json()
+
+        # 验证响应结构
+        assert "recommended_template" in result
+        assert "recommended_mode" in result
+        assert "diagnosis" in result
+        assert "estimated_duration_weeks" in result
+
+        # 验证推荐的路径与目标角色匹配
+        assert result["recommended_template"] == "ai-engineer"
+        assert result["recommended_mode"] == "standard"  # 6_months -> standard
+
+    def test_diagnosis_skip_phase1(self, client, auth_headers):
+        """验证有 Python 经验可跳过 Phase 1.
+
+        AC2: 有经验的用户可以直接从 Phase 2 开始
+        """
+        diagnosis_data = {
+            "target_role": "ai-researcher",
+            "experience_years": 3,
+            "python_level": "intermediate",  # intermediate/advanced 可以跳过 Phase 1
+            "math_level": "beginner",
+            "current_job": "后端开发",
+            "time_commitment": "full_time",
+            "goal_timeline": "3_months",
+        }
+
+        response = client.post(
+            "/api/v1/paths/diagnosis",
+            json=diagnosis_data,
+            headers=auth_headers,
+        )
+
+        assert (
+            response.status_code == 200
+        ), f"Expected 200, got {response.status_code}: {response.text}"
+        result = response.json()
+
+        # 验证诊断结果
+        assert result["diagnosis"]["can_skip_phase1"] is True
+        assert result["diagnosis"]["start_from"] == 2
+        assert result["recommended_mode"] == "fast_track"  # 3_months -> fast_track
+
+        # 验证弱项检测
+        assert "weak_areas" in result["diagnosis"]
+        assert "linear_algebra" in result["diagnosis"]["weak_areas"]  # beginner math
+
+    def test_diagnosis_invalid_role(self, client, auth_headers):
+        """验证无效的 target_role 返回 400 错误."""
+        diagnosis_data = {
+            "target_role": "invalid-role",  # 无效的角色
+            "experience_years": 3,
+            "python_level": "intermediate",
+            "math_level": "intermediate",
+            "current_job": "开发者",
+            "time_commitment": "full_time",
+            "goal_timeline": "6_months",
+        }
+
+        response = client.post(
+            "/api/v1/paths/diagnosis",
+            json=diagnosis_data,
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 400
+        assert "Invalid target_role" in response.json()["detail"]
+
+    def test_diagnosis_beginner_cannot_skip_phase1(self, client, auth_headers):
+        """验证 beginner Python 用户不能跳过 Phase 1."""
+        diagnosis_data = {
+            "target_role": "ai-engineer",
+            "experience_years": 3,
+            "python_level": "beginner",  # beginner 不能跳过
+            "math_level": "intermediate",
+            "current_job": "产品经理",
+            "time_commitment": "part_time",
+            "goal_timeline": "6_months",
+        }
+
+        response = client.post(
+            "/api/v1/paths/diagnosis",
+            json=diagnosis_data,
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+
+        # beginner 不能跳过 Phase 1
+        assert result["diagnosis"]["can_skip_phase1"] is False
+        assert result["diagnosis"]["start_from"] == 1
