@@ -431,15 +431,12 @@ class PathService:
         按维度聚合实验通过率。
         """
         # 简化实现：基于所有提交记录计算
-        # 维度映射
-        dimension_mapping = {
-            "python": ["python", "basic", "syntax"],
-            "math": ["math", "linear_algebra", "calculus", "probability"],
-            "ml": ["machine_learning", "ml", "supervised", "unsupervised"],
-            "dl": ["deep_learning", "dl", "neural_network", "cnn", "rnn"],
-            "llm": ["llm", "transformer", "nlp", "prompt"],
-            "engineering": ["engineering", "deployment", "production"],
-        }
+        # 维度映射 (未来可根据实际实验数据细分)
+        # dimension_mapping = {
+        #     "python": ["python", "basic", "syntax"],
+        #     "math": ["math", "linear_algebra", "calculus", "probability"],
+        #     ...
+        # }
 
         # 统计各维度
         stats = {
@@ -533,3 +530,141 @@ class PathService:
             "engineering": 25,
         }
         return hours_map.get(dimension, 20)
+
+    def get_visualization(self, user_path: UserPath) -> dict:
+        """获取路径可视化数据.
+
+        AC6: 返回 {nodes, edges, milestones} 结构，用于可视化展示
+        """
+        nodes = []
+        edges = []
+        milestones = []
+
+        template = user_path.template
+        if not template:
+            return {
+                "path_id": user_path.id,
+                "nodes": nodes,
+                "edges": edges,
+                "milestones": milestones,
+            }
+
+        # 获取路径中的课程
+        path_courses = {pc.course_id: pc for pc in user_path.courses}
+
+        # 构建课程节点
+        course_nodes_map = {}
+        y_position = 0
+        x_position = 0
+
+        # 处理必需课程
+        required_courses = template.required_courses or []
+        for idx, course_id in enumerate(required_courses):
+            # 获取课程信息
+            course = None
+            for pc in user_path.courses:
+                if pc.course_id == course_id:
+                    course = pc.course
+                    break
+
+            course_name = course.title if course else f"课程 {course_id}"
+            course_status = (
+                path_courses.get(course_id, {}).status if course_id in path_courses else "pending"
+            )
+
+            node_id = f"course_{course_id}"
+            node = {
+                "id": node_id,
+                "type": "course",
+                "name": course_name,
+                "status": course_status or "pending",
+                "dependencies": [],
+                "position": {"x": x_position, "y": y_position},
+            }
+
+            # 如果不是第一个课程，添加上一个课程作为依赖
+            if idx > 0:
+                prev_course_id = required_courses[idx - 1]
+                node["dependencies"].append(f"course_{prev_course_id}")
+                edges.append({"from": f"course_{prev_course_id}", "to": node_id})
+
+            nodes.append(node)
+            course_nodes_map[course_id] = node
+
+            # 更新位置（简单网格布局）
+            x_position += 150
+            if (idx + 1) % 4 == 0:  # 每4个课程换行
+                x_position = 0
+                y_position += 100
+
+        # 处理可选课程（如果有）
+        elective_courses = template.elective_courses or []
+        for idx, course_id in enumerate(elective_courses):
+            course = None
+            for pc in user_path.courses:
+                if pc.course_id == course_id:
+                    course = pc.course
+                    break
+
+            course_name = course.title if course else f"选修 {course_id}"
+            course_status = (
+                path_courses.get(course_id, {}).status if course_id in path_courses else "pending"
+            )
+
+            node_id = f"course_{course_id}"
+            node = {
+                "id": node_id,
+                "type": "course",
+                "name": course_name,
+                "status": course_status or "pending",
+                "dependencies": [],
+                "position": {"x": x_position + (idx * 150), "y": y_position + 100},
+            }
+
+            nodes.append(node)
+            course_nodes_map[course_id] = node
+
+        # 构建里程碑节点
+        if template.milestones:
+            for milestone in sorted(template.milestones, key=lambda m: m.sequence_order):
+                milestone_id = f"milestone_{milestone.id}"
+
+                # 构建里程碑节点
+                milestone_node = {
+                    "id": milestone_id,
+                    "type": "milestone",
+                    "name": milestone.name,
+                    "status": "pending",  # 简化处理，实际应根据课程完成情况计算
+                    "dependencies": [],
+                    "position": {"x": 300, "y": (milestone.sequence_order - 1) * 150},
+                }
+
+                # 添加里程碑到所需课程的依赖
+                required_course_ids = milestone.required_courses or []
+                for req_course_id in required_course_ids:
+                    course_node_id = f"course_{req_course_id}"
+                    if course_node_id in {n["id"] for n in nodes}:
+                        milestone_node["dependencies"].append(course_node_id)
+                        edges.append({"from": course_node_id, "to": milestone_id})
+
+                nodes.append(milestone_node)
+
+                # 添加到里程碑列表
+                milestones.append(
+                    {
+                        "id": milestone_id,
+                        "name": milestone.name,
+                        "description": milestone.description,
+                        "order": milestone.sequence_order,
+                        "required_courses": [
+                            f"course_{cid}" for cid in (milestone.required_courses or [])
+                        ],
+                    }
+                )
+
+        return {
+            "path_id": user_path.id,
+            "nodes": nodes,
+            "edges": edges,
+            "milestones": milestones,
+        }

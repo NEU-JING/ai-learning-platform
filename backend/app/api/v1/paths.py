@@ -10,6 +10,7 @@ from app.schemas.path import (
     DiagnosisRequest,
     DiagnosisResponse,
     PathProgressResponse,
+    PathVisualizationResponse,
     SkillGapResponse,
     UserPathCreateRequest,
     UserPathCreateResponse,
@@ -127,3 +128,33 @@ def get_skill_gaps(
         )
 
     return service.detect_skill_gaps(user_path)
+
+
+@router.get("/{path_id}/visualization", response_model=PathVisualizationResponse)
+def get_path_visualization(
+    path_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """获取路径可视化数据 — 返回 nodes, edges, milestones 结构.
+
+    AC6: 路径可视化数据 API
+    """
+    service = PathService(db)
+
+    # 验证路径存在
+    user_path = service.get_user_path(path_id)
+    if not user_path:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Path not found: {path_id}",
+        )
+
+    # 验证权限
+    if user_path.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this path",
+        )
+
+    return service.get_visualization(user_path)

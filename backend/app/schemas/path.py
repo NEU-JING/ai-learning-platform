@@ -146,3 +146,48 @@ class SkillGapResponse(BaseModel):
     weak_skills: List[SkillGapItem]
     recommendations: List[SkillGapRecommendation]
     summary: dict = Field(..., description="诊断摘要")
+
+
+class VisualizationNode(BaseModel):
+    """可视化节点."""
+
+    id: str = Field(..., description="节点唯一标识")
+    type: str = Field(..., description="节点类型: course, milestone")
+    name: str = Field(..., description="节点名称")
+    status: str = Field(..., description="状态: pending, in_progress, completed")
+    dependencies: List[str] = Field(default_factory=list, description="依赖的节点ID列表")
+    position: dict = Field(default_factory=dict, description="节点位置 {x, y}")
+
+
+class VisualizationEdge(BaseModel):
+    """可视化边（依赖关系）."""
+
+    from_node: str = Field(..., alias="from", description="源节点ID")
+    to_node: str = Field(..., alias="to", description="目标节点ID")
+
+    class Config:
+        populate_by_name = True
+
+
+class VisualizationMilestone(BaseModel):
+    """可视化里程碑信息."""
+
+    id: str = Field(..., description="里程碑ID")
+    name: str = Field(..., description="里程碑名称")
+    description: Optional[str] = Field(None, description="里程碑描述")
+    order: int = Field(..., description="里程碑顺序")
+    required_courses: List[str] = Field(
+        default_factory=list, description="达成里程碑所需的课程ID列表"
+    )
+
+
+class PathVisualizationResponse(BaseModel):
+    """路径可视化数据响应.
+
+    GET /api/v1/paths/{id}/visualization
+    """
+
+    path_id: int
+    nodes: List[VisualizationNode]
+    edges: List[VisualizationEdge]
+    milestones: List[VisualizationMilestone]

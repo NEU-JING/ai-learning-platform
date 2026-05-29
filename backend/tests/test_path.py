@@ -463,3 +463,180 @@ class TestSkillGapDetection:
         )
 
         assert response.status_code == 403
+
+
+class TestPathVisualization:
+    """T5: 路径可视化数据 API 测试 — AC6."""
+
+    def test_path_visualization_returns_nodes_and_edges(self, client, auth_headers, test_db):
+        """验证可视化 API 返回正确的 nodes 和 edges 结构.
+
+        AC6: 返回路径可视化数据，包含 nodes 和 edges
+        """
+        # 创建用户路径
+        from app.services.path_service import PathService
+
+        service = PathService(test_db)
+        user_path = service.create_user_path(
+            user_id=1,
+            template_slug="ai-engineer",
+            mode="standard",
+        )
+        path_id = user_path.id
+
+        # 获取可视化数据
+        response = client.get(
+            f"/api/v1/paths/{path_id}/visualization",
+            headers=auth_headers,
+        )
+
+        assert (
+            response.status_code == 200
+        ), f"Expected 200, got {response.status_code}: {response.text}"
+        result = response.json()
+
+        # 验证响应结构
+        assert "path_id" in result
+        assert result["path_id"] == path_id
+        assert "nodes" in result
+        assert "edges" in result
+        assert "milestones" in result
+
+        # nodes 应该是列表
+        assert isinstance(result["nodes"], list)
+        assert len(result["nodes"]) > 0
+
+        # edges 应该是列表
+        assert isinstance(result["edges"], list)
+
+        # 验证 node 结构
+        for node in result["nodes"]:
+            assert "id" in node
+            assert "type" in node
+            assert node["type"] in ["course", "milestone"]
+            assert "name" in node
+            assert "status" in node
+
+    def test_path_visualization_course_nodes(self, client, auth_headers, test_db):
+        """验证 course 类型节点包含正确信息."""
+        from app.services.path_service import PathService
+
+        service = PathService(test_db)
+        user_path = service.create_user_path(
+            user_id=1,
+            template_slug="ai-engineer",
+            mode="standard",
+        )
+        path_id = user_path.id
+
+        response = client.get(
+            f"/api/v1/paths/{path_id}/visualization",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+
+        # 查找 course 节点
+        course_nodes = [n for n in result["nodes"] if n["type"] == "course"]
+        assert len(course_nodes) > 0, "应该有 course 节点"
+
+        # 验证 course 节点结构
+        for node in course_nodes:
+            assert node["id"].startswith("course_")
+            assert "dependencies" in node
+            assert isinstance(node["dependencies"], list)
+            assert "position" in node
+            assert "x" in node["position"]
+            assert "y" in node["position"]
+
+    def test_path_visualization_milestone_nodes(self, client, auth_headers, test_db):
+        """验证 milestone 类型节点包含正确信息."""
+        from app.services.path_service import PathService
+
+        service = PathService(test_db)
+        user_path = service.create_user_path(
+            user_id=1,
+            template_slug="ai-engineer",
+            mode="standard",
+        )
+        path_id = user_path.id
+
+        response = client.get(
+            f"/api/v1/paths/{path_id}/visualization",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+
+        # milestones 应该在单独列表中
+        assert isinstance(result["milestones"], list)
+
+        # 查找 milestone 节点（在 nodes 中）
+        milestone_nodes = [n for n in result["nodes"] if n["type"] == "milestone"]
+
+        # 验证 milestone 节点结构（如果有的话）
+        for node in milestone_nodes:
+            assert node["id"].startswith("milestone_")
+            assert "name" in node
+            assert "status" in node
+
+    def test_path_visualization_edges_structure(self, client, auth_headers, test_db):
+        """验证 edges 表示正确的依赖关系."""
+        from app.services.path_service import PathService
+
+        service = PathService(test_db)
+        user_path = service.create_user_path(
+            user_id=1,
+            template_slug="ai-engineer",
+            mode="standard",
+        )
+        path_id = user_path.id
+
+        response = client.get(
+            f"/api/v1/paths/{path_id}/visualization",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        result = response.json()
+
+        # 验证 edges 结构
+        for edge in result["edges"]:
+            assert "from" in edge
+            assert "to" in edge
+            # from 和 to 必须对应存在的节点
+            node_ids = {n["id"] for n in result["nodes"]}
+            assert edge["from"] in node_ids, f"Edge from {edge['from']} not in nodes"
+            assert edge["to"] in node_ids, f"Edge to {edge['to']} not in nodes"
+
+    def test_path_visualization_not_found(self, client, auth_headers):
+        """验证获取不存在路径的可视化数据返回 404."""
+        response = client.get(
+            "/api/v1/paths/99999/visualization",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+
+    def test_path_visualization_unauthorized(self, client, auth_headers, test_db):
+        """验证不能访问其他用户的可视化数据."""
+        # 创建一个路径，但设置给其他用户（user_id=999）
+        from app.services.path_service import PathService
+
+        service = PathService(test_db)
+        user_path = service.create_user_path(
+            user_id=999,  # 不同的用户
+            template_slug="ai-engineer",
+            mode="standard",
+        )
+        path_id = user_path.id
+
+        # 当前用户（user_id=1）尝试访问
+        response = client.get(
+            f"/api/v1/paths/{path_id}/visualization",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 403
