@@ -523,7 +523,7 @@ class RadarService:
         # Use "nearest rank" method for percentile calculation
         # Percentile = (below_count + 0.5 * equal_count) / total_count * 100
         total = len(all_scores)
-        percentile = ((total_users - higher_scores) / total_users) * 100
+        percentile = ((below_count + 0.5 * equal_count) / total) * 100 if total > 0 else 50.0
 
         return min(max(percentile, 0.0), 100.0)
 
@@ -637,13 +637,15 @@ class SnapshotService:
             else:
                 trend = "flat"
 
-            comparison.append({
-                "dimension": dim_slug,
-                "current": round(current, 1),
-                "snapshot": round(snap, 1),
-                "change": round(change, 1),
-                "trend": trend,
-            })
+            comparison.append(
+                {
+                    "dimension": dim_slug,
+                    "current": round(current, 1),
+                    "snapshot": round(snap, 1),
+                    "change": round(change, 1),
+                    "trend": trend,
+                }
+            )
 
         # Sort by dimension name for consistency
         comparison.sort(key=lambda x: x["dimension"])
@@ -697,3 +699,157 @@ class SnapshotService:
             return "技能水平保持稳定"
 
         return "，".join(parts) + "。继续加油！"
+
+
+class GapAnalysisService:
+    """T10: Service for analyzing skill gaps against job requirements.
+
+    AC覆盖:
+    - AC13: 差距分析，返回当前分数与目标岗位要求差距
+    """
+
+    # Days per skill point gap (estimated)
+    DAYS_PER_POINT = 2
+
+    # Priority thresholds
+    HIGH_GAP_THRESHOLD = 20.0
+    MEDIUM_GAP_THRESHOLD = 10.0
+
+    @staticmethod
+    def analyze_gaps(
+        user_id: int,
+        target_job: str,
+        db: Session,
+    ) -> dict:
+        """Analyze skill gaps for a user against job requirements.
+
+        Args:
+            user_id: The user's ID
+            target_job: Target job title (e.g., 'ai-engineer')
+            db: Database session
+
+        Returns:
+            Dictionary containing gaps, overall_readiness, and estimated_gap_days
+
+        Raises:
+            HTTPException: 404 if job requirements not found
+        """
+        from fastapi import HTTPException
+
+        from app.models.radar import JobSkillRequirement
+
+        # Get job requirements
+        job_req = (
+            db.query(JobSkillRequirement)
+            .filter(JobSkillRequirement.job_title == target_job)
+            .first()
+        )
+
+        if not job_req:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Job requirements not found for: {target_job}",
+            )
+
+        # Get current user radar data
+        radar_data = RadarService.get_radar(user_id, db)
+        current_scores = {d["slug"]: d["score"] for d in radar_data.get("dimensions", [])}
+
+        # Get required skills
+        required_skills = job_req.required_skills or {}
+
+        # Calculate gaps
+        gaps = []
+        total_gap = 0.0
+        total_required = 0.0
+
+        for dim_slug, required_score in required_skills.items():
+            current_score = current_scores.get(dim_slug, 0.0)
+            gap = max(0, required_score - current_score)
+
+            if gap > 0:
+                # Determine priority
+                if gap >= GapAnalysisService.HIGH_GAP_THRESHOLD:
+                    priority = "high"
+                elif gap >= GapAnalysisService.MEDIUM_GAP_THRESHOLD:
+                    priority = "medium"
+                else:
+                    priority = "low"
+
+                # Get recommended courses (placeholder for now)
+                recommended_courses = GapAnalysisService._get_recommended_courses(dim_slug)
+
+                gaps.append(
+                    {
+                        "dimension": dim_slug,
+                        "current_score": round(current_score, 1),
+                        "required_score": required_score,
+                        "gap": round(gap, 1),
+                        "priority": priority,
+                        "recommended_courses": recommended_courses,
+                    }
+                )
+
+                total_gap += gap
+
+            total_required += required_score
+
+        # Calculate overall readiness
+        if total_required > 0:
+            overall_readiness = max(0, 100 - (total_gap / total_required * 100))
+        else:
+            overall_readiness = 100.0
+
+        # Estimate gap days
+        estimated_gap_days = int(total_gap * GapAnalysisService.DAYS_PER_POINT)
+
+        # Sort gaps by priority (high first) then by gap size
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+        gaps.sort(key=lambda x: (priority_order.get(x["priority"], 3), -x["gap"]))
+
+        return {
+            "target_job": target_job,
+            "target_level": job_req.job_level,
+            "gaps": gaps,
+            "overall_readiness": round(overall_readiness, 1),
+            "estimated_gap_days": estimated_gap_days,
+        }
+
+    @staticmethod
+    def _get_recommended_courses(dim_slug: str) -> list[dict]:
+        """Get recommended courses for a skill dimension.
+
+        This is a placeholder implementation that returns generic recommendations.
+        In production, this should query a course-to-skill mapping table.
+
+        Args:
+            dim_slug: Dimension slug
+
+        Returns:
+            List of recommended courses
+        """
+        # Simple mapping for demo purposes
+        course_mapping = {
+            "coding_thinking": [
+                {"id": 1, "name": "Python编程基础", "relevance": 0.95},
+                {"id": 2, "name": "算法与数据结构", "relevance": 0.85},
+            ],
+            "system_design": [
+                {"id": 3, "name": "系统设计基础", "relevance": 0.95},
+                {"id": 4, "name": "微服务架构实践", "relevance": 0.85},
+            ],
+            "algorithm_understanding": [
+                {"id": 5, "name": "机器学习算法", "relevance": 0.95},
+                {"id": 6, "name": "深度学习原理", "relevance": 0.90},
+            ],
+            "ai_application": [
+                {"id": 7, "name": "AI应用开发", "relevance": 0.95},
+                {"id": 8, "name": "提示词工程", "relevance": 0.80},
+            ],
+            "data_analysis": [
+                {"id": 9, "name": "数据分析基础", "relevance": 0.95},
+                {"id": 10, "name": "数据可视化", "relevance": 0.85},
+            ],
+        }
+
+        return course_mapping.get(dim_slug, [])

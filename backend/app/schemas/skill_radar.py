@@ -59,6 +59,7 @@ class SkillRefreshResponse(BaseModel):
 
 # T9: Snapshot and Comparison schemas for AC12
 
+
 class RadarSnapshotCreate(BaseModel):
     """Request to create a skill snapshot."""
 
@@ -100,3 +101,37 @@ class RadarComparisonResponse(BaseModel):
     comparison: list[DimensionComparison] = Field(..., description="各维度对比详情")
     assessment: str = Field(..., description="整体评估文本")
     snapshot_info: SnapshotInfo = Field(..., description="快照信息")
+
+
+# T10: Gap Analysis schemas for AC13
+
+
+class RecommendedCourse(BaseModel):
+    """Recommended course for closing a skill gap."""
+
+    id: int = Field(..., description="课程ID")
+    name: str = Field(..., description="课程名称")
+    relevance: float = Field(..., description="相关度 0-1")
+
+
+class SkillGap(BaseModel):
+    """Single skill gap item."""
+
+    dimension: str = Field(..., description="维度标识符")
+    current_score: float = Field(..., description="当前分数")
+    required_score: float = Field(..., description="要求分数")
+    gap: float = Field(..., description="差距值 (required - current)")
+    priority: str = Field(..., description="优先级: high, medium, low")
+    recommended_courses: list[RecommendedCourse] = Field(
+        default_factory=list, description="推荐课程"
+    )
+
+
+class RadarGapAnalysisResponse(BaseModel):
+    """Response for radar gap analysis — AC13."""
+
+    target_job: str = Field(..., description="目标岗位")
+    target_level: Optional[str] = Field(None, description="目标级别")
+    gaps: list[SkillGap] = Field(..., description="技能差距列表")
+    overall_readiness: float = Field(..., description="整体准备度 0-100")
+    estimated_gap_days: int = Field(..., description="预计弥补差距所需天数")

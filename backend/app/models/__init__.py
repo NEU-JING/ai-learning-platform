@@ -373,6 +373,7 @@ from app.models.path import (  # noqa: E402, F401 — V4 Path module
     UserPath,
 )
 from app.models.radar import (  # noqa: E402, F401 — T6: Radar module
+    JobSkillRequirement,  # T10: Gap analysis
     SkillDimension,
     SkillEvent,
     UserSkillSnapshot,  # T9: Snapshot model for AC12
@@ -410,4 +411,5 @@ __all__ = [
     "SkillDimension",
     "SkillEvent",
     "UserSkillSnapshot",  # T9
+    "JobSkillRequirement",  # T10
 ]

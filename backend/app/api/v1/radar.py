@@ -20,6 +20,7 @@ from app.core.database import get_db
 from app.models import User
 from app.schemas.skill_radar import (
     RadarComparisonResponse,
+    RadarGapAnalysisResponse,
     RadarSnapshotCreate,
     RadarSnapshotResponse,
 )
@@ -127,6 +128,33 @@ def compare_snapshot(
     result = SnapshotService.compare_with_snapshot(
         user_id=current_user.id,
         snapshot_id=snapshot_id,
+        db=db,
+    )
+
+    return result
+
+
+@router.get("/radar/gap-analysis", response_model=RadarGapAnalysisResponse)
+def gap_analysis(
+    target_job: str = Query(..., description="目标岗位名称，如 ai-engineer"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """分析当前技能与目标岗位要求的差距。
+
+    AC13: 返回技能差距分析，包含当前分数、要求分数、差距值和推荐课程。
+
+    Args:
+        target_job: 目标岗位名称，如 'ai-engineer'
+
+    Returns:
+        包含差距列表、整体准备度和预计弥补天数的响应
+    """
+    from app.services.radar_service import GapAnalysisService
+
+    result = GapAnalysisService.analyze_gaps(
+        user_id=current_user.id,
+        target_job=target_job,
         db=db,
     )
 

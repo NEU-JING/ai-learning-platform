@@ -12,6 +12,7 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
+from app.models import JobSkillRequirement  # noqa: F401 — T10: Gap analysis
 from app.models import PathTemplate  # noqa: F401 — Ensure path tables are registered
 from app.models import SkillDimension  # noqa: F401 — T6: Radar tables
 from app.models import UserSkillSnapshot  # noqa: F401 — T9: Radar snapshots

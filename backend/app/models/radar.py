@@ -77,7 +77,9 @@ class UserSkillSnapshot(Base):
     __tablename__ = "user_skill_snapshots"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     snapshot_name = Column(String(64), nullable=True)  # 用户自定义名称，如 "入职前"
     scores = Column(JSON, nullable=False)  # {dimension_slug: score, ...}
     path_id = Column(Integer, ForeignKey("learning_paths.id"), nullable=True)
@@ -88,3 +90,19 @@ class UserSkillSnapshot(Base):
 
     def __repr__(self):
         return f"<UserSkillSnapshot(user={self.user_id}, name={self.snapshot_name})>"
+
+
+class JobSkillRequirement(Base):
+    """目标岗位技能要求 — 用于差距分析 (AC13)."""
+
+    __tablename__ = "job_skill_requirements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_title = Column(String(64), nullable=False, index=True)  # 岗位名称，如 "ai-engineer"
+    job_level = Column(String(16), nullable=True)  # 级别: junior, mid, senior
+    required_skills = Column(JSON, nullable=False)  # {dimension_slug: min_score, ...}
+    source = Column(String(32), nullable=True)  # 来源: jd_analysis, manual
+    created_at = Column(DateTime, default=_utcnow)
+
+    def __repr__(self):
+        return f"<JobSkillRequirement({self.job_title}: {self.job_level})>"
