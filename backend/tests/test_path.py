@@ -353,3 +353,45 @@ class TestPathCreationAPI:
         # Try to access with second user
         response = client.get(f"/api/v1/paths/{path_id}/progress", headers=auth_headers_other)
         assert response.status_code == 403
+
+
+class TestPathSkillGaps:
+    """T4: Path 能力缺口诊断 API 测试."""
+
+    def test_get_skill_gaps_success(self, client, test_db, auth_headers, test_user):
+        """AC4: 成功获取能力缺口诊断."""
+        # Create a path first
+        create_response = client.post(
+            "/api/v1/paths",
+            json={"template_slug": "ai-engineer", "mode": "standard"},
+            headers=auth_headers,
+        )
+        path_id = create_response.json()["path_id"]
+
+        # Get skill gaps
+        response = client.get(f"/api/v1/paths/{path_id}/gaps", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["path_id"] == path_id
+        assert "weak_skills" in data
+        assert "recommendations" in data
+        assert "summary" in data
+
+    def test_get_skill_gaps_not_found(self, client, test_db, auth_headers):
+        """AC4: 获取不存在路径的缺口返回404."""
+        response = client.get("/api/v1/paths/99999/gaps", headers=auth_headers)
+        assert response.status_code == 404
+
+    def test_get_skill_gaps_unauthorized(self, client, test_db, auth_headers, auth_headers_other):
+        """AC4: 不能访问其他用户的路径缺口."""
+        # Create path with first user
+        create_response = client.post(
+            "/api/v1/paths",
+            json={"template_slug": "ai-engineer", "mode": "standard"},
+            headers=auth_headers,
+        )
+        path_id = create_response.json()["path_id"]
+
+        # Try to access with second user
+        response = client.get(f"/api/v1/paths/{path_id}/gaps", headers=auth_headers_other)
+        assert response.status_code == 403
