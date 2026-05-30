@@ -133,6 +133,54 @@ def auth_headers(test_user):
 
 
 @pytest.fixture(scope="function")
+def test_user_other(test_db):
+    """Create another test user for cross-user authorization tests."""
+    from datetime import datetime, timedelta
+
+    from jose import jwt
+
+    from app.core.config import settings
+
+    user = User(
+        email="other@example.com",
+        username="otheruser",
+        password_hash=get_password_hash("testpassword"),
+        role="student",
+        is_active=True,
+        created_at=datetime.utcnow(),
+    )
+    test_db.add(user)
+    test_db.commit()
+    test_db.refresh(user)
+
+    # Generate JWT token
+    token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "username": user.username,
+            "role": user.role,
+            "exp": datetime.utcnow() + timedelta(minutes=30),
+        },
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "token": token,
+    }
+
+
+@pytest.fixture(scope="function")
+def auth_headers_other(test_user_other):
+    """Authorization headers for the other test user."""
+    return {"Authorization": f"Bearer {test_user_other['token']}"}
+
+
+@pytest.fixture(scope="function")
 def test_course(test_db):
     """Create a course + chapter + lab for testing."""
     course = Course(
