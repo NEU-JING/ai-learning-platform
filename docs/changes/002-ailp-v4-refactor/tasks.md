@@ -19,25 +19,31 @@
 ## Task 执行顺序
 
 ```
-Phase 1: 基础数据层（Path + Radar）
+Phase 1: 基础数据层（Path + Radar）→ [可独立交付]
 T1 → T2 → T3 → T4 → T5 → T6 → T7 → T8 → T9 → T10
 
-Phase 2: 核心服务层（Tutor + Certification）
+Phase 2: 核心服务层（Tutor + Certification）→ [依赖Phase 1]
 T11 → T12 → T13 → T14 → T15 → T16 → T17 → T18 → T19
 
-Phase 3: 验证与执行（Sandbox + Profile + Employer）
+Phase 3: 验证与执行（Sandbox + Profile + Employer）→ [依赖Phase 1+2]
 T20 → T21 → T22 → T23 → T24 → T25 → T26 → T27 → T28 → T29
 
-Phase 4: 演进引擎（Evolution）
+Phase 4: 演进引擎（Evolution）→ [依赖Phase 1+2]
 T30 → T31 → T32 → T33 → T34
 
-Phase 5: 集成测试
+Phase 5: 集成测试 → [依赖Phase 1-4]
 T35 → T36 → T37 → T38 → T39
 ```
 
 ---
 
-## Phase 1: 基础数据层
+## Phase 1: 基础数据层（Path + Radar）
+
+> **交付标准**: Path API + Radar API 全量测试通过，AC1-AC14 验证完成  
+> **验收检查点**: Phase 1 Review → Phase 1 QA → Phase 1 Accepted  
+> **回归测试**: 本Phase全量测试（基线Phase，无回归测试）  
+> **依赖**: 无  
+> **可独立交付**: ✅ **是**
 
 ### T1: Path 模块数据库表
 **估时**: 30m  
@@ -217,7 +223,13 @@ pytest tests/test_radar.py::test_gap_analysis -v
 
 ---
 
-## Phase 2: 核心服务层
+## Phase 2: 核心服务层（Tutor + Certification）
+
+> **交付标准**: Tutor API + Certification API 全量测试通过，AC15-AC37 验证完成  
+> **验收检查点**: Phase 2 Review → Phase 2 QA → Phase 2 Accepted  
+> **回归测试**: Phase 1 核心 10%（验证不破坏基线）  
+> **依赖**: Phase 1（Radar Service）  
+> **可独立交付**: ✅ **是**（依赖Phase 1已交付）
 
 ### T11: Tutor LLM Router 三级降级
 **估时**: 45m  
@@ -378,9 +390,15 @@ pytest tests/test_certification.py::test_certificate_verification -v
 
 ---
 
-## Phase 3: 验证与执行
+## Phase 3: 验证与执行（Sandbox + Profile + Employer）
 
-### T20: Sandbox 数据库表
+> **交付标准**: Sandbox API + Profile API + Employer API 全量测试通过，AC38-AC47 验证完成  
+> **验收检查点**: Phase 3 Review → Phase 3 QA → Phase 3 Accepted  
+> **回归测试**: Phase 1+2 核心 10%（验证不破坏前置Phase）  
+> **依赖**: Phase 1（Radar）+ Phase 2（Tutor/Certification）  
+> **可独立交付**: ✅ **是**（依赖Phase 1+2已交付）
+
+### T20: Sandbox 模块数据库表
 **估时**: 20m  
 **依赖**: None  
 **AC 覆盖**: AC38-AC44  
@@ -536,9 +554,15 @@ pytest tests/test_employer.py::test_authorization_code -v
 
 ---
 
-## Phase 4: 演进引擎
+## Phase 4: 演进引擎（Evolution）
 
-### T30: Evolution 数据库表
+> **交付标准**: Evolution API 全量测试通过，AC48 验证完成  
+> **验收检查点**: Phase 4 Review → Phase 4 QA → Phase 4 Accepted  
+> **回归测试**: Phase 1+2 核心 10%（验证不破坏前置Phase）  
+> **依赖**: Phase 1（Radar）+ Phase 2（Tutor/Certification）  
+> **可独立交付**: ✅ **是**（依赖Phase 1+2已交付）
+
+### T30: Evolution 数据聚合任务
 **估时**: 30m  
 **依赖**: None  
 **AC 覆盖**: AC22-AC29  
@@ -619,7 +643,13 @@ pytest tests/test_evolution.py::test_layered_update_strategy -v
 
 ## Phase 5: 集成测试
 
-### T35: Path + Radar 集成测试
+> **交付标准**: 全量集成测试通过 100%，AC49 验证完成，系统生产就绪  
+> **验收检查点**: Final Review → Final QA → Production Ready  
+> **回归测试**: 全量回归测试 100%（归档前全量验证）  
+> **依赖**: Phase 1 + Phase 2 + Phase 3 + Phase 4  
+> **可独立交付**: ✅ **是**（所有前置Phase已交付）
+
+### T35: 全量 API 集成测试
 **估时**: 30m  
 **依赖**: T5, T10  
 **AC 覆盖**: AC1-AC14  

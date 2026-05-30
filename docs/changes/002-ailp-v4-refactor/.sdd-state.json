@@ -68,5 +68,88 @@
     ]
   },
   "next_action": "等待用户确认Design和Tasks，确认后进入Coder阶段",
-  "updated_at": "2026-05-28"
+  "updated_at": "2026-05-28",
+  "incremental_mode": true,
+  "phase_config": {
+    "total_phases": 5,
+    "current_phase": "phase_1",
+    "phases": {
+      "phase_1": {
+        "name": "基础数据层（Path + Radar）",
+        "status": "in_progress",
+        "started_at": "2026-05-31",
+        "tasks": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"],
+        "ac_covered": ["AC1", "AC2", "AC3", "AC4", "AC5", "AC6", "AC7", "AC8", "AC9", "AC10", "AC11", "AC12", "AC13", "AC14"],
+        "depends_on": [],
+        "deliverables": [
+          "Path API 全量测试通过（5个端点）",
+          "Radar API 全量测试通过（4个端点）",
+          "AC1-AC14 验收标准验证完成",
+          "Phase 1 Review 通过",
+          "Phase 1 QA 通过"
+        ],
+        "regression": "本Phase全量测试（基线Phase）"
+      },
+      "phase_2": {
+        "name": "核心服务层（Tutor + Certification）",
+        "status": "not_started",
+        "tasks": ["T11", "T12", "T13", "T14", "T15", "T16", "T17", "T18", "T19"],
+        "ac_covered": ["AC15", "AC16", "AC17", "AC18", "AC19", "AC20", "AC21", "AC22", "AC23", "AC24", "AC25", "AC26", "AC27", "AC28", "AC29", "AC30", "AC31", "AC32", "AC33", "AC34", "AC35", "AC36", "AC37"],
+        "depends_on": ["phase_1"],
+        "deliverables": [
+          "Tutor API 全量测试通过（5个端点）",
+          "Certification API 全量测试通过（4个端点）",
+          "AC15-AC37 验收标准验证完成",
+          "Phase 2 Review 通过",
+          "Phase 2 QA 通过"
+        ],
+        "regression": "Phase 1 核心 10%"
+      },
+      "phase_3": {
+        "name": "验证与执行（Sandbox + Profile + Employer）",
+        "status": "not_started",
+        "tasks": ["T20", "T21", "T22", "T23", "T24", "T25", "T26", "T27", "T28", "T29"],
+        "ac_covered": ["AC38", "AC39", "AC40", "AC41", "AC42", "AC43", "AC44", "AC45", "AC46", "AC47"],
+        "depends_on": ["phase_1", "phase_2"],
+        "deliverables": [
+          "Sandbox API 全量测试通过",
+          "Profile API 全量测试通过",
+          "Employer API 全量测试通过",
+          "AC38-AC47 验收标准验证完成",
+          "Phase 3 Review 通过",
+          "Phase 3 QA 通过"
+        ],
+        "regression": "Phase 1+2 核心 10%"
+      },
+      "phase_4": {
+        "name": "演进引擎（Evolution）",
+        "status": "not_started",
+        "tasks": ["T30", "T31", "T32", "T33", "T34"],
+        "ac_covered": ["AC48"],
+        "depends_on": ["phase_1", "phase_2"],
+        "deliverables": [
+          "Evolution API 全量测试通过",
+          "AC48 验收标准验证完成",
+          "Phase 4 Review 通过",
+          "Phase 4 QA 通过"
+        ],
+        "regression": "Phase 1+2 核心 10%"
+      },
+      "phase_5": {
+        "name": "集成测试",
+        "status": "not_started",
+        "tasks": ["T35", "T36", "T37", "T38", "T39"],
+        "ac_covered": ["AC49"],
+        "depends_on": ["phase_1", "phase_2", "phase_3", "phase_4"],
+        "deliverables": [
+          "全量集成测试通过（100%）",
+          "AC49 验收标准验证完成",
+          "Final Review 通过",
+          "Final QA 通过",
+          "生产就绪检查通过"
+        ],
+        "regression": "全量回归测试 100%"
+      }
+    }
+  }
 }
