@@ -33,7 +33,10 @@ router = APIRouter()
 def get_radar(
     path_type: Optional[str] = Query(
         None,
-        description="Path type for specialization highlighting. Options: ai-engineer, ai-researcher, ai-applier, ai-manager",
+        description=(
+            "Path type for specialization highlighting. "
+            "Options: ai-engineer, ai-researcher, ai-applier, ai-manager"
+        ),
     ),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
