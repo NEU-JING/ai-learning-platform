@@ -6,8 +6,9 @@ AC覆盖:
 - AC12: 历史版本对比功能
 """
 
-import pytest
 from datetime import datetime, timezone
+
+import pytest
 
 from app.models.radar import SkillDimension, SkillEvent, UserSkillSnapshot
 
@@ -20,7 +21,7 @@ class TestCreateSnapshot:
         # First, create some skill events to have data
         user_id = 1  # test_user
         dimension = test_db.query(SkillDimension).filter_by(slug="coding_thinking").first()
-        
+
         # Create a skill event
         event = SkillEvent(
             user_id=user_id,
@@ -34,9 +35,7 @@ class TestCreateSnapshot:
 
         # Create snapshot
         response = client.post(
-            "/api/v1/radar/snapshots",
-            headers=auth_headers,
-            json={"name": "入职前"}
+            "/api/v1/radar/snapshots", headers=auth_headers, json={"name": "入职前"}
         )
         assert response.status_code == 201
 
@@ -53,7 +52,7 @@ class TestCreateSnapshot:
         response = client.post(
             "/api/v1/radar/snapshots",
             headers=auth_headers,
-            json={"name": "阶段1完成", "path_id": 1}
+            json={"name": "阶段1完成", "path_id": 1},
         )
         assert response.status_code == 201
 
@@ -66,11 +65,7 @@ class TestCreateSnapshot:
 
     def test_create_snapshot_default_name(self, client, auth_headers):
         """AC12: 不提供名称时应该使用默认名称."""
-        response = client.post(
-            "/api/v1/radar/snapshots",
-            headers=auth_headers,
-            json={}
-        )
+        response = client.post("/api/v1/radar/snapshots", headers=auth_headers, json={})
         assert response.status_code == 201
 
         data = response.json()
@@ -80,7 +75,7 @@ class TestCreateSnapshot:
     def test_create_snapshot_captures_current_scores(self, client, auth_headers, test_db):
         """AC12: 快照应该捕获当前的技能分数."""
         user_id = 1
-        
+
         # Create multiple skill events with different scores
         dimensions = test_db.query(SkillDimension).limit(3).all()
         for i, dim in enumerate(dimensions):
@@ -95,16 +90,14 @@ class TestCreateSnapshot:
         test_db.commit()
 
         response = client.post(
-            "/api/v1/radar/snapshots",
-            headers=auth_headers,
-            json={"name": "测试快照"}
+            "/api/v1/radar/snapshots", headers=auth_headers, json={"name": "测试快照"}
         )
         assert response.status_code == 201
 
         data = response.json()
         assert "scores" in data
         scores = data["scores"]
-        
+
         # Should have scores for the dimensions we created events for
         for dim in dimensions:
             assert dim.slug in scores
@@ -112,18 +105,13 @@ class TestCreateSnapshot:
 
     def test_create_snapshot_requires_auth(self, client):
         """AC12: 创建快照需要认证."""
-        response = client.post(
-            "/api/v1/radar/snapshots",
-            json={"name": "测试"}
-        )
+        response = client.post("/api/v1/radar/snapshots", json={"name": "测试"})
         assert response.status_code == 401
 
     def test_create_snapshot_invalid_name_too_long(self, client, auth_headers):
         """AC12: 名称过长应该返回错误."""
         response = client.post(
-            "/api/v1/radar/snapshots",
-            headers=auth_headers,
-            json={"name": "x" * 100}  # Too long
+            "/api/v1/radar/snapshots", headers=auth_headers, json={"name": "x" * 100}  # Too long
         )
         assert response.status_code == 400
 
@@ -144,7 +132,7 @@ class TestCompareSnapshots:
             created_at=datetime.now(timezone.utc),
         )
         test_db.add(old_snapshot)
-        
+
         # Create current skill events with higher scores
         event = SkillEvent(
             user_id=user_id,
@@ -159,8 +147,7 @@ class TestCompareSnapshots:
 
         # Compare
         response = client.get(
-            f"/api/v1/radar/compare?snapshot_id={old_snapshot.id}",
-            headers=auth_headers
+            f"/api/v1/radar/compare?snapshot_id={old_snapshot.id}", headers=auth_headers
         )
         assert response.status_code == 200
 
@@ -184,7 +171,7 @@ class TestCompareSnapshots:
             created_at=datetime.now(timezone.utc),
         )
         test_db.add(snapshot)
-        
+
         # Create current event with different score
         new_score = 85.0
         event = SkillEvent(
@@ -199,14 +186,13 @@ class TestCompareSnapshots:
         test_db.refresh(snapshot)
 
         response = client.get(
-            f"/api/v1/radar/compare?snapshot_id={snapshot.id}",
-            headers=auth_headers
+            f"/api/v1/radar/compare?snapshot_id={snapshot.id}", headers=auth_headers
         )
         assert response.status_code == 200
 
         data = response.json()
         comparison = data["comparison"]
-        
+
         # Find coding_thinking in comparison
         coding_comparison = next(
             (c for c in comparison if c["dimension"] == "coding_thinking"), None
@@ -229,7 +215,7 @@ class TestCompareSnapshots:
             created_at=datetime.now(timezone.utc),
         )
         test_db.add(snapshot_up)
-        
+
         event_up = SkillEvent(
             user_id=user_id,
             dimension_id=dimension.id,
@@ -242,8 +228,7 @@ class TestCompareSnapshots:
         test_db.refresh(snapshot_up)
 
         response = client.get(
-            f"/api/v1/radar/compare?snapshot_id={snapshot_up.id}",
-            headers=auth_headers
+            f"/api/v1/radar/compare?snapshot_id={snapshot_up.id}", headers=auth_headers
         )
         data = response.json()
         coding_comparison = next(
@@ -263,7 +248,7 @@ class TestCompareSnapshots:
             created_at=datetime.now(timezone.utc),
         )
         test_db.add(snapshot_down)
-        
+
         event_down = SkillEvent(
             user_id=user_id,
             dimension_id=dimension.id,
@@ -276,8 +261,7 @@ class TestCompareSnapshots:
         test_db.refresh(snapshot_down)
 
         response = client.get(
-            f"/api/v1/radar/compare?snapshot_id={snapshot_down.id}",
-            headers=auth_headers
+            f"/api/v1/radar/compare?snapshot_id={snapshot_down.id}", headers=auth_headers
         )
         data = response.json()
         coding_comparison = next(
@@ -298,7 +282,7 @@ class TestCompareSnapshots:
             created_at=datetime.now(timezone.utc),
         )
         test_db.add(snapshot_flat)
-        
+
         event_flat = SkillEvent(
             user_id=user_id,
             dimension_id=dimension.id,
@@ -311,8 +295,7 @@ class TestCompareSnapshots:
         test_db.refresh(snapshot_flat)
 
         response = client.get(
-            f"/api/v1/radar/compare?snapshot_id={snapshot_flat.id}",
-            headers=auth_headers
+            f"/api/v1/radar/compare?snapshot_id={snapshot_flat.id}", headers=auth_headers
         )
         data = response.json()
         coding_comparison = next(
@@ -334,8 +317,7 @@ class TestCompareSnapshots:
         test_db.refresh(snapshot)
 
         response = client.get(
-            f"/api/v1/radar/compare?snapshot_id={snapshot.id}",
-            headers=auth_headers
+            f"/api/v1/radar/compare?snapshot_id={snapshot.id}", headers=auth_headers
         )
         assert response.status_code == 200
 
@@ -351,18 +333,12 @@ class TestCompareSnapshots:
 
     def test_compare_invalid_snapshot_id(self, client, auth_headers):
         """AC12: 无效的快照ID应该返回404."""
-        response = client.get(
-            "/api/v1/radar/compare?snapshot_id=99999",
-            headers=auth_headers
-        )
+        response = client.get("/api/v1/radar/compare?snapshot_id=99999", headers=auth_headers)
         assert response.status_code == 404
 
     def test_compare_missing_snapshot_id(self, client, auth_headers):
         """AC12: 缺少快照ID应该返回422 (FastAPI 验证错误)."""
-        response = client.get(
-            "/api/v1/radar/compare",
-            headers=auth_headers
-        )
+        response = client.get("/api/v1/radar/compare", headers=auth_headers)
         assert response.status_code == 422
 
     def test_compare_other_user_snapshot_forbidden(self, client, auth_headers, test_db):
@@ -379,8 +355,7 @@ class TestCompareSnapshots:
         test_db.refresh(other_snapshot)
 
         response = client.get(
-            f"/api/v1/radar/compare?snapshot_id={other_snapshot.id}",
-            headers=auth_headers
+            f"/api/v1/radar/compare?snapshot_id={other_snapshot.id}", headers=auth_headers
         )
         assert response.status_code == 403  # Forbidden
 
@@ -396,7 +371,7 @@ class TestCompareSnapshots:
             created_at=datetime.now(timezone.utc),
         )
         test_db.add(snapshot)
-        
+
         event = SkillEvent(
             user_id=user_id,
             dimension_id=dimension.id,
@@ -409,8 +384,7 @@ class TestCompareSnapshots:
         test_db.refresh(snapshot)
 
         response = client.get(
-            f"/api/v1/radar/compare?snapshot_id={snapshot.id}",
-            headers=auth_headers
+            f"/api/v1/radar/compare?snapshot_id={snapshot.id}", headers=auth_headers
         )
         assert response.status_code == 200
 

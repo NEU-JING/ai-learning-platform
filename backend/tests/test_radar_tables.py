@@ -14,7 +14,6 @@ import pytest
 from sqlalchemy import inspect
 
 
-
 class TestRadarTablesExist:
     """RED phase test: Verify radar tables are created in database."""
 
