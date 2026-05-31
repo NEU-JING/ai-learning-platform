@@ -55,6 +55,62 @@ class LLMProvider(ABC):
         pass
 
 
+class ArkProvider(LLMProvider):
+    """豆包(火山引擎) provider - Primary for AILP."""
+
+    def __init__(self):
+        super().__init__("ark", priority=0)
+        self._api_key = os.getenv("ARK_API_KEY", "ark-eb7b1eb7-f208-49bb-8498-f8511159b4b8-fcad8")
+        self._base_url = "https://ark.cn-beijing.volces.com/api/v3"
+        self._model = "doubao-seed-2-0-lite-260215"
+        self._client: Optional[Any] = None
+        if HAS_OPENAI and self._api_key:
+            self._client = OpenAI(base_url=self._base_url, api_key=self._api_key)
+
+    async def chat(
+        self, message: str, system_prompt: Optional[str] = None, **kwargs
+    ) -> Dict[str, Any]:
+        """Chat via 豆包(Ark)."""
+        if not self._client:
+            raise Exception("Ark API client not initialized")
+
+        start = time.time()
+
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": message})
+
+        try:
+            response = await asyncio.to_thread(
+                self._client.chat.completions.create,
+                model=self._model,
+                messages=messages,
+                temperature=kwargs.get("temperature", 0.7),
+                max_tokens=kwargs.get("max_tokens", 2000),
+                timeout=30,
+            )
+
+            latency_ms = int((time.time() - start) * 1000)
+
+            return {
+                "content": response.choices[0].message.content,
+                "model": response.model,
+                "tokens": response.usage.total_tokens if response.usage else 0,
+                "latency_ms": latency_ms,
+                "provider": self.name,
+            }
+        except TimeoutError:
+            raise
+        except RateLimitError:
+            raise
+        except Exception as e:
+            raise Exception(f"Ark error: {e}")
+
+    def check_health(self) -> str:
+        return "healthy" if self._client else "unhealthy"
+
+
 class OpenRouterProvider(LLMProvider):
     """OpenRouter provider (Layer 1 - Primary)."""
 
@@ -176,11 +232,12 @@ class LLMRouter:
     """
 
     def __init__(self):
-        """Initialize router with 3 providers."""
+        """Initialize router with 4 providers (Ark as primary)."""
         self.providers: List[LLMProvider] = [
-            OpenRouterProvider(),  # Layer 1: Primary
-            QianfanProvider(),  # Layer 2: Fallback
-            LocalQwenProvider(),  # Layer 3: Last resort
+            ArkProvider(),  # Layer 0: 豆包 (Primary)
+            OpenRouterProvider(),  # Layer 1: OpenRouter
+            QianfanProvider(),  # Layer 2: 千帆
+            LocalQwenProvider(),  # Layer 3: Local Qwen
         ]
         # Sort by priority
         self.providers.sort(key=lambda p: p.priority)
