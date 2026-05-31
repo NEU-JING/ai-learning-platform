@@ -6,7 +6,7 @@ const API_BASE = '/api/v1';
 async function fetchAPI(path, options = {}) {
   try {
     // Add auth token if available
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('ailp_token');
     const headers = {
       ...options.headers,
     };
@@ -248,7 +248,10 @@ async function loginUser({ email, password }) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || '登录失败');
   setToken(data.access_token);
-  return data;
+  // Store basic user info from login credentials
+  const userInfo = { email, name: email.split('@')[0] };
+  try { localStorage.setItem(USER_KEY, JSON.stringify(userInfo)); } catch {}
+  return { ...data, user: userInfo };
 }
 
 function getCurrentUser() {

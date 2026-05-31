@@ -31,7 +31,7 @@ const ScreenHome = ({ tweaks }) => {
 
   return (
     <div className="screen">
-      <Hero progress={overallProgress} layout={tweaks?.hero_layout} totalStudents={totalStudents} />
+      <Hero progress={overallProgress} layout={tweaks?.hero_layout} totalStudents={totalStudents} stats={stats} />
 
       <section className="container" style={{ paddingTop: 32 }}>
         <ContinueCard course={current} chapter={currentChapter} />
@@ -67,7 +67,7 @@ const ScreenHome = ({ tweaks }) => {
   );
 };
 
-const Hero = ({ progress, layout, totalStudents }) => {
+const Hero = ({ progress, layout, totalStudents, stats }) => {
   const navigate = useNavigate();
   if (layout === "split") {
     return (

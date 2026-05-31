@@ -20,6 +20,9 @@ const ScreenChapter = () => {
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Hooks must be at the top - moved from line 73-74 to fix React error #310
+  const [activeSection, setActiveSection] = useState("s1");
+  const [drawerOpen, setDrawerOpen] = useState(false);
   
   useEffect(() => {
     let cancelled = false;
@@ -69,9 +72,6 @@ const ScreenChapter = () => {
   const prev = currentIdx > 0 ? chapterList[currentIdx - 1] : null;
   const next = currentIdx >= 0 && currentIdx < chapterList.length - 1 ? chapterList[currentIdx + 1] : null;
   const pct = chapterList.length ? Math.round((currentIdx + 1) / chapterList.length * 100) : 0;
-
-  const [activeSection, setActiveSection] = React.useState("s1");
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
 
   return (
     <div className="screen">

@@ -3,7 +3,7 @@ import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import { Topbar, MobileNav, CommandPalette } from './nav';
 import { useTweaks, TweaksPanel, TweakSection, TweakRadio, TweakColor, TweakButton } from './tweaks-panel';
 import { Icon } from './icons';
-import { CURRENT_USER } from './data';
+import { CURRENT_USER, getCurrentUser } from './data';
 import ErrorBoundary from './components/ErrorBoundary';
 import { AnalyticsProvider } from './useAnalytics';
 import HomePage from './pages/HomePage';
@@ -15,6 +15,7 @@ import CourseDetailPage from './pages/CourseDetailPage';
 import ChapterPage from './pages/ChapterPage';
 import LabPage from './pages/LabPage';
 import ProgressPage from './pages/ProgressPage';
+import RadarPage from './pages/RadarPage';
 
 const BRAND_TO_HEX = { indigo: "#818cf8", teal: "#2dd4bf", amber: "#f5b342", rose: "#fb7185", lime: "#a3e635" };
 const HEX_TO_BRAND = { "#818cf8": "indigo", "#2dd4bf": "teal", "#f5b342": "amber", "#fb7185": "rose", "#a3e635": "lime" };
@@ -48,7 +49,15 @@ const AppContent = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [tweaksOpen, setTweaksOpen] = useState(false);
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [auth, setAuth] = useState(CURRENT_USER || { isLoggedIn: false, user: null });
+  // Use dynamic auth state instead of constant
+  const [auth, setAuth] = useState(() => getCurrentUser());
+  
+  // Refresh auth state when localStorage changes (login/logout)
+  useEffect(() => {
+    const handleStorage = () => setAuth(getCurrentUser());
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   // Apply tweak attributes to <html>
   useEffect(() => {
@@ -85,6 +94,7 @@ const AppContent = () => {
             <Route path="/chapter/:id" element={<ChapterPage />} />
             <Route path="/lab/:id" element={<LabPage />} />
             <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/radar" element={<RadarPage />} />
             <Route path="/login" element={<LoginPage onLogin={setAuth} />} />
             <Route path="/register" element={<RegisterPage onLogin={setAuth} />} />
           </Routes>
@@ -154,6 +164,7 @@ const AppContent = () => {
         <TweakButton label="04 · 章节阅读" onClick={() => window.location.hash = '#/chapter/33' } secondary />
         <TweakButton label="05 · 在线实验" onClick={() => window.location.hash = '#/lab/35' } secondary />
         <TweakButton label="06 · 学习进度" onClick={() => window.location.hash = '#/progress' } secondary />
+        <TweakButton label="07 · 技能雷达" onClick={() => window.location.hash = '#/radar' } secondary />
       </TweaksPanel>
     </div>
     </AnalyticsProvider>
