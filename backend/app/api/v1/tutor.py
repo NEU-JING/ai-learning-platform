@@ -15,6 +15,7 @@ from app.schemas.code_review import (
     CodeReviewResponse,
 )
 from app.schemas.tutor import (
+    ObstaclesResponse,
     RecommendationsResponse,
     SessionMessagesResponse,
     TutorChatRequest,
@@ -193,4 +194,25 @@ async def get_tutor_recommendations(
     """
     service = TutorService()
     result = await service.get_recommendations(db=db, user_id=current_user.id)
+    return result
+
+
+# ── T15: Obstacle Detection (AC20) ──────────────────────────────────────────
+
+
+@router.get("/obstacles", response_model=ObstaclesResponse)
+async def get_learning_obstacles(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Detect learning obstacles for the current user.
+
+    AC20: 学习障碍识别 — 用户在某Lab停留超过平均时长3倍时，
+    主动询问是否需要帮助。
+
+    Compares per-lab time spent vs peer average.
+    Flags labs where user_time / average_time >= 3.0.
+    """
+    service = TutorService()
+    result = await service.get_obstacles(db=db, user_id=current_user.id)
     return result

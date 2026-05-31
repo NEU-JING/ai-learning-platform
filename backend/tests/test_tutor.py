@@ -235,3 +235,175 @@ class TestTutorRecommendations:
         assert (
             len(data["recommendations"]) >= 2
         ), "Multiple weak dimensions should produce multiple recommendations"
+
+
+# ── T15: Obstacle Detection (AC20) ─────────────────────────────────────────────
+
+
+class TestTutorObstacleDetection:
+    """Test Tutor Obstacle Detection API endpoint (AC20)."""
+
+    def test_obstacle_detection_no_obstacles(self, client, auth_headers, test_course, test_db):
+        """AC20: 无学习障碍时应返回空列表."""
+        user_id = 1
+        lab = test_course["lab"]
+
+        # Create normal progress — user spent roughly same time as others
+        now = datetime.now(timezone.utc)
+        from app.models import LearningProgress
+
+        # User 1 progress (normal time)
+        progress = LearningProgress(
+            user_id=user_id,
+            chapter_id=lab.chapter_id,
+            status="completed",
+            completed_at=now,
+            last_accessed_at=now,
+            created_at=now - timedelta(hours=1),
+        )
+        test_db.add(progress)
+        test_db.commit()
+
+        response = client.get("/api/v1/tutor/obstacles", headers=auth_headers)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["has_obstacles"] is False
+        assert data["obstacles"] == []
+
+    def test_obstacle_detection_time_exceeded(self, client, auth_headers, test_course, test_db):
+        """AC20: 用户在某Lab停留超过平均时长3倍，应标记为学习障碍."""
+        user_id = 1
+        lab = test_course["lab"]
+        now = datetime.now(timezone.utc)
+
+        from app.models import LearningProgress
+
+        # Other users: average ~1 hour
+        for other_uid in range(2, 5):
+            progress = LearningProgress(
+                user_id=other_uid,
+                chapter_id=lab.chapter_id,
+                status="completed",
+                completed_at=now,
+                last_accessed_at=now,
+                created_at=now - timedelta(hours=1),
+            )
+            test_db.add(progress)
+
+        # Our user: spent 4 hours (4x average)
+        progress = LearningProgress(
+            user_id=user_id,
+            chapter_id=lab.chapter_id,
+            status="completed",
+            completed_at=now,
+            last_accessed_at=now,
+            created_at=now - timedelta(hours=4),
+        )
+        test_db.add(progress)
+        test_db.commit()
+
+        response = client.get("/api/v1/tutor/obstacles", headers=auth_headers)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["has_obstacles"] is True
+        assert len(data["obstacles"]) == 1
+
+        obstacle = data["obstacles"][0]
+        assert obstacle["lab_id"] == lab.id
+        assert obstacle["type"] == "time_exceeded"
+        assert obstacle["data"]["ratio"] >= 3.0
+        assert "tutor_message" in obstacle
+
+    def test_obstacle_detection_structure(self, client, auth_headers, test_course, test_db):
+        """AC20: 障碍检测响应结构应完整."""
+        user_id = 1
+        lab = test_course["lab"]
+        now = datetime.now(timezone.utc)
+
+        from app.models import LearningProgress
+
+        # Other users: average ~1 hour
+        for other_uid in range(2, 5):
+            progress = LearningProgress(
+                user_id=other_uid,
+                chapter_id=lab.chapter_id,
+                status="completed",
+                completed_at=now,
+                last_accessed_at=now,
+                created_at=now - timedelta(hours=1),
+            )
+            test_db.add(progress)
+
+        # Our user: 4 hours
+        progress = LearningProgress(
+            user_id=user_id,
+            chapter_id=lab.chapter_id,
+            status="completed",
+            completed_at=now,
+            last_accessed_at=now,
+            created_at=now - timedelta(hours=4),
+        )
+        test_db.add(progress)
+        test_db.commit()
+
+        response = client.get("/api/v1/tutor/obstacles", headers=auth_headers)
+        assert response.status_code == 200
+
+        data = response.json()
+        obstacle = data["obstacles"][0]
+        # Verify all expected fields
+        assert "lab_id" in obstacle
+        assert "lab_name" in obstacle
+        assert "type" in obstacle
+        assert obstacle["type"] in ("time_exceeded", "multiple_failures", "stuck")
+        assert "data" in obstacle
+        assert "user_time" in obstacle["data"]
+        assert "average_time" in obstacle["data"]
+        assert "ratio" in obstacle["data"]
+        assert "tutor_message" in obstacle
+
+    def test_obstacle_detection_requires_auth(self, client):
+        """AC20: 障碍检测端点需要认证."""
+        response = client.get("/api/v1/tutor/obstacles")
+        assert response.status_code == 401
+
+    def test_obstacle_detection_ratio_threshold(self, client, auth_headers, test_course, test_db):
+        """AC20: 低于3倍阈值的Lab不应标记为障碍."""
+        user_id = 1
+        lab = test_course["lab"]
+        now = datetime.now(timezone.utc)
+
+        from app.models import LearningProgress
+
+        # Other users: average ~1 hour
+        for other_uid in range(2, 5):
+            progress = LearningProgress(
+                user_id=other_uid,
+                chapter_id=lab.chapter_id,
+                status="completed",
+                completed_at=now,
+                last_accessed_at=now,
+                created_at=now - timedelta(hours=1),
+            )
+            test_db.add(progress)
+
+        # Our user: 2.5 hours (below 3x threshold)
+        progress = LearningProgress(
+            user_id=user_id,
+            chapter_id=lab.chapter_id,
+            status="completed",
+            completed_at=now,
+            last_accessed_at=now,
+            created_at=now - timedelta(hours=2, minutes=30),
+        )
+        test_db.add(progress)
+        test_db.commit()
+
+        response = client.get("/api/v1/tutor/obstacles", headers=auth_headers)
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["has_obstacles"] is False
+        assert data["obstacles"] == []

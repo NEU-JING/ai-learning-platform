@@ -327,3 +327,129 @@ class TutorService:
             "based_on": "、".join(based_on_parts) if based_on_parts else "学习数据分析",
             "recommendations": unique_recs,
         }
+
+    async def get_obstacles(self, db: Session, user_id: int) -> Dict[str, Any]:
+        """Detect learning obstacles by comparing per-lab time vs peer average.
+
+        T15 / AC20: 学习障碍识别 — 用户在某Lab停留超过平均时长3倍时，
+        主动询问是否需要帮助。
+
+        Algorithm:
+        1. For each lab the user has LearningProgress for, compute time_spent
+           (completed_at - created_at, or last_accessed_at - created_at)
+        2. For each lab, compute the average time_spent across all other users
+        3. If user_time / average_time > 3.0, flag as obstacle
+        4. Return list of obstacles with tutor messages
+        """
+        from app.models import Lab, LearningProgress
+
+        # Get all lab progress for this user (excluding not_started)
+        user_progress = (
+            db.query(LearningProgress)
+            .filter(
+                LearningProgress.user_id == user_id,
+                LearningProgress.status != "not_started",
+            )
+            .all()
+        )
+
+        if not user_progress:
+            return {"has_obstacles": False, "obstacles": []}
+
+        obstacles = []
+        OBSTACLE_RATIO_THRESHOLD = 3.0  # AC20: >3x average → obstacle
+
+        for up in user_progress:
+            # Compute user's time spent on this lab
+            end_time = up.completed_at or up.last_accessed_at
+            if not end_time or not up.created_at:
+                continue
+
+            user_time_seconds = (end_time - up.created_at).total_seconds()
+            if user_time_seconds <= 0:
+                continue
+
+            # Get the lab info via chapter
+            lab = db.query(Lab).filter(Lab.chapter_id == up.chapter_id).first()
+            if not lab:
+                continue
+
+            # Compute average time across all OTHER users for this lab
+            other_progress = (
+                db.query(LearningProgress)
+                .filter(
+                    LearningProgress.chapter_id == up.chapter_id,
+                    LearningProgress.user_id != user_id,
+                    LearningProgress.status != "not_started",
+                )
+                .all()
+            )
+
+            if not other_progress:
+                # No peers to compare against — skip
+                continue
+
+            other_times = []
+            for op in other_progress:
+                op_end = op.completed_at or op.last_accessed_at
+                if op_end and op.created_at:
+                    seconds = (op_end - op.created_at).total_seconds()
+                    if seconds > 0:
+                        other_times.append(seconds)
+
+            if not other_times:
+                continue
+
+            average_seconds = sum(other_times) / len(other_times)
+            if average_seconds <= 0:
+                continue
+
+            ratio = user_time_seconds / average_seconds
+
+            if ratio >= OBSTACLE_RATIO_THRESHOLD:
+                # Format times for display
+                user_time_str = self._format_duration(user_time_seconds)
+                avg_time_str = self._format_duration(average_seconds)
+
+                tutor_message = (
+                    f"是否需要帮助？其他同学在此Lab的平均用时{avg_time_str}。"
+                    f"我可以为你提供分步指导。"
+                )
+
+                obstacles.append(
+                    {
+                        "lab_id": lab.id,
+                        "lab_name": lab.title,
+                        "type": "time_exceeded",
+                        "data": {
+                            "user_time": user_time_str,
+                            "average_time": avg_time_str,
+                            "ratio": round(ratio, 2),
+                        },
+                        "tutor_message": tutor_message,
+                    }
+                )
+
+        # Check for existing obstacle records and avoid duplicates
+        # Sort obstacles by ratio descending (most severe first)
+        obstacles.sort(key=lambda o: o["data"]["ratio"], reverse=True)
+
+        return {
+            "has_obstacles": len(obstacles) > 0,
+            "obstacles": obstacles,
+        }
+
+    @staticmethod
+    def _format_duration(total_seconds: float) -> str:
+        """Format a duration in seconds to a human-readable string."""
+        hours = int(total_seconds // 3600)
+        minutes = int((total_seconds % 3600) // 60)
+
+        if hours > 0 and minutes > 0:
+            return f"{hours}小时{minutes}分钟"
+        elif hours > 0:
+            return f"{hours}小时"
+        elif minutes > 0:
+            return f"{minutes}分钟"
+        else:
+            return "不到1分钟"

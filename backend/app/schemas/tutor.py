@@ -133,3 +133,33 @@ class RecommendationsResponse(BaseModel):
     recommendations: List[RecommendationItem] = Field(
         ..., description="List of personalized recommendations"
     )
+
+
+# ── T15: Obstacle Detection ──────────────────────────────────────────────────
+
+
+class ObstacleData(BaseModel):
+    """Data payload for a single obstacle detection."""
+
+    user_time: str = Field(..., description="User's time spent (human readable)")
+    average_time: str = Field(..., description="Average time across all users (human readable)")
+    ratio: float = Field(..., description="Ratio of user time to average time")
+
+
+class ObstacleItem(BaseModel):
+    """Single learning obstacle."""
+
+    lab_id: int = Field(..., description="Lab ID where obstacle was detected")
+    lab_name: str = Field(..., description="Lab name")
+    type: str = Field(..., description="Obstacle type: time_exceeded, multiple_failures, stuck")
+    data: ObstacleData = Field(..., description="Detection data")
+    tutor_message: str = Field(..., description="AI tutor intervention message")
+
+
+class ObstaclesResponse(BaseModel):
+    """Response for learning obstacle detection."""
+
+    has_obstacles: bool = Field(..., description="Whether any obstacles were detected")
+    obstacles: List[ObstacleItem] = Field(
+        default_factory=list, description="List of detected obstacles"
+    )
