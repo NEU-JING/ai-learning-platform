@@ -35,11 +35,14 @@ def generate_certificate(
 
 
 @router.get("/verify/{cert_id}")
-def verify_certificate(cert_id: str):
+def verify_certificate(
+    cert_id: str,
+    db: Session = Depends(get_db),
+):
     """
-    验证证书真伪
+    验证证书真伪 — with ECDSA signature verification
     """
-    return certificate_service.verify_certificate(cert_id)
+    return certificate_service.verify_certificate(cert_id, db=db)
 
 
 # ── T18: L2 Capstone Review Endpoints ─────────────────────────────────────

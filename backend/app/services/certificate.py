@@ -160,10 +160,12 @@ class CertificateService:
             {
                 "cert_id": str,
                 "html": str,
-                "verified": bool
+                "verified": bool,
+                "signature": str | None,
             }
         """
         from app.models import Chapter, Course, LearningProgress, User
+        from app.models.certification import Certificate, CertificationLevel
 
         # 获取用户信息
         user = db.query(User).filter(User.id == user_id).first()
@@ -220,6 +222,58 @@ class CertificateService:
             cert_id=cert_id,
         )
 
+        issue_date_iso = datetime.now(timezone.utc).isoformat()
+
+        # ── T19: ECDSA signing ──────────────────────────────────────────
+        # Find or create certification level for the course
+        level = (
+            db.query(CertificationLevel)
+            .filter(
+                CertificationLevel.name == level_badge,
+                CertificationLevel.is_active.is_(True),
+            )
+            .first()
+        )
+        if not level:
+            # Create a default level if none exists
+            level = CertificationLevel(
+                name=level_badge,
+                description=f"Auto-created for {course.title}",
+                required_courses=[],
+                min_average_score=70.0,
+                order=1,
+                is_active=True,
+            )
+            db.add(level)
+            db.flush()
+
+        sign_data = {
+            "cert_number": cert_id,
+            "user_id": user_id,
+            "level_id": level.id,
+            "issue_date": issue_date_iso,
+        }
+        signature = CertificateService.sign_certificate(sign_data)
+
+        # Persist certificate record
+        certificate = Certificate(
+            user_id=user_id,
+            level_id=level.id,
+            cert_number=cert_id,
+            issue_date=datetime.now(timezone.utc),
+            cert_metadata={
+                "course_id": course_id,
+                "course_title": course.title,
+                "level": course.level,
+                "level_badge": level_badge,
+            },
+            signature=signature,
+            is_valid=True,
+        )
+        db.add(certificate)
+        db.commit()
+        db.refresh(certificate)
+
         return {
             "cert_id": cert_id,
             "html": html,
@@ -227,29 +281,199 @@ class CertificateService:
             "user_id": user_id,
             "course_id": course_id,
             "course_title": course.title,
-            "issue_date": datetime.now(timezone.utc).isoformat(),
+            "issue_date": issue_date_iso,
             "level": course.level,
+            "signature": signature,
+            "certificate_id": certificate.id,
         }
 
     @staticmethod
-    def verify_certificate(cert_id: str) -> Dict[str, Any]:
-        """验证证书真伪"""
+    def verify_certificate(cert_id: str, db: Optional[Session] = None) -> Dict[str, Any]:
+        """验证证书真伪 — with ECDSA signature verification.
+
+        When db is provided, performs full ECDSA signature verification
+        against the stored certificate record.
+        """
         try:
             # 解析证书ID
             parts = cert_id.split("-")
             if len(parts) != 4 or parts[0] != "AI":
                 return {"valid": False, "message": "无效的证书编号格式"}
 
-            return {
+            result = {
                 "valid": True,
                 "cert_id": cert_id,
                 "course_id": parts[1],
                 "user_id": parts[2],
                 "issue_date": parts[3],
-                "message": "证书有效",
+                "message": "证书ID格式有效",
+                "signature_verified": None,
             }
+
+            # ── T19: ECDSA signature verification ────────────────────────
+            if db is not None:
+                from app.models.certification import Certificate
+
+                cert_record = (
+                    db.query(Certificate).filter(Certificate.cert_number == cert_id).first()
+                )
+
+                if cert_record is None:
+                    result["valid"] = False
+                    result["message"] = "证书未在系统中找到"
+                    result["signature_verified"] = False
+                    return result
+
+                if not cert_record.is_valid:
+                    result["valid"] = False
+                    result["message"] = "证书已被吊销"
+                    result["signature_verified"] = False
+                    return result
+
+                # Verify ECDSA signature
+                if cert_record.signature and cert_record.cert_metadata:
+                    sign_data = {
+                        "cert_number": cert_record.cert_number,
+                        "user_id": cert_record.user_id,
+                        "level_id": cert_record.level_id,
+                        "issue_date": (
+                            cert_record.issue_date.isoformat() if cert_record.issue_date else ""
+                        ),
+                    }
+                    sig_valid = CertificateService.verify_certificate_signature(
+                        signature=cert_record.signature,
+                        cert_data=sign_data,
+                    )
+                    result["signature_verified"] = sig_valid
+                    if not sig_valid:
+                        result["valid"] = False
+                        result["message"] = "ECDSA 签名验证失败 — 证书可能被篡改"
+                else:
+                    result["signature_verified"] = False
+
+            return result
         except Exception as e:
-            return {"valid": False, "message": str(e)}
+            return {"valid": False, "message": str(e), "signature_verified": False}
+
+    # ── T19: ECDSA Certificate Signature ──────────────────────────────────
+
+    _signing_key = None  # Module-level cache for the persistent signing key
+
+    @classmethod
+    def _get_signing_key(cls):
+        """Load or generate the ECDSA SECP256r1 private key.
+
+        Loads the key from ECDSA_PRIVATE_KEY_PATH if it exists;
+        otherwise generates a new key and persists it to disk.
+        Returns (private_key, key_bytes_pem).
+        """
+        import os
+
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        if cls._signing_key is not None:
+            return cls._signing_key
+
+        from app.core.config import settings
+
+        key_path = settings.ECDSA_PRIVATE_KEY_PATH
+
+        if os.path.exists(key_path):
+            with open(key_path, "rb") as f:
+                pem_data = f.read()
+            private_key = serialization.load_pem_private_key(pem_data, password=None)
+        else:
+            private_key = ec.generate_private_key(ec.SECP256R1())
+            pem_data = private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+            os.makedirs(os.path.dirname(key_path) or ".", exist_ok=True)
+            with open(key_path, "wb") as f:
+                f.write(pem_data)
+
+        cls._signing_key = private_key
+        return private_key
+
+    @staticmethod
+    def _serialize_public_key(private_key) -> str:
+        """Export the public key as a PEM string for distribution."""
+        from cryptography.hazmat.primitives import serialization
+
+        public_key = private_key.public_key()
+        return public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo,
+        ).decode("utf-8")
+
+    @classmethod
+    def sign_certificate(cls, cert_data: Dict[str, Any]) -> str:
+        """AC37: Sign certificate data with ECDSA-SHA256.
+
+        Builds a canonical message from cert_number, user_id, level_id,
+        and issue_date, then signs it with the persistent SECP256r1 key.
+
+        Returns a base64-encoded DER signature string.
+        """
+        import base64
+
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        private_key = cls._get_signing_key()
+
+        # Build canonical signing payload
+        payload = (
+            f"cert_number:{cert_data['cert_number']}|"
+            f"user_id:{cert_data['user_id']}|"
+            f"level_id:{cert_data['level_id']}|"
+            f"issue_date:{cert_data['issue_date']}"
+        )
+
+        signature_der = private_key.sign(
+            payload.encode("utf-8"),
+            ec.ECDSA(hashes.SHA256()),
+        )
+
+        return base64.b64encode(signature_der).decode("ascii")
+
+    @classmethod
+    def verify_certificate_signature(
+        cls,
+        signature: str,
+        cert_data: Dict[str, Any],
+    ) -> bool:
+        """AC37: Verify an ECDSA-SHA256 certificate signature.
+
+        Reconstructs the canonical payload and verifies the signature
+        against the persistent public key.
+
+        Returns True if valid, False if tampered or invalid.
+        """
+        import base64
+
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.primitives.asymmetric import ec
+
+        private_key = cls._get_signing_key()
+        public_key = private_key.public_key()
+
+        payload = (
+            f"cert_number:{cert_data['cert_number']}|"
+            f"user_id:{cert_data['user_id']}|"
+            f"level_id:{cert_data['level_id']}|"
+            f"issue_date:{cert_data['issue_date']}"
+        )
+
+        try:
+            signature_der = base64.b64decode(signature)
+            public_key.verify(signature_der, payload.encode("utf-8"), ec.ECDSA(hashes.SHA256()))
+            return True
+        except (InvalidSignature, Exception):
+            return False
 
     @staticmethod
     def auto_evaluate_l1(db: Session, user_id: int, level_id: int) -> Dict[str, Any]:

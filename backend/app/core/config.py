@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10MB
     UPLOAD_DIR: str = "./uploads"
 
+    # ECDSA 证书签名配置
+    ECDSA_PRIVATE_KEY_PATH: str = "./ecdsa_private_key.pem"
+
     model_config = {"env_file": ".env"}
 
 

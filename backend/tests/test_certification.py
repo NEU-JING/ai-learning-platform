@@ -1012,3 +1012,146 @@ class TestCapstoneAPI:
         )
 
         assert response.status_code == 404
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# T19: AC37 — ECDSA Certificate Signature
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestECDSACertificateSignature:
+    """T19: AC37 — ECDSA-SHA256 digital signature for certificate anti-counterfeiting."""
+
+    def test_certificate_signature_produces_valid_signature(self):
+        """Sign certificate data → returns a non-empty base64 signature string."""
+        from app.services.certificate import certificate_service
+
+        cert_data = {
+            "cert_number": "CERT-TEST-001",
+            "user_id": 42,
+            "level_id": 1,
+            "issue_date": "2026-01-15T10:00:00Z",
+        }
+
+        signature = certificate_service.sign_certificate(cert_data)
+
+        assert signature is not None
+        assert isinstance(signature, str)
+        assert len(signature) > 20  # ECDSA signature should be substantial
+
+    def test_certificate_verification_returns_true_for_valid_signature(self):
+        """Sign then verify → returns True for intact data."""
+        from app.services.certificate import certificate_service
+
+        cert_data = {
+            "cert_number": "CERT-TEST-002",
+            "user_id": 42,
+            "level_id": 2,
+            "issue_date": "2026-02-20T12:00:00Z",
+        }
+
+        signature = certificate_service.sign_certificate(cert_data)
+        is_valid = certificate_service.verify_certificate_signature(
+            signature=signature,
+            cert_data=cert_data,
+        )
+
+        assert is_valid is True
+
+    def test_certificate_tamper_detection_returns_false(self):
+        """Modify signed data → verification returns False (tamper detected)."""
+        from app.services.certificate import certificate_service
+
+        original_data = {
+            "cert_number": "CERT-TEST-003",
+            "user_id": 42,
+            "level_id": 3,
+            "issue_date": "2026-03-25T14:00:00Z",
+        }
+
+        signature = certificate_service.sign_certificate(original_data)
+
+        # Tamper: change user_id
+        tampered_data = {
+            **original_data,
+            "user_id": 999,
+        }
+        is_valid_tampered = certificate_service.verify_certificate_signature(
+            signature=signature,
+            cert_data=tampered_data,
+        )
+
+        assert is_valid_tampered is False, "Tampered user_id should fail verification"
+
+        # Tamper: change cert_number
+        tampered_data2 = {
+            **original_data,
+            "cert_number": "FAKE-CERT-999",
+        }
+        is_valid_tampered2 = certificate_service.verify_certificate_signature(
+            signature=signature,
+            cert_data=tampered_data2,
+        )
+
+        assert is_valid_tampered2 is False, "Tampered cert_number should fail verification"
+
+        # Tamper: change issue_date
+        tampered_data3 = {
+            **original_data,
+            "issue_date": "2025-01-01T00:00:00Z",
+        }
+        is_valid_tampered3 = certificate_service.verify_certificate_signature(
+            signature=signature,
+            cert_data=tampered_data3,
+        )
+
+        assert is_valid_tampered3 is False, "Tampered issue_date should fail verification"
+
+    def test_ecdsa_key_is_persistent(self):
+        """The signing key is persistent — signatures from same key both verify.
+
+        ECDSA uses random nonces, so signature strings differ even for identical
+        data. The correct test for key persistence is that both signatures
+        verify against the same public key.
+        """
+        from app.services.certificate import certificate_service
+
+        cert_data = {
+            "cert_number": "CERT-TEST-004",
+            "user_id": 1,
+            "level_id": 1,
+            "issue_date": "2026-01-01T00:00:00Z",
+        }
+
+        sig1 = certificate_service.sign_certificate(cert_data)
+        sig2 = certificate_service.sign_certificate(cert_data)
+
+        # Signatures may differ (random nonces), but both must verify
+        assert certificate_service.verify_certificate_signature(
+            signature=sig1, cert_data=cert_data
+        ), "First signature should verify"
+        assert certificate_service.verify_certificate_signature(
+            signature=sig2, cert_data=cert_data
+        ), "Second signature should verify"
+
+    def test_different_data_produces_different_signature(self):
+        """Different certificate data → different signatures."""
+        from app.services.certificate import certificate_service
+
+        data1 = {
+            "cert_number": "CERT-A",
+            "user_id": 1,
+            "level_id": 1,
+            "issue_date": "2026-01-01T00:00:00Z",
+        }
+        data2 = {
+            "cert_number": "CERT-B",
+            "user_id": 2,
+            "level_id": 2,
+            "issue_date": "2026-06-01T00:00:00Z",
+        }
+
+        sig1 = certificate_service.sign_certificate(data1)
+        sig2 = certificate_service.sign_certificate(data2)
+
+        assert sig1 != sig2, "Different data should produce different signatures"
