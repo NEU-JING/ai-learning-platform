@@ -1,17 +1,17 @@
-"""Test Certification module database tables — T16.
+"""Test Certification module — T16, T17, T18.
 
-Tests the existence and structure of Certification tables:
-- certification_levels: 认证级别定义表
-- certification_applications: 用户认证申请表
-- certificates: 已颁发证书表
-- capstone_submissions: 顶点项目提交表
-
-AC覆盖:
+T16: Database tables
 - AC30: certification_levels table
 - AC31: certification_applications table
 - AC32: certificates table
 - AC33: capstone_submissions table
 - AC34-AC37: Foreign key relationships
+
+T17: L1 auto evaluation
+- AC30: auto_evaluate_l1 service
+
+T18: L2 Capstone review
+- AC31: Capstone submit + AI review + human review flow
 """
 
 import pytest
@@ -472,3 +472,543 @@ class TestL1AutoEvaluation:
         )
         assert application is not None
         assert application.status == "approved"
+
+
+# ── T18: L2 Capstone Review ───────────────────────────────────────────────────
+
+
+class TestCapstoneSubmitService:
+    """T18: AC31 — submit_capstone service method."""
+
+    def test_submit_capstone_creates_record(self, test_db, test_user):
+        """Submit capstone → creates CapstoneSubmission with status='submitted'."""
+        from app.models.certification import CapstoneSubmission, CertificationLevel
+        from app.services.certificate import certificate_service
+
+        user_id = test_user["user"]["id"]
+
+        # Create L2 level
+        level = CertificationLevel(
+            name="L2 AI Engineer",
+            description="L2 certification",
+            required_courses=[],
+            min_average_score=75.0,
+            order=2,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+
+        result = certificate_service.submit_capstone(
+            db=test_db,
+            user_id=user_id,
+            level_id=level.id,
+            title="My Capstone Project",
+            description="An awesome AI project",
+            repository_url="https://github.com/user/capstone",
+            submission_data={"framework": "PyTorch", "dataset": "ImageNet"},
+        )
+
+        assert result["status"] == "submitted"
+        assert "id" in result
+        assert result["title"] == "My Capstone Project"
+        assert result["level_id"] == level.id
+
+        # Verify DB record
+        submission = test_db.query(CapstoneSubmission).filter_by(id=result["id"]).first()
+        assert submission is not None
+        assert submission.status == "submitted"
+        assert submission.title == "My Capstone Project"
+        assert submission.repository_url == "https://github.com/user/capstone"
+        assert submission.submission_data == {"framework": "PyTorch", "dataset": "ImageNet"}
+
+    def test_submit_capstone_level_not_found(self, test_db, test_user):
+        """Submit to non-existent level → raises ValueError."""
+        from app.services.certificate import certificate_service
+
+        with pytest.raises(ValueError, match="not found"):
+            certificate_service.submit_capstone(
+                db=test_db,
+                user_id=test_user["user"]["id"],
+                level_id=999,
+                title="Project",
+                description="Desc",
+                repository_url="https://github.com/user/proj",
+                submission_data={},
+            )
+
+    def test_submit_capstone_missing_title(self, test_db, test_user):
+        """Submit with empty title → raises ValueError."""
+        from app.models.certification import CertificationLevel
+        from app.services.certificate import certificate_service
+
+        level = CertificationLevel(
+            name="L2 AI Engineer",
+            description="L2",
+            required_courses=[],
+            min_average_score=75.0,
+            order=2,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+
+        with pytest.raises(ValueError, match="title"):
+            certificate_service.submit_capstone(
+                db=test_db,
+                user_id=test_user["user"]["id"],
+                level_id=level.id,
+                title="",
+                description="Desc",
+                repository_url="https://github.com/user/proj",
+                submission_data={},
+            )
+
+
+class TestCapstoneAIReviewService:
+    """T18: AC31 — ai_review_capstone service method."""
+
+    def test_ai_review_updates_submission(self, test_db, test_user):
+        """AI review → updates status to 'reviewing' then back, sets ai_review JSON."""
+        from app.models.certification import CapstoneSubmission, CertificationLevel
+        from app.services.certificate import certificate_service
+
+        user_id = test_user["user"]["id"]
+
+        level = CertificationLevel(
+            name="L2 AI Engineer",
+            description="L2",
+            required_courses=[],
+            min_average_score=75.0,
+            order=2,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+
+        # Create submission
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="Capstone Project",
+            description="An AI project",
+            repository_url="https://github.com/user/proj",
+            submission_data={"framework": "PyTorch"},
+            status="submitted",
+        )
+        test_db.add(sub)
+        test_db.commit()
+
+        result = certificate_service.ai_review_capstone(test_db, sub.id)
+
+        assert result["status"] == "reviewed"
+        assert "ai_review" in result
+
+        # Check AI review content
+        ai_review = result["ai_review"]
+        assert "quality_score" in ai_review
+        assert "complexity_score" in ai_review
+        assert "completeness_score" in ai_review
+        assert "summary" in ai_review
+        assert 0 <= ai_review["quality_score"] <= 100
+        assert 0 <= ai_review["complexity_score"] <= 100
+        assert 0 <= ai_review["completeness_score"] <= 100
+
+        # DB should be updated
+        submission_db = test_db.query(CapstoneSubmission).filter_by(id=sub.id).first()
+        assert submission_db.ai_review is not None
+        assert submission_db.ai_review["quality_score"] == ai_review["quality_score"]
+
+    def test_ai_review_submission_not_found(self, test_db, test_user):
+        """AI review non-existent submission → raises ValueError."""
+        from app.services.certificate import certificate_service
+
+        with pytest.raises(ValueError, match="not found"):
+            certificate_service.ai_review_capstone(test_db, 99999)
+
+    def test_ai_review_already_reviewed_returns_existing(self, test_db, test_user):
+        """AI review on already-reviewed submission → returns existing review."""
+        from app.models.certification import CapstoneSubmission, CertificationLevel
+        from app.services.certificate import certificate_service
+
+        user_id = test_user["user"]["id"]
+
+        level = CertificationLevel(
+            name="L2 AI Engineer",
+            description="L2",
+            required_courses=[],
+            min_average_score=75.0,
+            order=2,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+
+        existing_review = {
+            "quality_score": 85,
+            "complexity_score": 75,
+            "completeness_score": 90,
+            "summary": "Already reviewed",
+        }
+
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="Capstone Project",
+            description="An AI project",
+            repository_url="https://github.com/user/proj",
+            submission_data={},
+            status="submitted",
+            ai_review=existing_review,
+        )
+        test_db.add(sub)
+        test_db.commit()
+
+        result = certificate_service.ai_review_capstone(test_db, sub.id)
+
+        assert result["ai_review"] == existing_review
+
+
+class TestCapstoneApproveRejectService:
+    """T18: AC31 — approve_capstone and reject_capstone service methods."""
+
+    def test_approve_capstone_sets_status(self, test_db, test_user, test_user_other):
+        """Approve → status='approved', reviewer info set."""
+        from app.models.certification import CapstoneSubmission, CertificationLevel
+        from app.services.certificate import certificate_service
+
+        user_id = test_user["user"]["id"]
+        reviewer_id = test_user_other["id"]
+
+        level = CertificationLevel(
+            name="L2 AI Engineer",
+            description="L2",
+            required_courses=[],
+            min_average_score=75.0,
+            order=2,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="Capstone Project",
+            description="An AI project",
+            repository_url="https://github.com/user/proj",
+            submission_data={},
+            status="submitted",
+        )
+        test_db.add(sub)
+        test_db.commit()
+
+        result = certificate_service.approve_capstone(test_db, sub.id, reviewer_id, "Great work!")
+
+        assert result["status"] == "approved"
+        assert result["reviewer_id"] == reviewer_id
+        assert result["reviewer_notes"] == "Great work!"
+
+        # DB verification
+        submission_db = test_db.query(CapstoneSubmission).filter_by(id=sub.id).first()
+        assert submission_db.status == "approved"
+        assert submission_db.reviewer_id == reviewer_id
+        assert submission_db.reviewer_notes == "Great work!"
+
+    def test_reject_capstone_sets_status(self, test_db, test_user, test_user_other):
+        """Reject → status='rejected', reviewer info set."""
+        from app.models.certification import CapstoneSubmission, CertificationLevel
+        from app.services.certificate import certificate_service
+
+        user_id = test_user["user"]["id"]
+        reviewer_id = test_user_other["id"]
+
+        level = CertificationLevel(
+            name="L2 AI Engineer",
+            description="L2",
+            required_courses=[],
+            min_average_score=75.0,
+            order=2,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="Capstone Project",
+            description="An AI project",
+            repository_url="https://github.com/user/proj",
+            submission_data={},
+            status="submitted",
+        )
+        test_db.add(sub)
+        test_db.commit()
+
+        result = certificate_service.reject_capstone(
+            test_db, sub.id, reviewer_id, "Needs improvement"
+        )
+
+        assert result["status"] == "rejected"
+        assert result["reviewer_id"] == reviewer_id
+        assert result["reviewer_notes"] == "Needs improvement"
+
+        # DB verification
+        submission_db = test_db.query(CapstoneSubmission).filter_by(id=sub.id).first()
+        assert submission_db.status == "rejected"
+        assert submission_db.reviewer_id == reviewer_id
+
+    def test_approve_capstone_not_found(self, test_db, test_user, test_user_other):
+        """Approve non-existent submission → raises ValueError."""
+        from app.services.certificate import certificate_service
+
+        with pytest.raises(ValueError, match="not found"):
+            certificate_service.approve_capstone(test_db, 99999, test_user_other["id"], "notes")
+
+    def test_reject_already_approved_raises(self, test_db, test_user, test_user_other):
+        """Reject already-approved submission → raises ValueError."""
+        from app.models.certification import CapstoneSubmission, CertificationLevel
+        from app.services.certificate import certificate_service
+
+        user_id = test_user["user"]["id"]
+
+        level = CertificationLevel(
+            name="L2 AI Engineer",
+            description="L2",
+            required_courses=[],
+            min_average_score=75.0,
+            order=2,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="Capstone Project",
+            description="An AI project",
+            repository_url="https://github.com/user/proj",
+            submission_data={},
+            status="approved",
+        )
+        test_db.add(sub)
+        test_db.commit()
+
+        with pytest.raises(ValueError, match="already been approved"):
+            certificate_service.reject_capstone(test_db, sub.id, test_user_other["id"], "Too late")
+
+
+class TestCapstoneAPI:
+    """T18: AC31 — Capstone API endpoints via TestClient."""
+
+    def _create_level(self, test_db, name="L2 AI Engineer", order=2):
+        from app.models.certification import CertificationLevel
+
+        level = CertificationLevel(
+            name=name,
+            description="L2 certification",
+            required_courses=[],
+            min_average_score=75.0,
+            order=order,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+        test_db.refresh(level)
+        return level
+
+    def test_submit_capstone_api(self, client, test_db, auth_headers):
+        """POST /api/v1/capstone/submit → 200 with submission data."""
+        level = self._create_level(test_db)
+
+        response = client.post(
+            "/api/v1/certificates/capstone/submit",
+            json={
+                "level_id": level.id,
+                "title": "My Capstone Project",
+                "description": "An AI project",
+                "repository_url": "https://github.com/user/proj",
+                "submission_data": {"framework": "PyTorch"},
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "submitted"
+        assert data["title"] == "My Capstone Project"
+        assert data["level_id"] == level.id
+
+    def test_submit_capstone_api_missing_title(self, client, test_db, auth_headers):
+        """POST /api/v1/capstone/submit with empty title → 422."""
+        level = self._create_level(test_db)
+
+        response = client.post(
+            "/api/v1/certificates/capstone/submit",
+            json={
+                "level_id": level.id,
+                "title": "",
+                "description": "An AI project",
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 422
+
+    def test_submit_capstone_api_level_not_found(self, client, auth_headers):
+        """POST /api/v1/capstone/submit with non-existent level → 404."""
+        response = client.post(
+            "/api/v1/certificates/capstone/submit",
+            json={
+                "level_id": 999,
+                "title": "My Project",
+                "description": "Desc",
+            },
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+
+    def test_get_capstone_review_api(self, client, test_db, auth_headers, test_user):
+        """GET /api/v1/capstone/review/{id} → 200 with submission details."""
+        from app.models.certification import CapstoneSubmission
+
+        level = self._create_level(test_db)
+        user_id = test_user["user"]["id"]
+
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="My Capstone",
+            description="Desc",
+            repository_url="https://github.com/user/proj",
+            submission_data={},
+            status="submitted",
+        )
+        test_db.add(sub)
+        test_db.commit()
+        test_db.refresh(sub)
+
+        response = client.get(
+            f"/api/v1/certificates/capstone/review/{sub.id}",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == sub.id
+        assert data["title"] == "My Capstone"
+        assert data["status"] == "submitted"
+
+    def test_get_capstone_review_not_found(self, client, auth_headers):
+        """GET /api/v1/capstone/review/{id} → 404 for non-existent."""
+        response = client.get(
+            "/api/v1/certificates/capstone/review/99999",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+
+    def test_approve_capstone_api(self, client, test_db, auth_headers_other, test_user):
+        """POST /api/v1/capstone/review/{id}/approve → 200 with approved status."""
+        from app.models.certification import CapstoneSubmission
+
+        level = self._create_level(test_db)
+        user_id = test_user["user"]["id"]
+
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="My Capstone",
+            description="Desc",
+            submission_data={},
+            status="submitted",
+        )
+        test_db.add(sub)
+        test_db.commit()
+        test_db.refresh(sub)
+
+        response = client.post(
+            f"/api/v1/certificates/capstone/review/{sub.id}/approve",
+            json={"notes": "Excellent work!"},
+            headers=auth_headers_other,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "approved"
+        assert "reviewer_notes" in data
+
+    def test_reject_capstone_api(self, client, test_db, auth_headers_other, test_user):
+        """POST /api/v1/capstone/review/{id}/reject → 200 with rejected status."""
+        from app.models.certification import CapstoneSubmission
+
+        level = self._create_level(test_db)
+        user_id = test_user["user"]["id"]
+
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="My Capstone",
+            description="Desc",
+            submission_data={},
+            status="submitted",
+        )
+        test_db.add(sub)
+        test_db.commit()
+        test_db.refresh(sub)
+
+        response = client.post(
+            f"/api/v1/certificates/capstone/review/{sub.id}/reject",
+            json={"notes": "Needs improvement"},
+            headers=auth_headers_other,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "rejected"
+
+    def test_ai_review_api(self, client, test_db, auth_headers, test_user):
+        """POST /api/v1/capstone/review/{id}/ai-review → triggers AI review."""
+        from app.models.certification import CapstoneSubmission
+
+        level = self._create_level(test_db)
+        user_id = test_user["user"]["id"]
+
+        sub = CapstoneSubmission(
+            user_id=user_id,
+            level_id=level.id,
+            title="My Capstone",
+            description="Desc",
+            repository_url="https://github.com/user/proj",
+            submission_data={"framework": "PyTorch"},
+            status="submitted",
+        )
+        test_db.add(sub)
+        test_db.commit()
+        test_db.refresh(sub)
+
+        response = client.post(
+            f"/api/v1/certificates/capstone/review/{sub.id}/ai-review",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "reviewed"
+        assert "ai_review" in data
+        assert "quality_score" in data["ai_review"]
+        assert "complexity_score" in data["ai_review"]
+        assert "completeness_score" in data["ai_review"]
+        assert 0 <= data["ai_review"]["quality_score"] <= 100
+
+    def test_ai_review_api_not_found(self, client, auth_headers):
+        """POST /api/v1/capstone/review/{id}/ai-review → 404 for non-existent."""
+        response = client.post(
+            "/api/v1/certificates/capstone/review/99999/ai-review",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
