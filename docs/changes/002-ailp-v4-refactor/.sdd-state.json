@@ -72,12 +72,14 @@
   "incremental_mode": true,
   "phase_config": {
     "total_phases": 5,
-    "current_phase": "phase_1",
+    "current_phase": "phase_2",
     "phases": {
       "phase_1": {
         "name": "基础数据层（Path + Radar）",
-        "status": "in_progress",
+        "status": "accepted",
         "started_at": "2026-05-31",
+        "completed_at": "2026-05-31",
+        "qa_passed_at": "2026-05-31",
         "tasks": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"],
 "completed_tasks": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"],
         "ac_covered": ["AC1", "AC2", "AC3", "AC4", "AC5", "AC6", "AC7", "AC8", "AC9", "AC10", "AC11", "AC12", "AC13", "AC14"],
@@ -93,7 +95,8 @@
       },
       "phase_2": {
         "name": "核心服务层（Tutor + Certification）",
-        "status": "not_started",
+        "status": "in_progress",
+        "started_at": "2026-05-31",
         "tasks": ["T11", "T12", "T13", "T14", "T15", "T16", "T17", "T18", "T19"],
         "ac_covered": ["AC15", "AC16", "AC17", "AC18", "AC19", "AC20", "AC21", "AC22", "AC23", "AC24", "AC25", "AC26", "AC27", "AC28", "AC29", "AC30", "AC31", "AC32", "AC33", "AC34", "AC35", "AC36", "AC37"],
         "depends_on": ["phase_1"],
