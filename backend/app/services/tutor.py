@@ -174,3 +174,156 @@ class TutorService:
             .order_by(TutorMessage.created_at.asc())
             .all()
         )
+
+    async def get_recommendations(self, db: Session, user_id: int) -> Dict[str, Any]:
+        """Generate personalized learning recommendations.
+
+        T14: Analyzes user skill scores to find weak dimensions
+        and recommends courses/practices to improve.
+
+        AC18: 内容个性化推荐 — based on weakest dimensions
+        AC19: 路径动态优化 — fast track suggestion if user is exceeding
+        """
+        from app.models import UserSkillScore
+        from app.models.path import UserPath
+        from app.models.radar import SkillDimension
+
+        # Get user's skill scores
+        user_scores = db.query(UserSkillScore).filter(UserSkillScore.user_id == user_id).all()
+
+        # Build dimension lookup
+        dimensions = {d.slug: d for d in db.query(SkillDimension).all()}
+
+        recommendations = []
+        based_on_parts = []
+
+        if user_scores:
+            # Sort by score ascending — weakest first
+            sorted_scores = sorted(user_scores, key=lambda s: s.score)
+
+            # Identify weak dimensions (score < 50)
+            weak_scores = [s for s in sorted_scores if s.score < 50]
+            # Also include borderline (50-60)
+            borderline_scores = [s for s in sorted_scores if 50 <= s.score < 60]
+
+            # Determine what to base the analysis on
+            if weak_scores:
+                weak_names = []
+                for ws in weak_scores[:3]:
+                    dim = dimensions.get(ws.dimension)
+                    weak_names.append(dim.name if dim else ws.dimension)
+                based_on_parts.append("、".join(weak_names) + " 维度薄弱")
+            else:
+                based_on_parts.append("整体技能水平")
+
+            # Generate course recommendations for each weak dimension
+            for ws in weak_scores[:3]:
+                dim = dimensions.get(ws.dimension)
+                dim_name = dim.name if dim else ws.dimension
+
+                recommendations.append(
+                    {
+                        "type": "course",
+                        "title": f"{dim_name}强化课程",
+                        "reason": f"补强{dim_name}基础，提升综合能力",
+                        "priority": "high" if ws.score < 30 else "medium",
+                        "estimated_time": "4小时",
+                    }
+                )
+
+            # Generate practice recommendations
+            for ws in weak_scores[:2]:
+                dim = dimensions.get(ws.dimension)
+                dim_name = dim.name if dim else ws.dimension
+
+                recommendations.append(
+                    {
+                        "type": "practice",
+                        "title": f"{dim_name}专项练习",
+                        "reason": "针对性练习巩固薄弱环节",
+                        "priority": "high" if ws.score < 30 else "medium",
+                    }
+                )
+
+            # Handle borderline dimensions
+            for bs in borderline_scores[:2]:
+                dim = dimensions.get(bs.dimension)
+                dim_name = dim.name if dim else bs.dimension
+
+                recommendations.append(
+                    {
+                        "type": "practice",
+                        "title": f"{dim_name}进阶训练",
+                        "reason": f"提升{dim_name}至优秀水平",
+                        "priority": "low",
+                    }
+                )
+
+        # If no scores at all, give default recommendations
+        if not user_scores:
+            based_on_parts.append("初始评估阶段")
+            recommendations.extend(
+                [
+                    {
+                        "type": "course",
+                        "title": "Python 编程基础",
+                        "reason": "建立扎实的编程基础",
+                        "priority": "high",
+                        "estimated_time": "4小时",
+                    },
+                    {
+                        "type": "course",
+                        "title": "AI 数学直觉",
+                        "reason": "培养算法和数据思维",
+                        "priority": "medium",
+                        "estimated_time": "4小时",
+                    },
+                    {
+                        "type": "practice",
+                        "title": "编程思维练习题",
+                        "reason": "动手实践巩固所学",
+                        "priority": "high",
+                    },
+                    {
+                        "type": "practice",
+                        "title": "算法基础练习",
+                        "reason": "培养问题解决能力",
+                        "priority": "medium",
+                    },
+                ]
+            )
+
+        # AC19: Check for Fast Track eligibility
+        user_path = (
+            db.query(UserPath)
+            .filter(UserPath.user_id == user_id, UserPath.status == "active")
+            .first()
+        )
+
+        if user_path:
+            progress_pct = user_path.progress_percent or 0
+            if progress_pct >= 80:
+                # User is highly active, suggest fast track
+                recommendations.append(
+                    {
+                        "type": "course",
+                        "title": "Fast Track 加速模式",
+                        "reason": "你已连续完成大量任务，建议切换至加速模式跳过已掌握内容",
+                        "priority": "high",
+                        "estimated_time": "预计节省 2 周",
+                    }
+                )
+
+        # Deduplicate recommendations while preserving order
+        seen = set()
+        unique_recs = []
+        for rec in recommendations:
+            key = (rec["type"], rec["title"])
+            if key not in seen:
+                seen.add(key)
+                unique_recs.append(rec)
+
+        return {
+            "based_on": "、".join(based_on_parts) if based_on_parts else "学习数据分析",
+            "recommendations": unique_recs,
+        }

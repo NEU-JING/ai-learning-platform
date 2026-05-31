@@ -111,3 +111,25 @@ class SessionMessagesResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ── T14: Recommendations ────────────────────────────────────────────────────
+
+
+class RecommendationItem(BaseModel):
+    """Single recommendation item — course or practice."""
+
+    type: str = Field(..., description="Recommendation type: course, practice")
+    title: str = Field(..., description="Recommendation title")
+    reason: str = Field(..., description="Why this is recommended")
+    priority: str = Field("medium", description="Priority: high, medium, low")
+    estimated_time: Optional[str] = Field(None, description="Estimated completion time")
+
+
+class RecommendationsResponse(BaseModel):
+    """Response for personalized tutor recommendations."""
+
+    based_on: str = Field(..., description="Basis for the recommendations")
+    recommendations: List[RecommendationItem] = Field(
+        ..., description="List of personalized recommendations"
+    )

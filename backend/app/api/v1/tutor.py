@@ -4,8 +4,6 @@ T12: Tutor Chat API
 T13: Code Review API
 """
 
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -17,6 +15,7 @@ from app.schemas.code_review import (
     CodeReviewResponse,
 )
 from app.schemas.tutor import (
+    RecommendationsResponse,
     SessionMessagesResponse,
     TutorChatRequest,
     TutorChatResponse,
@@ -174,3 +173,24 @@ async def get_user_code_reviews(
         ],
         "total": len(reviews),
     }
+
+
+# ── T14: Personalized Recommendations ────────────────────────────────────────
+
+
+@router.get("/recommendations", response_model=RecommendationsResponse)
+async def get_tutor_recommendations(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """Get personalized learning recommendations.
+
+    AC18: 内容个性化推荐 — analyzes user's weak skill dimensions
+    and recommends courses/practices to strengthen them.
+
+    AC19: 路径动态优化 — checks if user is exceeding expectations
+    and suggests Fast Track mode if eligible.
+    """
+    service = TutorService()
+    result = await service.get_recommendations(db=db, user_id=current_user.id)
+    return result
