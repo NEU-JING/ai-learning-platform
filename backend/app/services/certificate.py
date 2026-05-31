@@ -251,5 +251,190 @@ class CertificateService:
         except Exception as e:
             return {"valid": False, "message": str(e)}
 
+    @staticmethod
+    def auto_evaluate_l1(db: Session, user_id: int, level_id: int) -> Dict[str, Any]:
+        """T17: L1 自动评定 — AC30.
+
+        检查必修课程完成情况 + 平均分阈值。
+        通过则自动创建 certification_application 记录（status="approved"）。
+        """
+        from app.models import Chapter, Lab, LabSubmission, LearningProgress
+        from app.models.certification import CertificationApplication, CertificationLevel
+
+        # 1. 获取认证级别
+        level = db.query(CertificationLevel).filter(CertificationLevel.id == level_id).first()
+        if not level:
+            return {"status": "error", "reason": "Certification level not found"}
+
+        required_course_ids = level.required_courses or []
+
+        # Edge case: no required courses → trivially approved
+        if not required_course_ids:
+            application = CertificationApplication(
+                user_id=user_id,
+                level_id=level_id,
+                status="approved",
+                evaluation_data={
+                    "avg_score": 0.0,
+                    "all_completed": True,
+                    "course_details": [],
+                },
+                evaluator_notes="Auto-approved: no required courses",
+            )
+            db.add(application)
+            db.commit()
+            return {
+                "status": "approved",
+                "all_completed": True,
+                "avg_score": 0.0,
+                "course_details": [],
+                "application_id": application.id,
+            }
+
+        # 2. 逐课程检查完成度和得分
+        course_details = []
+        all_completed = True
+        total_weighted_score = 0.0
+        total_score_count = 0
+
+        for course_id in required_course_ids:
+            chapters = db.query(Chapter).filter(Chapter.course_id == course_id).all()
+            chapter_ids = [ch.id for ch in chapters]
+
+            if not chapter_ids:
+                # Course has no chapters → trivially completed
+                course_details.append(
+                    {
+                        "course_id": course_id,
+                        "completed": True,
+                        "total_chapters": 0,
+                        "completed_chapters": 0,
+                        "avg_course_score": None,
+                    }
+                )
+                continue
+
+            # Check completion for all chapters
+            completed_count = (
+                db.query(LearningProgress)
+                .filter(
+                    LearningProgress.user_id == user_id,
+                    LearningProgress.chapter_id.in_(chapter_ids),
+                    LearningProgress.status == "completed",
+                )
+                .count()
+            )
+            course_completed = completed_count >= len(chapters)
+            if not course_completed:
+                all_completed = False
+
+            # Calculate average score from lab submissions
+            labs = db.query(Lab).filter(Lab.chapter_id.in_(chapter_ids)).all()
+            lab_ids = [lab.id for lab in labs]
+
+            course_score = None
+            if lab_ids:
+                submissions = (
+                    db.query(LabSubmission)
+                    .filter(
+                        LabSubmission.user_id == user_id,
+                        LabSubmission.lab_id.in_(lab_ids),
+                        LabSubmission.score.isnot(None),
+                    )
+                    .all()
+                )
+                if submissions:
+                    scores = [s.score for s in submissions if s.score is not None]
+                    if scores:
+                        course_score = sum(scores) / len(scores)
+                        total_weighted_score += sum(scores)
+                        total_score_count += len(scores)
+
+            course_details.append(
+                {
+                    "course_id": course_id,
+                    "completed": course_completed,
+                    "total_chapters": len(chapters),
+                    "completed_chapters": completed_count,
+                    "avg_course_score": (
+                        round(course_score, 2) if course_score is not None else None
+                    ),
+                }
+            )
+
+        # 3. 计算总体平均分
+        avg_score = (
+            round(total_weighted_score / total_score_count, 2) if total_score_count > 0 else 0.0
+        )
+
+        # 4. 判定
+        if not all_completed:
+            application = CertificationApplication(
+                user_id=user_id,
+                level_id=level_id,
+                status="rejected",
+                evaluation_data={
+                    "avg_score": avg_score,
+                    "all_completed": False,
+                    "course_details": course_details,
+                },
+                evaluator_notes="Auto-evaluated: not all required courses completed",
+            )
+            db.add(application)
+            db.commit()
+            return {
+                "status": "failed",
+                "all_completed": False,
+                "avg_score": avg_score,
+                "course_details": course_details,
+                "reason": f"Not all required courses completed ({sum(1 for c in course_details if c['completed'])}/{len(course_details)} courses completed)",
+                "application_id": application.id,
+            }
+
+        if avg_score < level.min_average_score:
+            application = CertificationApplication(
+                user_id=user_id,
+                level_id=level_id,
+                status="rejected",
+                evaluation_data={
+                    "avg_score": avg_score,
+                    "all_completed": True,
+                    "course_details": course_details,
+                },
+                evaluator_notes=f"Auto-evaluated: average score {avg_score} below threshold {level.min_average_score}",
+            )
+            db.add(application)
+            db.commit()
+            return {
+                "status": "failed",
+                "all_completed": True,
+                "avg_score": avg_score,
+                "course_details": course_details,
+                "reason": f"Average score {avg_score} below required threshold {level.min_average_score}",
+                "application_id": application.id,
+            }
+
+        # 5. Auto-approve
+        application = CertificationApplication(
+            user_id=user_id,
+            level_id=level_id,
+            status="approved",
+            evaluation_data={
+                "avg_score": avg_score,
+                "all_completed": True,
+                "course_details": course_details,
+            },
+            evaluator_notes="Auto-approved: all courses completed and score threshold met",
+        )
+        db.add(application)
+        db.commit()
+        return {
+            "status": "approved",
+            "all_completed": True,
+            "avg_score": avg_score,
+            "course_details": course_details,
+            "application_id": application.id,
+        }
+
 
 certificate_service = CertificateService()
