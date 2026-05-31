@@ -20,6 +20,7 @@ from app.api.v1 import (
     radar,
     recommendations,
     skills,
+    tutor,
 )
 from app.core.config import settings
 from app.core.database import SessionLocal, init_db
@@ -242,6 +243,7 @@ app.include_router(radar.router, prefix="/api/v1", tags=["技能雷达V2"])
 app.include_router(profile.router, prefix="/api/v1/profile", tags=["公开主页"])
 app.include_router(recommendations.router, prefix="/api/v1", tags=["个性化推荐"])
 app.include_router(paths.router, prefix="/api/v1/paths", tags=["学习路径"])
+app.include_router(tutor.router, prefix="/api/v1", tags=["AI导师"])
 
 
 @app.get("/", response_class=HTMLResponse)

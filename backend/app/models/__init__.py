@@ -41,6 +41,7 @@ class User(Base):
     submissions = relationship("LabSubmission", back_populates="user")
     discussions = relationship("Discussion", back_populates="user")
     comments = relationship("Comment", back_populates="user")
+    tutor_sessions = relationship("TutorSession", back_populates="user")
 
 
 class Course(Base):
@@ -377,6 +378,12 @@ from app.models.radar import (  # noqa: E402, F401 — T6-T10: Radar module
     SkillDimension,
     SkillEvent,
     UserSkillSnapshot,
+)
+from app.models.tutor import (  # noqa: E402, F401 — T12: Tutor module
+    CodeReview,
+    LearningObstacle,
+    TutorMessage,
+    TutorSession,
 )
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
 
