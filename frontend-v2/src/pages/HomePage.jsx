@@ -129,13 +129,13 @@ const Hero = ({ progress, layout, totalStudents }) => {
             查看进度
           </button>
         </div>
-        <HeroStats totalStudents={totalStudents} />
+        <HeroStats totalStudents={totalStudents} stats={stats} />
       </div>
     </section>
   );
 };
 
-const HeroStats = ({ totalStudents }) => {
+const HeroStats = ({ totalStudents, stats }) => {
   const fmtStudents = totalStudents >= 1000
     ? (totalStudents / 1000).toFixed(totalStudents >= 10000 ? 1 : 0) + 'k'
     : totalStudents.toLocaleString();

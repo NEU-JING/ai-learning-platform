@@ -3,9 +3,21 @@
 // ── API helpers ──────────────────────────────────────────
 const API_BASE = '/api/v1';
 
-async function fetchAPI(path) {
+async function fetchAPI(path, options = {}) {
   try {
-    const res = await fetch(`${API_BASE}${path}`);
+    // Add auth token if available
+    const token = localStorage.getItem('token');
+    const headers = {
+      ...options.headers,
+    };
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
     if (!res.ok) throw new Error(`API ${res.status}`);
     return await res.json();
   } catch (e) {

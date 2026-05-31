@@ -12,7 +12,29 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import get_db
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
+from app.models import JobSkillRequirement  # noqa: F401 — T10: Gap analysis
+from app.models import PathTemplate  # noqa: F401 — Ensure path tables are registered
+from app.models import SkillDimension  # noqa: F401 — T6: Radar tables
+from app.models import UserSkillSnapshot  # noqa: F401 — T9: Radar snapshots
 from app.models import Base, Chapter, Course, Lab, User
+
+# SDD: CI-only marker support — auto-skip locally, run only in CI
+# Requires: pytest.ini with "ci_only" marker registered
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "ci_only: tests that require CI environment resources")
+
+
+def pytest_collection_modifyitems(config, items):
+    if os.environ.get("CI", "").lower() not in ("true", "1"):
+        skip_ci_only = pytest.mark.skip(reason="CI-only test, skipped locally")
+        for item in items:
+            if "ci_only" in item.keywords:
+                item.add_marker(skip_ci_only)
+
+
+# End SDD: CI-only
 
 # In-memory SQLite shared across all connections via StaticPool.
 # Without StaticPool, each SQLite connection gets its own empty DB.
@@ -30,6 +52,13 @@ def test_db():
     Base.metadata.create_all(bind=_test_engine)
     db = _TestSessionLocal()
     try:
+        # Seed path templates for tests
+        from app.data.path_templates import seed_all_path_data
+        from app.data.skill_dimensions import seed_skill_dimensions
+
+        seed_all_path_data(db)
+        # T6: Seed skill dimensions
+        seed_skill_dimensions(db)
         yield db
     finally:
         db.expire_all()  # Clear session identity map before drop
@@ -101,6 +130,54 @@ def test_user(test_db):
 def auth_headers(test_user):
     """Authorization headers for the test user."""
     return {"Authorization": f"Bearer {test_user['token']}"}
+
+
+@pytest.fixture(scope="function")
+def test_user_other(test_db):
+    """Create another test user for cross-user authorization tests."""
+    from datetime import datetime, timedelta
+
+    from jose import jwt
+
+    from app.core.config import settings
+
+    user = User(
+        email="other@example.com",
+        username="otheruser",
+        password_hash=get_password_hash("testpassword"),
+        role="student",
+        is_active=True,
+        created_at=datetime.utcnow(),
+    )
+    test_db.add(user)
+    test_db.commit()
+    test_db.refresh(user)
+
+    # Generate JWT token
+    token = jwt.encode(
+        {
+            "sub": str(user.id),
+            "email": user.email,
+            "username": user.username,
+            "role": user.role,
+            "exp": datetime.utcnow() + timedelta(minutes=30),
+        },
+        settings.SECRET_KEY,
+        algorithm=settings.ALGORITHM,
+    )
+
+    return {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "token": token,
+    }
+
+
+@pytest.fixture(scope="function")
+def auth_headers_other(test_user_other):
+    """Authorization headers for the other test user."""
+    return {"Authorization": f"Bearer {test_user_other['token']}"}
 
 
 @pytest.fixture(scope="function")
