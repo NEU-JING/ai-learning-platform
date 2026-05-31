@@ -91,6 +91,7 @@ class CodeReview(Base):
     code_content = Column(Text, nullable=False)
     language = Column(String(16), nullable=False)  # python, javascript
     issues = Column(JSON, nullable=True)  # [{type, line, message, suggestion}]
+    dimensions = Column(JSON, nullable=True)  # {correctness, efficiency, readability, style, best_practices}
     overall_score = Column(Numeric(5, 2), nullable=True)  # 0-100
     summary = Column(Text, nullable=True)
     reviewed_at = Column(DateTime, default=_utcnow)
