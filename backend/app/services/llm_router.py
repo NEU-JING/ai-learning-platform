@@ -165,25 +165,9 @@ class QianfanProvider(LLMProvider):
 
     async def chat(self, message: str, **kwargs) -> Dict[str, Any]:
         """Chat via 千帆."""
-        # Simplified implementation - in production, use qianfan SDK
-        start = time.time()
-
-        try:
-            # Mock implementation for testing
-            # In production: call 千帆 API
-            await asyncio.sleep(0.1)  # Simulate API call
-
-            latency_ms = int((time.time() - start) * 1000)
-
-            return {
-                "content": f"[千帆响应] {message[:50]}...",
-                "model": "ERNIE-4.0",
-                "tokens": len(message) // 4,
-                "latency_ms": latency_ms,
-                "provider": self.name,
-            }
-        except Exception as e:
-            raise Exception(f"Qianfan error: {e}")
+        raise NotImplementedError(
+            "Qianfan provider not yet connected — use Ark or OpenRouter instead"
+        )
 
     def check_health(self) -> str:
         return "healthy" if self._api_key else "unhealthy"
@@ -199,24 +183,9 @@ class LocalQwenProvider(LLMProvider):
 
     async def chat(self, message: str, **kwargs) -> Dict[str, Any]:
         """Chat via local Qwen."""
-        start = time.time()
-
-        try:
-            # Mock implementation - in production: load and run local model
-            # For now, return a generic response
-            await asyncio.sleep(0.05)  # Simulate local inference
-
-            latency_ms = int((time.time() - start) * 1000)
-
-            return {
-                "content": "[本地模型响应] 已收到您的消息，正在处理...",
-                "model": "qwen-7b-chat",
-                "tokens": len(message) // 4,
-                "latency_ms": latency_ms,
-                "provider": self.name,
-            }
-        except Exception as e:
-            raise Exception(f"Local Qwen error: {e}")
+        raise NotImplementedError(
+            "Local Qwen provider not yet connected — use Ark or OpenRouter instead"
+        )
 
     def check_health(self) -> str:
         return "healthy" if self._available else "unhealthy"

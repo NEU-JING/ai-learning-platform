@@ -225,22 +225,22 @@ pytest tests/test_radar.py::test_gap_analysis -v
 
 ## Phase 2: 核心服务层（Tutor + Certification）
 
-> **交付标准**: Tutor API + Certification API 全量测试通过，AC15-AC37 验证完成  
+> **交付标准**: Tutor API + Certification API 全量测试通过，AC15-AC31, AC37 验证完成（AC32-AC36 由 Phase 3/4 后续交付）  
 > **验收检查点**: Phase 2 Review → Phase 2 QA → Phase 2 Accepted  
 > **回归测试**: Phase 1 核心 10%（验证不破坏基线）  
 > **依赖**: Phase 1（Radar Service）  
 > **可独立交付**: ✅ **是**（依赖Phase 1已交付）
 
-### T11: Tutor LLM Router 三级降级
+### T11: Tutor LLM Router 四级降级
 **估时**: 45m  
 **依赖**: None  
 **AC 覆盖**: AC21  
 
 **步骤**:
 1. 实现 `LLMRouter` 类
-2. 配置 OpenRouter → 千帆 → 本地 Qwen-7B
+2. 配置 豆包(Ark) → OpenRouter → 千帆 → 本地 Qwen-7B
 3. 实现降级逻辑（timeout / rate limit / failure）
-4. Commit: `feat(tutor): T11 LLM router with 3-layer fallback`
+4. Commit: `feat(tutor): T11 LLM router with 4-layer fallback`
 
 **验证**:
 ```bash
@@ -323,7 +323,7 @@ pytest tests/test_tutor.py::test_obstacle_detection -v
 ### T16: Certification 数据库表
 **估时**: 30m  
 **依赖**: None  
-**AC 覆盖**: AC30-AC37  
+**AC 覆盖**: AC30-AC31, AC37（表结构覆盖 AC30-AC37，但 AC32-AC36 的 Service/API 逻辑尚未实现，由 Phase 3/4 后续交付）
 
 **步骤**:
 1. 创建 `certification_levels`, `certification_applications`, `certificates` 表
@@ -715,11 +715,11 @@ pytest tests/ -v --ac-coverage-report
 | Phase | Tasks | 估时 | AC 覆盖 |
 |------|:-----:|------|:-------:|
 | Phase 1: 基础数据层 | 10 | 6h 15m | AC1-AC14 |
-| Phase 2: 核心服务层 | 9 | 5h 30m | AC15-AC37 |
+| Phase 2: 核心服务层 | 9 | 5h 30m | AC15-AC31, AC37（AC32-AC36 后续 Phase） |
 | Phase 3: 验证与执行 | 10 | 5h 25m | AC38-AC49 |
 | Phase 4: 演进引擎 | 5 | 2h 45m | AC22-AC29 |
 | Phase 5: 集成测试 | 5 | 2h 45m | AC1-AC49 |
-| **总计** | **39** | **~22h** | **49/49** |
+| **总计** | **39** | **~22h** | **44/49（Phase 2 交付），AC32-AC36 后续 Phase** |
 
 ---
 
@@ -758,11 +758,11 @@ pytest tests/ -v --ac-coverage-report
 | AC29 | T32 | Evolution | ⏳ |
 | AC30 | T17 | Certification | ⏳ |
 | AC31 | T18 | Certification | ⏳ |
-| AC32 | T18 | Certification | ⏳ |
-| AC33 | T18 | Certification | ⏳ |
-| AC34 | T19 | Certification | ⏳ |
-| AC35 | T19 | Certification | ⏳ |
-| AC36 | T18 | Certification | ⏳ |
+| AC32 | T18 | Certification | 🔜 后续 Phase |
+| AC33 | T18 | Certification | 🔜 后续 Phase |
+| AC34 | T19 | Certification | 🔜 后续 Phase |
+| AC35 | T19 | Certification | 🔜 后续 Phase |
+| AC36 | T18 | Certification | 🔜 后续 Phase |
 | AC37 | T19 | Certification | ⏳ |
 | AC38 | T21 | Sandbox | ⏳ |
 | AC39 | T22 | Sandbox | ⏳ |
@@ -777,9 +777,9 @@ pytest tests/ -v --ac-coverage-report
 | AC48 | T29 | Employer | ⏳ |
 | AC49 | T29 | Employer | ⏳ |
 
-**覆盖度**: 49/49 = **100%**
+**覆盖度**: 44/49 = **89.8%**（Phase 2 交付范围内，AC32-AC36 由 Phase 3/4 后续交付）
 
 ---
 
 **Tasks 状态**: ✅ Architect 阶段完成  
-**下一步**: 用户确认后进入 Coder 阶段，按 Phase 1→5 顺序执行
+**下一步**: 用户确认后进入 Coder 阶段，按 Phase 1→5 顺序执行。**注意**：AC32-AC36（Certification 能力等级评定 Service/API 逻辑）将在 Phase 3/4 中由 T20-T29、T30-T34 覆盖实现，Phase 2 仅完成数据库表结构。

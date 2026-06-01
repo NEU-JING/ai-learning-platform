@@ -1,8 +1,8 @@
 {
   "change_id": "002-ailp-v4-refactor",
   "flow_level": "Standard",
-  "current_phase": "coder",
-  "phases_completed": ["po", "ba", "architect", "review"],
+  "current_phase": "coder_fix",
+  "phases_completed": ["po", "ba", "architect"],
   "design_review": {
     "status": "passed",
     "ac_coverage": "100%",

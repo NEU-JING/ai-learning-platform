@@ -1,7 +1,5 @@
 """Path module models — Learning path templates and user path instances."""
 
-from datetime import datetime, timezone
-
 from sqlalchemy import (
     JSON,
     Column,
@@ -16,11 +14,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.models import Base
-
-
-def _utcnow():
-    return datetime.now(timezone.utc)
+from app.models import Base, _utcnow
 
 
 class PathTemplate(Base):

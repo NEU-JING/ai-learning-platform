@@ -3,8 +3,6 @@
 T12: Tutor Chat API
 """
 
-from datetime import datetime, timezone
-
 from sqlalchemy import (
     JSON,
     Column,
@@ -17,11 +15,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.models import Base
-
-
-def _utcnow():
-    return datetime.now(timezone.utc)
+from app.models import Base, _utcnow
 
 
 class TutorSession(Base):
@@ -91,7 +85,9 @@ class CodeReview(Base):
     code_content = Column(Text, nullable=False)
     language = Column(String(16), nullable=False)  # python, javascript
     issues = Column(JSON, nullable=True)  # [{type, line, message, suggestion}]
-    dimensions = Column(JSON, nullable=True)  # {correctness, efficiency, readability, style, best_practices}
+    dimensions = Column(
+        JSON, nullable=True
+    )  # {correctness, efficiency, readability, style, best_practices}
     overall_score = Column(Numeric(5, 2), nullable=True)  # 0-100
     summary = Column(Text, nullable=True)
     reviewed_at = Column(DateTime, default=_utcnow)

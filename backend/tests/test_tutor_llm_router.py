@@ -102,34 +102,45 @@ class TestLLMRouter:
             assert result["provider"] == "openrouter"
 
     @pytest.mark.asyncio
-    async def test_fallback_to_layer_2_on_failure(self):
-        """Test fallback to layer 2 (千帆) when layer 0 & 1 fail."""
+    async def test_fallback_to_layer_3_when_qianfan_not_implemented(self):
+        """Test fallback to layer 3 (Local Qwen) when layer 0, 1, 2 fail.
+
+        QianfanProvider now raises NotImplementedError (not yet connected).
+        The router should fall through to LocalQwenProvider as the last resort.
+        """
         router = LLMRouter()
 
         with (
             patch.object(router.providers[0], "chat", new_callable=AsyncMock) as mock_ark,
             patch.object(router.providers[1], "chat", new_callable=AsyncMock) as mock_openrouter,
             patch.object(router.providers[2], "chat", new_callable=AsyncMock) as mock_qianfan,
+            patch.object(router.providers[3], "chat", new_callable=AsyncMock) as mock_local_qwen,
         ):
             # Layer 0 & 1 fail
             mock_ark.side_effect = Exception("Ark error")
             mock_openrouter.side_effect = Exception("OpenRouter error")
 
-            # Layer 2 succeeds
-            mock_qianfan.return_value = {
-                "content": "Hello from Qianfan",
-                "model": "ERNIE-4.0",
-                "tokens": 100,
-                "provider": "qianfan",
+            # Layer 2 (Qianfan) raises NotImplementedError (not yet connected)
+            mock_qianfan.side_effect = NotImplementedError(
+                "Qianfan provider not yet connected — use Ark or OpenRouter instead"
+            )
+
+            # Layer 3 (Local Qwen) succeeds
+            mock_local_qwen.return_value = {
+                "content": "Hello from Local Qwen",
+                "model": "qwen-7b-chat",
+                "tokens": 50,
+                "provider": "local_qwen",
             }
 
             result = await router.chat("Hello")
 
-            assert result["content"] == "Hello from Qianfan"
-            assert result["provider"] == "qianfan"
+            assert result["content"] == "Hello from Local Qwen"
+            assert result["provider"] == "local_qwen"
             mock_ark.assert_called_once()
             mock_openrouter.assert_called_once()
             mock_qianfan.assert_called_once()
+            mock_local_qwen.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_all_providers_fail(self):

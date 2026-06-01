@@ -4,7 +4,7 @@ T13: Code Review API
 """
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -51,8 +51,7 @@ class CodeReviewResponse(BaseModel):
     summary: str
     reviewed_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class CodeReviewListResponse(BaseModel):
@@ -61,5 +60,4 @@ class CodeReviewListResponse(BaseModel):
     reviews: List[CodeReviewResponse]
     total: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}

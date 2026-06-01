@@ -430,6 +430,11 @@ __all__ = [
     "SkillEvent",
     "UserSkillSnapshot",  # T9
     "JobSkillRequirement",  # T10
+    # T12: Tutor module
+    "TutorSession",
+    "TutorMessage",
+    "CodeReview",
+    "LearningObstacle",
     # T16: Certification module
     "CertificationLevel",
     "CertificationApplication",

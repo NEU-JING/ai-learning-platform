@@ -1015,6 +1015,153 @@ class TestCapstoneAPI:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# M1: POST /api/v1/certifications/apply — L1 认证申请 API 端点
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestL1CertificationApplyAPI:
+    """M1: POST /api/v1/certifications/apply — API endpoint for L1 auto evaluation."""
+
+    def _create_level(
+        self,
+        test_db,
+        name="L1 AI Foundations",
+        order=1,
+        required_courses=None,
+        min_average_score=70.0,
+    ):
+        from app.models.certification import CertificationLevel
+
+        level = CertificationLevel(
+            name=name,
+            description=f"{name} certification",
+            required_courses=required_courses or [],
+            min_average_score=min_average_score,
+            order=order,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.commit()
+        test_db.refresh(level)
+        return level
+
+    def test_apply_l1_certification_success(self, client, test_db, auth_headers):
+        """POST /api/v1/certifications/apply → 200 with approved status (no required courses)."""
+        level = self._create_level(test_db, name="L1 Beginner", required_courses=[])
+
+        response = client.post(
+            "/api/v1/certifications/apply",
+            json={"level_id": level.id},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "approved"
+        assert data["all_completed"] is True
+        assert data["avg_score"] == 0.0
+        assert "application_id" in data
+
+    def test_apply_l1_certification_level_not_found(self, client, auth_headers):
+        """POST /api/v1/certifications/apply with non-existent level → 404."""
+        response = client.post(
+            "/api/v1/certifications/apply",
+            json={"level_id": 99999},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+
+    def test_apply_l1_certification_unauthorized(self, client, test_db):
+        """POST /api/v1/certifications/apply without auth → 401."""
+        level = self._create_level(test_db, name="L1 NoAuth")
+
+        response = client.post(
+            "/api/v1/certifications/apply",
+            json={"level_id": level.id},
+        )
+
+        assert response.status_code == 401
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# M2: GET /api/v1/certificates/{cert_number} — 证书详情查询 API 端点
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestCertificateDetailAPI:
+    """M2: GET /api/v1/certificates/{cert_number} — query certificate details."""
+
+    def _create_certificate(self, test_db, user_id, cert_number="AILP-CERT-001"):
+        from datetime import datetime, timezone
+
+        from app.models.certification import Certificate, CertificationLevel
+
+        level = CertificationLevel(
+            name="L1 Test Level",
+            description="Test level for cert detail",
+            required_courses=[],
+            min_average_score=70.0,
+            order=1,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.flush()
+
+        cert = Certificate(
+            user_id=user_id,
+            level_id=level.id,
+            cert_number=cert_number,
+            issue_date=datetime.now(timezone.utc),
+            cert_metadata={"course_title": "Test Course", "level": "beginner"},
+            signature="test-signature-base64",
+            is_valid=True,
+        )
+        test_db.add(cert)
+        test_db.commit()
+        test_db.refresh(cert)
+        return cert, level
+
+    def test_get_certificate_detail_success(self, client, test_db, auth_headers, test_user):
+        """GET /api/v1/certificates/{cert_number} → 200 with full cert details."""
+        user_id = test_user["user"]["id"]
+        cert, level = self._create_certificate(test_db, user_id, "AILP-CERT-DETAIL-001")
+
+        response = client.get(
+            f"/api/v1/certificates/{cert.cert_number}",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["cert_number"] == "AILP-CERT-DETAIL-001"
+        assert data["user_id"] == user_id
+        assert data["level_id"] == level.id
+        assert data["is_valid"] is True
+        assert "signature" in data
+        assert "issue_date" in data
+        assert "level_name" in data
+
+    def test_get_certificate_detail_not_found(self, client, auth_headers):
+        """GET /api/v1/certificates/{cert_number} for non-existent cert → 404."""
+        response = client.get(
+            "/api/v1/certificates/NONEXISTENT-CERT-999",
+            headers=auth_headers,
+        )
+
+        assert response.status_code == 404
+
+    def test_get_certificate_detail_unauthorized(self, client, test_db, test_user):
+        """GET /api/v1/certificates/{cert_number} without auth → 401."""
+        user_id = test_user["user"]["id"]
+        cert, _ = self._create_certificate(test_db, user_id, "AILP-CERT-NOAUTH-001")
+
+        response = client.get(f"/api/v1/certificates/{cert.cert_number}")
+
+        assert response.status_code == 401
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # T19: AC37 — ECDSA Certificate Signature
 # ══════════════════════════════════════════════════════════════════════════════
 

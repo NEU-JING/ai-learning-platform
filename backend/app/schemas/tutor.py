@@ -36,8 +36,7 @@ class TutorMessageResponse(TutorMessageBase):
     provider: Optional[str] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class TutorSessionBase(BaseModel):
@@ -69,8 +68,7 @@ class TutorSessionResponse(BaseModel):
     response: Dict[str, Any]  # LLM response
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class TutorChatRequest(BaseModel):
@@ -98,8 +96,7 @@ class TutorChatResponse(BaseModel):
     response: Dict[str, Any]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 class SessionMessagesResponse(BaseModel):
@@ -109,8 +106,7 @@ class SessionMessagesResponse(BaseModel):
     messages: List[TutorMessageResponse]
     total: int
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 # ── T14: Recommendations ────────────────────────────────────────────────────

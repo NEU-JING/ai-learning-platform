@@ -43,7 +43,27 @@ class TutorService:
         Returns:
             Dict with session info and AI response
         """
-        # Get or create session
+        # Resolve or create session
+        session = self._resolve_session(
+            db, user_id, session_id, session_type, context_id, context_type
+        )
+
+        # Store user message and call LLM
+        return await self._process_chat_turn(db, session, user_id, message, attachments)
+
+    def _resolve_session(
+        self,
+        db: Session,
+        user_id: int,
+        session_id: Optional[int],
+        session_type: Optional[str],
+        context_id: Optional[int],
+        context_type: Optional[str],
+    ) -> TutorSession:
+        """Get existing session or create a new one.
+
+        Raises ValueError if session not found or session_type missing for new sessions.
+        """
         if session_id:
             session = (
                 db.query(TutorSession)
@@ -52,20 +72,32 @@ class TutorService:
             )
             if not session:
                 raise ValueError("Session not found")
-        else:
-            if not session_type:
-                raise ValueError("session_type is required for new sessions")
-            session = TutorSession(
-                user_id=user_id,
-                session_type=session_type,
-                context_id=context_id,
-                context_type=context_type,
-                status="active",
-                message_count=0,
-            )
-            db.add(session)
-            db.flush()
+            return session
 
+        if not session_type:
+            raise ValueError("session_type is required for new sessions")
+
+        session = TutorSession(
+            user_id=user_id,
+            session_type=session_type,
+            context_id=context_id,
+            context_type=context_type,
+            status="active",
+            message_count=0,
+        )
+        db.add(session)
+        db.flush()
+        return session
+
+    async def _process_chat_turn(
+        self,
+        db: Session,
+        session: TutorSession,
+        user_id: int,
+        message: str,
+        attachments: Optional[List[Dict[str, Any]]] = None,
+    ) -> Dict[str, Any]:
+        """Store user message, call LLM, store AI response, update session."""
         # Store user message
         user_msg = TutorMessage(
             session_id=session.id,
@@ -75,11 +107,9 @@ class TutorService:
         )
         db.add(user_msg)
 
-        # Build conversation context
+        # Build conversation context and call LLM
         conversation = self._build_conversation_context(db, session.id)
-
-        # Call LLM with system prompt based on session type
-        system_prompt = self._get_system_prompt(session_type)
+        system_prompt = self._get_system_prompt(session.session_type)
         llm_response = await self.llm_router.chat(
             message,
             system_prompt=system_prompt,
@@ -98,7 +128,7 @@ class TutorService:
         )
         db.add(ai_msg)
 
-        # Update session
+        # Update session metadata
         session.message_count += 2  # user + assistant
         db.commit()
         db.refresh(session)
@@ -185,136 +215,22 @@ class TutorService:
         AC19: 路径动态优化 — fast track suggestion if user is exceeding
         """
         from app.models import UserSkillScore
-        from app.models.path import UserPath
         from app.models.radar import SkillDimension
 
-        # Get user's skill scores
         user_scores = db.query(UserSkillScore).filter(UserSkillScore.user_id == user_id).all()
-
-        # Build dimension lookup
         dimensions = {d.slug: d for d in db.query(SkillDimension).all()}
 
-        recommendations = []
-        based_on_parts = []
-
-        if user_scores:
-            # Sort by score ascending — weakest first
-            sorted_scores = sorted(user_scores, key=lambda s: s.score)
-
-            # Identify weak dimensions (score < 50)
-            weak_scores = [s for s in sorted_scores if s.score < 50]
-            # Also include borderline (50-60)
-            borderline_scores = [s for s in sorted_scores if 50 <= s.score < 60]
-
-            # Determine what to base the analysis on
-            if weak_scores:
-                weak_names = []
-                for ws in weak_scores[:3]:
-                    dim = dimensions.get(ws.dimension)
-                    weak_names.append(dim.name if dim else ws.dimension)
-                based_on_parts.append("、".join(weak_names) + " 维度薄弱")
-            else:
-                based_on_parts.append("整体技能水平")
-
-            # Generate course recommendations for each weak dimension
-            for ws in weak_scores[:3]:
-                dim = dimensions.get(ws.dimension)
-                dim_name = dim.name if dim else ws.dimension
-
-                recommendations.append(
-                    {
-                        "type": "course",
-                        "title": f"{dim_name}强化课程",
-                        "reason": f"补强{dim_name}基础，提升综合能力",
-                        "priority": "high" if ws.score < 30 else "medium",
-                        "estimated_time": "4小时",
-                    }
-                )
-
-            # Generate practice recommendations
-            for ws in weak_scores[:2]:
-                dim = dimensions.get(ws.dimension)
-                dim_name = dim.name if dim else ws.dimension
-
-                recommendations.append(
-                    {
-                        "type": "practice",
-                        "title": f"{dim_name}专项练习",
-                        "reason": "针对性练习巩固薄弱环节",
-                        "priority": "high" if ws.score < 30 else "medium",
-                    }
-                )
-
-            # Handle borderline dimensions
-            for bs in borderline_scores[:2]:
-                dim = dimensions.get(bs.dimension)
-                dim_name = dim.name if dim else bs.dimension
-
-                recommendations.append(
-                    {
-                        "type": "practice",
-                        "title": f"{dim_name}进阶训练",
-                        "reason": f"提升{dim_name}至优秀水平",
-                        "priority": "low",
-                    }
-                )
-
-        # If no scores at all, give default recommendations
-        if not user_scores:
-            based_on_parts.append("初始评估阶段")
-            recommendations.extend(
-                [
-                    {
-                        "type": "course",
-                        "title": "Python 编程基础",
-                        "reason": "建立扎实的编程基础",
-                        "priority": "high",
-                        "estimated_time": "4小时",
-                    },
-                    {
-                        "type": "course",
-                        "title": "AI 数学直觉",
-                        "reason": "培养算法和数据思维",
-                        "priority": "medium",
-                        "estimated_time": "4小时",
-                    },
-                    {
-                        "type": "practice",
-                        "title": "编程思维练习题",
-                        "reason": "动手实践巩固所学",
-                        "priority": "high",
-                    },
-                    {
-                        "type": "practice",
-                        "title": "算法基础练习",
-                        "reason": "培养问题解决能力",
-                        "priority": "medium",
-                    },
-                ]
-            )
-
-        # AC19: Check for Fast Track eligibility
-        user_path = (
-            db.query(UserPath)
-            .filter(UserPath.user_id == user_id, UserPath.status == "active")
-            .first()
+        recommendations, based_on_parts = self._recommend_for_weak_dimensions(
+            user_scores, dimensions
         )
 
-        if user_path:
-            progress_pct = user_path.progress_percent or 0
-            if progress_pct >= 80:
-                # User is highly active, suggest fast track
-                recommendations.append(
-                    {
-                        "type": "course",
-                        "title": "Fast Track 加速模式",
-                        "reason": "你已连续完成大量任务，建议切换至加速模式跳过已掌握内容",
-                        "priority": "high",
-                        "estimated_time": "预计节省 2 周",
-                    }
-                )
+        if not user_scores:
+            recommendations = self._recommend_defaults()
+            based_on_parts = ["初始评估阶段"]
 
-        # Deduplicate recommendations while preserving order
+        recommendations = self._suggest_fast_track(db, user_id, recommendations)
+
+        # Deduplicate while preserving order
         seen = set()
         unique_recs = []
         for rec in recommendations:
@@ -327,6 +243,146 @@ class TutorService:
             "based_on": "、".join(based_on_parts) if based_on_parts else "学习数据分析",
             "recommendations": unique_recs,
         }
+
+    @staticmethod
+    def _recommend_for_weak_dimensions(user_scores: list, dimensions: dict) -> tuple:
+        """Generate recommendations based on weak and borderline skill scores.
+
+        Returns (recommendations, based_on_parts).
+        """
+        if not user_scores:
+            return [], []
+
+        sorted_scores = sorted(user_scores, key=lambda s: s.score)
+        weak_scores = [s for s in sorted_scores if s.score < 50]
+        borderline_scores = [s for s in sorted_scores if 50 <= s.score < 60]
+
+        based_on_parts = TutorService._find_weak_dimensions(weak_scores, dimensions)
+        recommendations = TutorService._match_courses_to_dimensions(
+            weak_scores, borderline_scores, dimensions
+        )
+
+        return recommendations, based_on_parts
+
+    @staticmethod
+    def _find_weak_dimensions(weak_scores: list, dimensions: dict) -> list:
+        """Build human-readable based_on labels for weak skill dimensions."""
+        if not weak_scores:
+            return ["整体技能水平"]
+
+        weak_names = []
+        for ws in weak_scores[:3]:
+            dim = dimensions.get(ws.dimension)
+            weak_names.append(dim.name if dim else ws.dimension)
+        return ["、".join(weak_names) + " 维度薄弱"]
+
+    @staticmethod
+    def _match_courses_to_dimensions(
+        weak_scores: list, borderline_scores: list, dimensions: dict
+    ) -> list:
+        """Generate course, practice and borderline recommendations.
+
+        Returns a list of recommendation dicts.
+        """
+        recommendations = []
+
+        # Course recommendations for each weak dimension
+        for ws in weak_scores[:3]:
+            dim = dimensions.get(ws.dimension)
+            dim_name = dim.name if dim else ws.dimension
+            recommendations.append(
+                {
+                    "type": "course",
+                    "title": f"{dim_name}强化课程",
+                    "reason": f"补强{dim_name}基础，提升综合能力",
+                    "priority": "high" if ws.score < 30 else "medium",
+                    "estimated_time": "4小时",
+                }
+            )
+
+        # Practice recommendations
+        for ws in weak_scores[:2]:
+            dim = dimensions.get(ws.dimension)
+            dim_name = dim.name if dim else ws.dimension
+            recommendations.append(
+                {
+                    "type": "practice",
+                    "title": f"{dim_name}专项练习",
+                    "reason": "针对性练习巩固薄弱环节",
+                    "priority": "high" if ws.score < 30 else "medium",
+                }
+            )
+
+        # Borderline recommendations
+        for bs in borderline_scores[:2]:
+            dim = dimensions.get(bs.dimension)
+            dim_name = dim.name if dim else bs.dimension
+            recommendations.append(
+                {
+                    "type": "practice",
+                    "title": f"{dim_name}进阶训练",
+                    "reason": f"提升{dim_name}至优秀水平",
+                    "priority": "low",
+                }
+            )
+
+        return recommendations
+
+    @staticmethod
+    def _recommend_defaults() -> list:
+        """Return default recommendations for users with no skill scores."""
+        return [
+            {
+                "type": "course",
+                "title": "Python 编程基础",
+                "reason": "建立扎实的编程基础",
+                "priority": "high",
+                "estimated_time": "4小时",
+            },
+            {
+                "type": "course",
+                "title": "AI 数学直觉",
+                "reason": "培养算法和数据思维",
+                "priority": "medium",
+                "estimated_time": "4小时",
+            },
+            {
+                "type": "practice",
+                "title": "编程思维练习题",
+                "reason": "动手实践巩固所学",
+                "priority": "high",
+            },
+            {
+                "type": "practice",
+                "title": "算法基础练习",
+                "reason": "培养问题解决能力",
+                "priority": "medium",
+            },
+        ]
+
+    @staticmethod
+    def _suggest_fast_track(db: Session, user_id: int, recommendations: list) -> list:
+        """Append fast-track suggestion if user progress >= 80%."""
+        from app.models.path import UserPath
+
+        user_path = (
+            db.query(UserPath)
+            .filter(UserPath.user_id == user_id, UserPath.status == "active")
+            .first()
+        )
+
+        if user_path and (user_path.progress_percent or 0) >= 80:
+            recommendations.append(
+                {
+                    "type": "course",
+                    "title": "Fast Track 加速模式",
+                    "reason": "你已连续完成大量任务，建议切换至加速模式跳过已掌握内容",
+                    "priority": "high",
+                    "estimated_time": "预计节省 2 周",
+                }
+            )
+
+        return recommendations
 
     async def get_obstacles(self, db: Session, user_id: int) -> Dict[str, Any]:
         """Detect learning obstacles by comparing per-lab time vs peer average.
@@ -341,9 +397,8 @@ class TutorService:
         3. If user_time / average_time > 3.0, flag as obstacle
         4. Return list of obstacles with tutor messages
         """
-        from app.models import Lab, LearningProgress
+        from app.models import LearningProgress
 
-        # Get all lab progress for this user (excluding not_started)
         user_progress = (
             db.query(LearningProgress)
             .filter(
@@ -360,83 +415,110 @@ class TutorService:
         OBSTACLE_RATIO_THRESHOLD = 3.0  # AC20: >3x average → obstacle
 
         for up in user_progress:
-            # Compute user's time spent on this lab
-            end_time = up.completed_at or up.last_accessed_at
-            if not end_time or not up.created_at:
-                continue
+            obstacle = self._check_lab_time_obstacle(db, up, user_id, OBSTACLE_RATIO_THRESHOLD)
+            if obstacle:
+                obstacles.append(obstacle)
 
-            user_time_seconds = (end_time - up.created_at).total_seconds()
-            if user_time_seconds <= 0:
-                continue
-
-            # Get the lab info via chapter
-            lab = db.query(Lab).filter(Lab.chapter_id == up.chapter_id).first()
-            if not lab:
-                continue
-
-            # Compute average time across all OTHER users for this lab
-            other_progress = (
-                db.query(LearningProgress)
-                .filter(
-                    LearningProgress.chapter_id == up.chapter_id,
-                    LearningProgress.user_id != user_id,
-                    LearningProgress.status != "not_started",
-                )
-                .all()
-            )
-
-            if not other_progress:
-                # No peers to compare against — skip
-                continue
-
-            other_times = []
-            for op in other_progress:
-                op_end = op.completed_at or op.last_accessed_at
-                if op_end and op.created_at:
-                    seconds = (op_end - op.created_at).total_seconds()
-                    if seconds > 0:
-                        other_times.append(seconds)
-
-            if not other_times:
-                continue
-
-            average_seconds = sum(other_times) / len(other_times)
-            if average_seconds <= 0:
-                continue
-
-            ratio = user_time_seconds / average_seconds
-
-            if ratio >= OBSTACLE_RATIO_THRESHOLD:
-                # Format times for display
-                user_time_str = self._format_duration(user_time_seconds)
-                avg_time_str = self._format_duration(average_seconds)
-
-                tutor_message = (
-                    f"是否需要帮助？其他同学在此Lab的平均用时{avg_time_str}。"
-                    f"我可以为你提供分步指导。"
-                )
-
-                obstacles.append(
-                    {
-                        "lab_id": lab.id,
-                        "lab_name": lab.title,
-                        "type": "time_exceeded",
-                        "data": {
-                            "user_time": user_time_str,
-                            "average_time": avg_time_str,
-                            "ratio": round(ratio, 2),
-                        },
-                        "tutor_message": tutor_message,
-                    }
-                )
-
-        # Check for existing obstacle records and avoid duplicates
         # Sort obstacles by ratio descending (most severe first)
         obstacles.sort(key=lambda o: o["data"]["ratio"], reverse=True)
 
         return {
             "has_obstacles": len(obstacles) > 0,
             "obstacles": obstacles,
+        }
+
+    def _check_lab_time_obstacle(
+        self, db: Session, progress, user_id: int, threshold: float
+    ) -> Optional[Dict[str, Any]]:
+        """Check if a single lab progress entry represents a time obstacle.
+
+        Returns obstacle dict if user_time / peer_avg >= threshold, else None.
+        """
+        from app.models import Lab
+
+        # Compute user's time spent on this lab
+        end_time = progress.completed_at or progress.last_accessed_at
+        if not end_time or not progress.created_at:
+            return None
+
+        user_time_seconds = (end_time - progress.created_at).total_seconds()
+        if user_time_seconds <= 0:
+            return None
+
+        # Get the lab info via chapter
+        lab = db.query(Lab).filter(Lab.chapter_id == progress.chapter_id).first()
+        if not lab:
+            return None
+
+        # Compute peer average time
+        average_seconds = self._compute_peer_average_time(db, progress.chapter_id, user_id)
+        if average_seconds is None or average_seconds <= 0:
+            return None
+
+        ratio = user_time_seconds / average_seconds
+        if ratio < threshold:
+            return None
+
+        # Build obstacle entry
+        return self._build_time_obstacle(lab, user_time_seconds, average_seconds, ratio)
+
+    @staticmethod
+    def _compute_peer_average_time(
+        db: Session, chapter_id: int, exclude_user_id: int
+    ) -> Optional[float]:
+        """Compute average time spent by other users on a chapter's lab.
+
+        Returns average seconds, or None if no peer data available.
+        """
+        from app.models import LearningProgress
+
+        other_progress = (
+            db.query(LearningProgress)
+            .filter(
+                LearningProgress.chapter_id == chapter_id,
+                LearningProgress.user_id != exclude_user_id,
+                LearningProgress.status != "not_started",
+            )
+            .all()
+        )
+
+        if not other_progress:
+            return None
+
+        other_times = []
+        for op in other_progress:
+            op_end = op.completed_at or op.last_accessed_at
+            if op_end and op.created_at:
+                seconds = (op_end - op.created_at).total_seconds()
+                if seconds > 0:
+                    other_times.append(seconds)
+
+        if not other_times:
+            return None
+
+        return sum(other_times) / len(other_times)
+
+    def _build_time_obstacle(
+        self, lab, user_time_seconds: float, avg_seconds: float, ratio: float
+    ) -> Dict[str, Any]:
+        """Build obstacle dict for a time-exceeded lab."""
+        user_time_str = self._format_duration(user_time_seconds)
+        avg_time_str = self._format_duration(avg_seconds)
+
+        tutor_message = (
+            f"是否需要帮助？其他同学在此Lab的平均用时{avg_time_str}。" f"我可以为你提供分步指导。"
+        )
+
+        return {
+            "lab_id": lab.id,
+            "lab_name": lab.title,
+            "type": "time_exceeded",
+            "data": {
+                "user_time": user_time_str,
+                "average_time": avg_time_str,
+                "ratio": round(ratio, 2),
+            },
+            "tutor_message": tutor_message,
         }
 
     @staticmethod

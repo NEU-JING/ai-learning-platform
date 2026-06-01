@@ -7,8 +7,6 @@ Tables:
 - capstone_submissions: 顶点项目提交 (L2)
 """
 
-from datetime import datetime, timezone
-
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -22,11 +20,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.models import Base
-
-
-def _utcnow():
-    return datetime.now(timezone.utc)
+from app.models import Base, _utcnow
 
 
 class CertificationLevel(Base):
