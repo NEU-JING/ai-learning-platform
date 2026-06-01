@@ -139,7 +139,7 @@ class CodeReviewService:
         import re
 
         # Try to extract JSON from markdown code block
-        json_match = re.search(r'```(?:json)?\n(.*?)\n```', content, re.DOTALL)
+        json_match = re.search(r"```(?:json)?\n(.*?)\n```", content, re.DOTALL)
         if json_match:
             content = json_match.group(1)
 

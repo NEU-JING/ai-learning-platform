@@ -66,7 +66,10 @@ class CertificationApplication(Base):
     level = relationship("CertificationLevel", back_populates="applications")
 
     def __repr__(self):
-        return f"<CertificationApplication(id={self.id}, user_id={self.user_id}, status={self.status!r})>"
+        return (
+            f"<CertificationApplication(id={self.id}, user_id={self.user_id}, "
+            f"status={self.status!r})>"
+        )
 
 
 class Certificate(Base):

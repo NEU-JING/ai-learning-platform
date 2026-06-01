@@ -123,7 +123,7 @@ class TestCertificationTablesExist:
         assert "certification_levels" in fk_tables, "Should have FK to certification_levels"
 
     def test_capstone_submissions_fk(self, test_db):
-        """AC36: capstone_submissions should have FK to users, certification_levels, and users (reviewer)."""
+        """AC36: capstone_submissions FK to users, certification_levels, and users (reviewer)."""
         inspector = inspect(test_db.bind)
         fks = inspector.get_foreign_keys("capstone_submissions")
         fk_tables = {fk["referred_table"] for fk in fks}

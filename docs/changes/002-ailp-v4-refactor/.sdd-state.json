@@ -1,8 +1,10 @@
 {
   "change_id": "002-ailp-v4-refactor",
   "flow_level": "Standard",
-  "current_phase": "coder_fix",
+  "current_phase": "reviewer_pending",
   "phases_completed": ["po", "ba", "architect"],
+  "coder_fix_commit": "fbe66a5",
+  "coder_fix_summary": "修复 Phase 2 Review 发现的全部问题：AC范围声明、2个缺失API端点、_utcnow() DRY、函数拆分、Mock修复、Pydantic V2迁移、文档更新",
   "design_review": {
     "status": "passed",
     "ac_coverage": "100%",
@@ -99,7 +101,7 @@
       },
       "phase_2": {
         "name": "核心服务层（Tutor + Certification）",
-        "status": "in_progress",
+        "status": "review_passed",
         "started_at": "2026-05-31",
         "tasks": ["T11", "T12", "T13", "T14", "T15", "T16", "T17", "T18", "T19"],
         "ac_covered": ["AC15", "AC16", "AC17", "AC18", "AC19", "AC20", "AC21", "AC22", "AC23", "AC24", "AC25", "AC26", "AC27", "AC28", "AC29", "AC30", "AC31", "AC32", "AC33", "AC34", "AC35", "AC36", "AC37"],

@@ -4,8 +4,9 @@ AC16: 代码审查 (AI 分析代码)
 AC17: 代码评分维度
 """
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 
 from app.services.llm_router import LLMRouter
 
@@ -38,42 +39,19 @@ class TestCodeReviewAPI:
     async def test_code_review_with_issues(self, client, auth_headers):
         """Test code review detects issues."""
         # Mock LLM to return issues
-        mock_response = {
-            "issues": [
-                {
-                    "type": "style",
-                    "line": 2,
-                    "message": "Use 'is' for None comparison",
-                    "suggestion": "Change 'x == True' to 'x is True'",
-                    "severity": "medium",
-                }
-            ],
-            "dimensions": {
-                "correctness": 80,
-                "efficiency": 75,
-                "readability": 70,
-                "style": 60,
-                "best_practices": 75,
-            },
-            "overall_score": 72.0,
-            "summary": "Code has minor style issues",
-        }
-        
-        with patch.object(
-            LLMRouter, "chat", new_callable=AsyncMock
-        ) as mock_chat:
+        with patch.object(LLMRouter, "chat", new_callable=AsyncMock) as mock_chat:
             mock_chat.return_value = {
-                "content": '{"issues": [{"type": "style", "line": 2, "message": "Use \'is\' for None comparison", "suggestion": "Change \'x == True\' to \'x is True\'", "severity": "medium"}], "dimensions": {"correctness": 80, "efficiency": 75, "readability": 70, "style": 60, "best_practices": 75}, "overall_score": 72.0, "summary": "Code has minor style issues"}',
+                "content": '{"issues": [{"type": "style", "line": 2, "message": "Use \'is\' for None comparison", "suggestion": "Change \'x == True\' to \'x is True\'", "severity": "medium"}], "dimensions": {"correctness": 80, "efficiency": 75, "readability": 70, "style": 60, "best_practices": 75}, "overall_score": 72.0, "summary": "Code has minor style issues"}',  # noqa: E501
                 "model": "doubao",
                 "tokens": 150,
                 "provider": "ark",
             }
-            
+
             response = client.post(
                 "/api/v1/tutor/code-review",
                 json={
                     "lab_id": 1,
-                    "code_content": "def bad_code(x):\n    if x == True:\n        print('bad')\n    return x",
+                    "code_content": "def bad_code(x):\n    if x == True:\n        print('bad')\n    return x",  # noqa: E501
                     "language": "python",
                 },
                 headers=auth_headers,
@@ -96,7 +74,7 @@ class TestCodeReviewAPI:
             "/api/v1/tutor/code-review",
             json={
                 "lab_id": 1,
-                "code_content": "def sum_list(nums):\n    total = 0\n    for n in nums:\n        total += n\n    return total",
+                "code_content": "def sum_list(nums):\n    total = 0\n    for n in nums:\n        total += n\n    return total",  # noqa: E501
                 "language": "python",
             },
             headers=auth_headers,
@@ -104,16 +82,16 @@ class TestCodeReviewAPI:
 
         assert response.status_code == 200
         data = response.json()
-        
+
         # AC17: 代码评分维度
         assert "dimensions" in data
         dimensions = data["dimensions"]
         assert "correctness" in dimensions  # 正确性
-        assert "efficiency" in dimensions   # 效率
+        assert "efficiency" in dimensions  # 效率
         assert "readability" in dimensions  # 可读性
-        assert "style" in dimensions        # 代码风格
+        assert "style" in dimensions  # 代码风格
         assert "best_practices" in dimensions  # 最佳实践
-        
+
         # All dimensions are 0-100
         for dim, score in dimensions.items():
             assert 0 <= score <= 100
