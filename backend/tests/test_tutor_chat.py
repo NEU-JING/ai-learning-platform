@@ -4,11 +4,27 @@ AC15: AI 导师对话 (< 5s 响应)
 AC21: LLM Router 集成
 """
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
+
+from app.services.llm_router import LLMRouter
 
 
 class TestTutorChatAPI:
     """Test Tutor Chat API endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def mock_llm(self):
+        """Mock LLMRouter.chat for all tests — no real LLM dependency."""
+        with patch.object(LLMRouter, "chat", new_callable=AsyncMock) as mock:
+            mock.return_value = {
+                "content": "This is a mock AI response for testing purposes.",
+                "model": "mock",
+                "tokens": 10,
+                "provider": "mock",
+            }
+            yield
 
     @pytest.mark.asyncio
     async def test_create_new_session(self, client, auth_headers):

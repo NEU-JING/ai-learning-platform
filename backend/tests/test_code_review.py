@@ -4,6 +4,7 @@ AC16: 代码审查 (AI 分析代码)
 AC17: 代码评分维度
 """
 
+import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -13,6 +14,31 @@ from app.services.llm_router import LLMRouter
 
 class TestCodeReviewAPI:
     """Test Code Review API endpoints."""
+
+    @pytest.fixture(autouse=True)
+    def mock_llm(self):
+        """Mock LLMRouter.chat for all tests — no real LLM dependency."""
+        with patch.object(LLMRouter, "chat", new_callable=AsyncMock) as mock:
+            mock.return_value = {
+                "content": json.dumps(
+                    {
+                        "issues": [],
+                        "dimensions": {
+                            "correctness": 80,
+                            "efficiency": 75,
+                            "readability": 70,
+                            "style": 60,
+                            "best_practices": 75,
+                        },
+                        "overall_score": 72.0,
+                        "summary": "Mock review",
+                    }
+                ),
+                "model": "mock",
+                "tokens": 10,
+                "provider": "mock",
+            }
+            yield
 
     @pytest.mark.asyncio
     async def test_create_code_review(self, client, auth_headers):
