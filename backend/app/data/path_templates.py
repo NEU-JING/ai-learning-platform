@@ -7,15 +7,9 @@
 - ai-manager: AI管理者路径 (6周)
 """
 
-from datetime import datetime, timezone
-
 # Seed behavior constants
 BEHAVIOR_CREATE_ONLY = "create_only"  # Only create if not exists; skip existing
 BEHAVIOR_UPSERT = "upsert"  # Insert or update; seed file is source of truth
-
-
-def _utcnow():
-    return datetime.now(timezone.utc)
 
 
 PATH_TEMPLATES = [

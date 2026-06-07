@@ -4,3 +4,4 @@ __pycache__/
 *.db
 *.db.backup.*
 node_modules/
+ecdsa_private_key.pem

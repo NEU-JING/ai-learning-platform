@@ -211,11 +211,12 @@ CREATE TABLE learning_obstacles (
 ```python
 class LLMRouter:
     """
-    三级 LLM 降级链
+    四级 LLM 降级链
     """
     LAYERS = [
-        {"name": "primary", "provider": "openrouter", "model": "claude-sonnet-4", "timeout": 30},
-        {"name": "fallback", "provider": "baidu", "model": "glm-4", "timeout": 20},
+        {"name": "primary", "provider": "ark", "model": "doubao-pro", "timeout": 30},
+        {"name": "fallback1", "provider": "openrouter", "model": "claude-sonnet-4", "timeout": 30},
+        {"name": "fallback2", "provider": "baidu", "model": "glm-4", "timeout": 20},
         {"name": "local", "provider": "local", "model": "qwen-7b", "timeout": 60}
     ]
     
@@ -252,7 +253,7 @@ class LLMRouter:
 | Task | 内容 | 估时 | AC |
 |------|------|:----:|:--:|
 | T1 | 创建 tutor_sessions, tutor_messages 表 | 20m | - |
-| T2 | 实现 LLM Router 三级降级 | 45m | AC21 |
+| T2 | 实现 LLM Router 四级降级 | 45m | AC21 |
 | T3 | 实现对话 API | 30m | AC15, AC21 |
 | T4 | 实现代码审查 API | 45m | AC16, AC17 |
 | T5 | 实现个性化推荐 API | 30m | AC18, AC19 |

@@ -7,8 +7,6 @@ T6: Radar 模块数据库表
 注意：UserSkillScore 模型保留在 __init__.py 中，这里只做扩展
 """
 
-from datetime import datetime, timezone
-
 from sqlalchemy import (
     JSON,
     Column,
@@ -21,11 +19,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from app.models import Base
-
-
-def _utcnow():
-    return datetime.now(timezone.utc)
+from app.models import Base, _utcnow
 
 
 class SkillDimension(Base):

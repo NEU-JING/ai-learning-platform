@@ -1,6 +1,6 @@
 import React from 'react';
 import { Icon } from './icons';
-import { loadCourses } from './data';
+import { loadCourses, logout } from './data';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 /* Topbar / Navigation / Command palette */
@@ -14,7 +14,7 @@ const Topbar = ({ onOpenSearch, onOpenTweaks, auth = {} }) => {
     { id: "home",     label: "首页",   icon: "home" },
     { id: "courses",  label: "课程",   icon: "book" },
     { id: "progress", label: "进度",   icon: "trending" },
-
+    { id: "radar",    label: "雷达",   icon: "target" },
   ];
 
   const pathname = location.pathname;
@@ -68,6 +68,7 @@ const Topbar = ({ onOpenSearch, onOpenTweaks, auth = {} }) => {
                 if (t.id === "home") navigate('/');
                 else if (t.id === "courses") navigate('/courses');
                 else if (t.id === "progress") navigate('/progress');
+                else if (t.id === "radar") navigate('/radar');
 
               }}
             >{t.label}</a>
@@ -85,7 +86,19 @@ const Topbar = ({ onOpenSearch, onOpenTweaks, auth = {} }) => {
         <button className="icon-btn" title="通知"><Icon name="bell" size={16} /></button>
         <button className="icon-btn" title="设计参数" onClick={onOpenTweaks}><Icon name="settings" size={16} /></button>
         {isLoggedIn ? (
-          <div className="avatar" title={user?.email || 'learner'}>{user?.name ? user.name.slice(0, 2).toUpperCase() : (user?.email || '??').slice(0, 2).toUpperCase()}</div>
+          <div 
+            className="avatar" 
+            title={user?.email || 'learner'}
+            onClick={() => {
+              if (confirm('确定要登出吗？')) {
+                logout();
+                window.location.reload();
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          >
+            {user?.name ? user.name.slice(0, 2).toUpperCase() : (user?.email || '??').slice(0, 2).toUpperCase()}
+          </div>
         ) : (
           <div className="hstack" style={{ gap: 8 }}>
             <button className="btn btn-ghost btn-sm" onClick={() => navigate('/login')}>登录</button>
@@ -104,7 +117,7 @@ const MobileNav = () => {
     { id: "home", label: "首页", icon: "home" },
     { id: "courses", label: "课程", icon: "book" },
     { id: "progress", label: "进度", icon: "trending" },
-
+    { id: "radar", label: "雷达", icon: "target" },
   ];
 
   const pathname = location.pathname;
@@ -114,6 +127,8 @@ const MobileNav = () => {
       ? "home"
       : pathname.startsWith('/progress')
         ? "progress"
+        : pathname.startsWith('/radar')
+          ? "radar"
       : pathname.split('/').filter(Boolean)[0] || 'home';
 
   return (
@@ -124,6 +139,7 @@ const MobileNav = () => {
           if (t.id === "home") navigate('/');
           else if (t.id === "courses") navigate('/courses');
           else if (t.id === "progress") navigate('/progress');
+          else if (t.id === "radar") navigate('/radar');
         }}>
           <Icon name={t.icon} size={18} />
           {t.label}

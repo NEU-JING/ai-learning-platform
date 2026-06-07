@@ -20,6 +20,7 @@ from app.api.v1 import (
     radar,
     recommendations,
     skills,
+    tutor,
 )
 from app.core.config import settings
 from app.core.database import SessionLocal, init_db
@@ -235,6 +236,9 @@ app.include_router(courses.router, prefix="/api/v1/courses", tags=["课程"])
 app.include_router(labs.router, prefix="/api/v1/labs", tags=["实验"])
 app.include_router(progress.router, prefix="/api/v1/progress", tags=["学习进度"])
 app.include_router(certificates.router, prefix="/api/v1/certificates", tags=["证书"])
+app.include_router(
+    certificates.certifications_router, prefix="/api/v1/certifications", tags=["认证"]
+)
 app.include_router(discussions.router, prefix="/api/v1", tags=["讨论区"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["数据分析"])
 app.include_router(skills.router, prefix="/api/v1/skills", tags=["技能雷达"])
@@ -242,6 +246,7 @@ app.include_router(radar.router, prefix="/api/v1", tags=["技能雷达V2"])
 app.include_router(profile.router, prefix="/api/v1/profile", tags=["公开主页"])
 app.include_router(recommendations.router, prefix="/api/v1", tags=["个性化推荐"])
 app.include_router(paths.router, prefix="/api/v1/paths", tags=["学习路径"])
+app.include_router(tutor.router, prefix="/api/v1", tags=["AI导师"])
 
 
 @app.get("/", response_class=HTMLResponse)

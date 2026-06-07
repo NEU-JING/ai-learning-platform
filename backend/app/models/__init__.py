@@ -41,6 +41,12 @@ class User(Base):
     submissions = relationship("LabSubmission", back_populates="user")
     discussions = relationship("Discussion", back_populates="user")
     comments = relationship("Comment", back_populates="user")
+    tutor_sessions = relationship("TutorSession", back_populates="user")
+    certification_applications = relationship("CertificationApplication", back_populates="user")
+    certificates = relationship("Certificate", back_populates="user")
+    capstone_submissions = relationship(
+        "CapstoneSubmission", back_populates="user", foreign_keys="CapstoneSubmission.user_id"
+    )
 
 
 class Course(Base):
@@ -365,6 +371,12 @@ class LearningPathModule(Base):
     course = relationship("Course")
 
 
+from app.models.certification import (  # noqa: E402, F401 — T16: Certification module
+    CapstoneSubmission,
+    Certificate,
+    CertificationApplication,
+    CertificationLevel,
+)
 from app.models.path import (  # noqa: E402, F401 — V4 Path module
     PathCourse,
     PathMilestone,
@@ -377,6 +389,12 @@ from app.models.radar import (  # noqa: E402, F401 — T6-T10: Radar module
     SkillDimension,
     SkillEvent,
     UserSkillSnapshot,
+)
+from app.models.tutor import (  # noqa: E402, F401 — T12: Tutor module
+    CodeReview,
+    LearningObstacle,
+    TutorMessage,
+    TutorSession,
 )
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
 
@@ -412,4 +430,14 @@ __all__ = [
     "SkillEvent",
     "UserSkillSnapshot",  # T9
     "JobSkillRequirement",  # T10
+    # T12: Tutor module
+    "TutorSession",
+    "TutorMessage",
+    "CodeReview",
+    "LearningObstacle",
+    # T16: Certification module
+    "CertificationLevel",
+    "CertificationApplication",
+    "Certificate",
+    "CapstoneSubmission",
 ]
