@@ -408,6 +408,7 @@ from app.models.employer import (  # noqa: E402, F401 — Employer module
     VerificationCode,
 )
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
+from app.models.profile_cache import ProfileCache  # noqa: E402, F401 — V4: profile cache
 
 __all__ = [
     "Base",
@@ -430,6 +431,7 @@ __all__ = [
     "LearningPathModule",
     # V4 additions
     "UserProfile",
+    "ProfileCache",
     # V4 Path module
     "PathTemplate",
     "UserPath",
