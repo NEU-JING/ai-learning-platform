@@ -1,8 +1,30 @@
-# AILP 开发流程规范 V2.1
+# AILP 开发流程规范 V2.2
 
-> 版本：V2.1
-> 日期：2026-05-24
-> 变更：新增 Phase 8 人工验收门禁
+> **版本**: V2.2
+> **日期**: 2026-06-14
+> **变更**: 迁移至 Hermes-harness SDD v2.1.0 状态机，新增 /explore 探索模式入口、docs/specs/ 多文件基线、telemetry 匿名统计
+>
+> **流程引擎**: `skill_view(name='sdd-orchestrator')`
+> **探索入口**: `skill_view(name='explore-agent')` — 通过 `/explore` 进入
+
+---
+
+## 前置说明
+
+AILP 流程与 Hermes-harness SDD v2.1.0 状态机对照：
+
+| AILP Phase | SDD 状态 | 描述 |
+|:----------:|:--------:|------|
+| Phase 0 探索 | EXPLORE | `/explore` 可选前置 |
+| Phase 1 PRD | PO_ENTRY → PO_DONE | PRD 文档 |
+| Phase 2 Spec | BA_ENTRY → BA_DONE | Spec 文档 |
+| Phase 3 Design | ARCHITECT_ENTRY → ARCHITECT_DONE | Design 文档 |
+| Phase 4 Tasks | （Architect 阶段产出） | Tasks 拆分 |
+| Phase 5 Implement | CODER_ENTRY → CODER_CHECK | 编码实现 |
+| Phase 6 Review | REVIEWER_ENTRY → REVIEWER_CHECK | 代码评审 |
+| Phase 7 QA | QA_ENTRY → QA_CHECK | 质量验证 |
+| Phase 8 验收 | USER_ACCEPT | 人工验收 |
+| Phase 9 归档 | ARCHIVE_ENTRY → DONE | 归档合入基线 |
 
 ---
 
@@ -12,6 +34,12 @@
 用户需求
     │
     ▼
+┌─────────────────┐
+│ 可选：/explore   │  探索模式，不创建文件
+│ 探索模式         │  → 明确方向可进入 PRD
+└────────┬────────┘
+         │
+         ▼
 ┌─────────────────┐
 │ 流程级别判定      │  Quick / Standard / Enhanced
 └────────┬────────┘
@@ -175,27 +203,40 @@ QA 报告：changes/NNN-xxx/qa-report.md
 
 ---
 
-## 四、Phase 9 归档
+## 四、归档（Phase 9 — 对应 SDD ARCHIVE_ENTRY → DONE）
+
+变更归档使用 SDD v2.1.0 六步归档流程，详见 `skill_view(name='sdd-orchestrator')`。
+
+**基线路径变更（v2.0 → v2.1.0）**：
+
+| 基线类型 | v2.0 路径 | v2.1.0 路径 |
+|:--------:|:---------:|:-----------:|
+| Spec 基线 | `docs/current/spec.md`（单文件） | `docs/specs/<capability>/spec.md`（多文件） |
+| Design 基线 | `docs/current/design.md` | `docs/current/design.md` |
+
+### 归档 6 步流程
 
 ```
 ✅ 用户确认
     │
     ▼
-1. 合并变更到 current/
-   · 将 changes/NNN-xxx/spec.md 合并到 current/spec.md
-   · 将 changes/NNN-xxx/design.md 合并到 current/design.md
+Step 1: 记录时间戳 → 状态快照
+Step 2: Spec Sync → 合并到 docs/specs/<capability>/spec.md
+Step 3: Design 基线合并 → 更新 docs/current/design.md
+Step 4: 生成 manifest.json → 删除 .sdd-state.json
+Step 5: mv changes/{id} → archive/{id}/
+Step 6: R10 门禁检查（PR / archive / baseline）
 
-2. 归档变更目录
-   · mv changes/NNN-xxx/ → archive/NNN-xxx/
-
-3. Stop Hook 触发
-   · 记录本次经验教训到 QUIRKS.md
-   · 如有新陷阱，更新 Skills
-
-4. 清理
-   · 删除 .qa-rounds（如有）
-   · Git commit 标注变更完成
+增量模式（非最终Phase）：
+→ 验收后归档Phase产物 + 基线同步
+→ 等待启动下一 Phase
 ```
+
+### Stop Hook 触发
+
+每次归档后：
+- 记录本次经验教训到 QUIRKS.md
+- 如有新陷阱，更新 Skills
 
 ---
 
@@ -230,25 +271,36 @@ Reviewer Agent 审查
 
 ```
 docs/
-├── current/                        # 当前生产版本
-│   ├── spec.md
-│   └── design.md
+├── specs/                         # 基线 Spec（按 capability 分文件）
+│   └── ailp-core/spec.md
 │
-├── changes/                        # 进行中的变更
+├── current/                       # 基线设计/PRD
+│   ├── design.md
+│   └── README.md（变更历史）
+│
+├── changes/                       # 进行中的变更
 │   └── NNN-feature-name/
 │       ├── prd.md
 │       ├── spec.md
 │       ├── design.md
 │       ├── tasks.md
+│       ├── review-report.md
 │       ├── qa-report.md
-│       ├── ac-coverage.md
-│       └── .qa-rounds
+│       └── .sdd-state.json
 │
-├── archive/                        # 已完成的变更
+├── archive/                       # 已完成的变更
+│   └── NNN-feature-name/
+│       ├── manifest.json
+│       ├── prd.md / spec.md / ...
+│       └── phase2/               # 增量模式下 Phase 归档
 │
-└── templates/                      # 文档模板
+├── templates/                     # 文档模板
+└── (AILP 额外目录)
+    ├── plans/                     # 规划产物
+    ├── design-notes/             # Brainstorming 产物
+    └── learnings/                # Stop Hook 学习日志
 ```
 
 ---
 
-*本文档为 AILP 开发流程 V2.1。V2.1 新增：Phase 8 人工验收门禁（需求/设计/代码三级分类打回）。*
+*本文档为 AILP 开发流程 V2.2，基于 Hermes-harness SDD v2.1.0 状态机。*
