@@ -390,11 +390,22 @@ from app.models.radar import (  # noqa: E402, F401 — T6-T10: Radar module
     SkillEvent,
     UserSkillSnapshot,
 )
+from app.models.sandbox import (  # noqa: E402, F401 — Sandbox module
+    ExecutionRequest,
+    ExternalExecution,
+    SandboxProvider,
+    VerificationTask,
+)
 from app.models.tutor import (  # noqa: E402, F401 — T12: Tutor module
     CodeReview,
     LearningObstacle,
     TutorMessage,
     TutorSession,
+)
+from app.models.employer import (  # noqa: E402, F401 — Employer module
+    Employer,
+    EmployerApiLog,
+    VerificationCode,
 )
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
 
@@ -440,4 +451,9 @@ __all__ = [
     "CertificationApplication",
     "Certificate",
     "CapstoneSubmission",
+    # Sandbox module
+    "ExecutionRequest",
+    "ExternalExecution",
+    "VerificationTask",
+    "SandboxProvider",
 ]
