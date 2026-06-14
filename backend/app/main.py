@@ -2,10 +2,11 @@ import asyncio
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 
 from app.api.v1 import (
     analytics,
@@ -13,17 +14,19 @@ from app.api.v1 import (
     certificates,
     courses,
     discussions,
+    employer,
     labs,
     paths,
     profile,
     progress,
     radar,
     recommendations,
+    sandbox,
     skills,
     tutor,
 )
 from app.core.config import settings
-from app.core.database import SessionLocal, init_db
+from app.core.database import SessionLocal, get_db, init_db
 from app.data.courses import PHASE_TITLES, init_courses_data
 from app.data.courses_phase1 import init_phase1_data
 from app.data.courses_phase2 import init_phase2_data
@@ -247,6 +250,19 @@ app.include_router(profile.router, prefix="/api/v1/profile", tags=["公开主页
 app.include_router(recommendations.router, prefix="/api/v1", tags=["个性化推荐"])
 app.include_router(paths.router, prefix="/api/v1/paths", tags=["学习路径"])
 app.include_router(tutor.router, prefix="/api/v1", tags=["AI导师"])
+app.include_router(sandbox.router, prefix="/api/v1/sandbox", tags=["沙箱"])
+app.include_router(employer.router, prefix="/api/v1/employer", tags=["雇主验证"])
+
+
+# ── AC45: Public certificate verification page (before SPA catch-all) ────
+
+@app.get("/verify/{cert_number}", response_class=HTMLResponse)
+def verify_certificate_page(cert_number: str, db: Session = Depends(get_db)):
+    """证书公开验证页面 — AC45."""
+    from app.services.employer import render_verify_page
+
+    html, status_code = render_verify_page(db, cert_number)
+    return HTMLResponse(content=html, status_code=status_code)
 
 
 @app.get("/", response_class=HTMLResponse)

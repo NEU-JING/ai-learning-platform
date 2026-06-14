@@ -128,3 +128,106 @@ class TestEmployerTables:
         assert log.id is not None
         assert log.endpoint == "/api/v1/employer/verify"
         assert log.status_code == 200
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# E2: Certificate verification HTML page (AC45)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class TestCertificateVerificationPage:
+    """E2: GET /verify/{cert_number} — AC45, renders public HTML verification page."""
+
+    def _seed_cert(self, test_db):
+        """Helper: create a certificate + user for verification page tests."""
+        from app.models import User
+        from app.models.certification import Certificate, CertificationLevel
+
+        # Create user
+        user = User(
+            email="holder@example.com",
+            username="certificate_holder",
+            password_hash="hash",
+            role="student",
+            is_active=True,
+        )
+        test_db.add(user)
+        test_db.flush()
+
+        # Create level
+        level = CertificationLevel(
+            name="L2 AI Engineer",
+            description="Level 2 certification",
+            min_average_score=80.0,
+            order=2,
+            is_active=True,
+        )
+        test_db.add(level)
+        test_db.flush()
+
+        # Create certificate
+        cert = Certificate(
+            user_id=user.id,
+            level_id=level.id,
+            cert_number="AILP-L2-ABCD-1234",
+            issue_date=__import__("datetime").datetime(2026, 5, 1),
+            cert_metadata={
+                "holder_name": "张三",
+                "completed_labs": 45,
+                "avg_score": 85.5,
+            },
+            signature="MEUCIQTestSignature123",
+            is_valid=True,
+        )
+        test_db.add(cert)
+        test_db.commit()
+        test_db.refresh(cert)
+        return cert, user, level
+
+    def test_verify_page_returns_html(self, client, test_db):
+        """AC45: GET /verify/{cert_number} returns HTML page (not JSON)."""
+        cert, _, _ = self._seed_cert(test_db)
+
+        response = client.get(f"/verify/{cert.cert_number}")
+        assert response.status_code == 200
+        content_type = response.headers.get("content-type", "")
+        assert "text/html" in content_type, f"Expected HTML, got {content_type}"
+
+    def test_verify_page_contains_cert_info(self, client, test_db):
+        """AC45: HTML page shows certificate holder, level, dates."""
+        cert, _, _ = self._seed_cert(test_db)
+
+        response = client.get(f"/verify/{cert.cert_number}")
+        assert response.status_code == 200
+        html = response.text
+
+        # Check that key info is in the HTML
+        assert "AILP-L2-ABCD-1234" in html
+        assert "张三" in html
+        assert "L2 AI Engineer" in html or "L2" in html
+        assert "2026" in html  # issue date
+
+    def test_verify_page_nonexistent_cert(self, client, test_db):
+        """AC45: Non-existent cert number returns 404 page."""
+        response = client.get("/verify/FAKE-CERT-0000")
+        assert response.status_code == 404
+
+    def test_verify_page_revoked_cert(self, client, test_db):
+        """AC45: Revoked certificate shows invalid status."""
+        cert, _, _ = self._seed_cert(test_db)
+
+        # Revoke the cert
+        from app.models.certification import Certificate
+        test_db.query(Certificate).filter(
+            Certificate.id == cert.id
+        ).update({"is_valid": False})
+        test_db.commit()
+
+        response = client.get(f"/verify/{cert.cert_number}")
+        assert response.status_code == 200
+        html = response.text
+        # Should indicate the certificate is invalid/revoked
+        assert any(
+            word in html.lower()
+            for word in ["revoked", "invalid", "无效", "吊销", "失效"]
+        ), f"HTML should indicate revoked status, got: {html[:500]}"
