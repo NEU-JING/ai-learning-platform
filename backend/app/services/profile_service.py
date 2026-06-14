@@ -8,7 +8,7 @@ Key business rules:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -19,7 +19,9 @@ from app.models import (
     LabSubmission,
     LearningProgress,
     User,
+    UserSettings,
 )
+from app.models.profile_cache import ProfileCache
 from app.models.user_profile import UserProfile
 from app.schemas.analytics import AnalyticsEventCreate
 from app.schemas.profile import ProfileSettingsUpdate
@@ -150,9 +152,23 @@ class ProfileService:
         db.commit()
         db.refresh(profile)
 
-        # ── Analytics events ─────────────────────────────────────────────
-        is_now_public = profile.is_public
+        # ── Analytics events (MAJOR fix: extracted helper) ─────────────────
+        self._emit_settings_events(
+            db=db, user_id=user_id, username=username,
+            is_now_public=profile.is_public, was_public=was_public,
+            prev_dimensions=prev_dimensions, profile=profile,
+            update_data=update_data, request_info=request_info,
+        )
 
+        return self.get_settings(db, user_id, username, avatar_url)
+
+    def _emit_settings_events(
+        self, db: Session, user_id: int, username: str,
+        is_now_public: bool, was_public: bool,
+        prev_dimensions: dict, profile: UserProfile,
+        update_data: dict, request_info: dict | None,
+    ) -> None:
+        """Emit analytics events for settings changes (MAJOR fix: extracted from update_settings)."""
         # profile_enabled: is_public transitioned false→true
         if is_now_public and not was_public:
             self._emit_event(
@@ -193,8 +209,6 @@ class ProfileService:
         logger.info(
             "profile_settings_update user_id=%s fields=%s", user_id, list(update_data.keys())
         )
-
-        return self.get_settings(db, user_id, username, avatar_url)
 
     def batch_action(
         self,
@@ -268,6 +282,12 @@ class ProfileService:
             return {"error": 403, "detail": "该用户尚未公开能力主页"}
 
         # Step 4: Build response with full data, then apply visibility
+        # AC43: Determine path_type for dimension highlighting
+        path_type = None
+        user_settings = db.query(UserSettings).filter(UserSettings.user_id == user.id).first()
+        if user_settings and user_settings.learning_path:
+            path_type = user_settings.learning_path
+
         response = {
             "username": user.username,
             "display_name": profile.display_name or user.username,
@@ -280,7 +300,7 @@ class ProfileService:
                 "show_labs": profile.show_labs,
                 "show_certificates": profile.show_certificates,
             },
-            "skill_radar": SkillRadarService.get_skill_radar(user.id, db),
+            "skill_radar": SkillRadarService.get_skill_radar(user.id, db, path_type=path_type),
             "labs": self._get_labs(db, user.id),
             "labs_total": 0,  # will be set below
             "certificates": self._get_certificates(db, user.id),
@@ -299,8 +319,24 @@ class ProfileService:
             request_info=request_info,
         )
         # Observability log with anonymous viewer context
-        viewer_ip = (request_info or {}).get("ip_address", "unknown")
-        logger.info("profile_view username=%s viewer_ip=%s", username, viewer_ip)
+
+        # ── Cache: write to ProfileCache for 5 minutes ──
+        try:
+            existing_cache = (
+                db.query(ProfileCache)
+                .filter(ProfileCache.cache_key == f"public_profile:{username}")
+                .first()
+            )
+            cache_entry = existing_cache or ProfileCache(
+                user_id=user.id, cache_key=f"public_profile:{username}"
+            )
+            cache_entry.cached_data = response
+            cache_entry.expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+            if not existing_cache:
+                db.add(cache_entry)
+            db.commit()
+        except Exception:
+            logger.warning("profile_cache_write_failed username=%s", username, exc_info=True)
 
         return response
 
@@ -387,43 +423,47 @@ class ProfileService:
             LearningProgress status='completed'
           - cert_id format: AI-{course_id}-{user_id}-{date}
           - verify_url: /api/v1/certificates/verify/{cert_id}
+
+        Uses a single JOIN query to avoid N+1 per-course lookups.
         """
-        # Find all courses that have chapters
-        courses = db.query(Course).all()
+        from sqlalchemy import func
 
-        result = []
-        for course in courses:
-            chapters = db.query(Chapter).filter(Chapter.course_id == course.id).all()
-            if not chapters:
-                continue
-
-            chapter_ids = [ch.id for ch in chapters]
-
-            # Count completed chapters for this user in this course
-            completed_count = (
-                db.query(LearningProgress)
-                .filter(
-                    LearningProgress.user_id == user_id,
-                    LearningProgress.chapter_id.in_(chapter_ids),
-                    LearningProgress.status == "completed",
-                )
-                .count()
+        # Single query: get course_id, total chapters, and completed count per course
+        rows = (
+            db.query(
+                Course.id,
+                Course.title,
+                Course.level,
+                func.count(Chapter.id.distinct()).label("total_chapters"),
+                func.count(LearningProgress.id.distinct()).label("completed_count"),
             )
+            .outerjoin(Chapter, Chapter.course_id == Course.id)
+            .outerjoin(
+                LearningProgress,
+                (LearningProgress.chapter_id == Chapter.id)
+                & (LearningProgress.user_id == user_id)
+                & (LearningProgress.status == "completed"),
+            )
+            .group_by(Course.id)
+            .all()
+        )
 
-            if completed_count < len(chapters):
+        now = datetime.now(timezone.utc)
+        result = []
+        for row in rows:
+            course_id, title, level, total_chapters, completed_count = row
+            if total_chapters == 0 or completed_count < total_chapters:
                 continue
 
-            # Course fully completed → generate certificate entry
-            now = datetime.now(timezone.utc)
-            cert_id = f"AI-{course.id}-{user_id}-{now.strftime('%Y%m%d')}"
-            level_label = _LEVEL_LABELS.get(course.level, "学习认证")
+            cert_id = f"AI-{course_id}-{user_id}-{now.strftime('%Y%m%d')}"
+            level_label = _LEVEL_LABELS.get(level, "学习认证")
             verify_url = f"/api/v1/certificates/verify/{cert_id}"
 
             result.append(
                 {
                     "cert_id": cert_id,
-                    "course_title": course.title,
-                    "level": course.level,
+                    "course_title": title,
+                    "level": level,
                     "level_label": level_label,
                     "issue_date": now,
                     "verify_url": verify_url,

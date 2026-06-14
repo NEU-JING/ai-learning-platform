@@ -1,10 +1,30 @@
 {
   "change_id": "002-ailp-v4-refactor",
   "flow_level": "Standard",
-  "current_phase": "phase_2_accepted",
-  "qa_report": "docs/changes/002-ailp-v4-refactor/phase2-qa-report.md",
-  "qa_passed_at": "2026-06-01",
-  "phases_completed": ["po", "ba", "architect", "coder", "reviewer", "qa"],
+  "current_state": "USER_ACCEPT",
+  "current_phase": "phase_3_accepted",
+  "phase3_accepted": true,
+  "phase3_accepted_at": "2026-06-14T20:00:00+08:00",
+  "review_status": "passed",
+  "phase3_branch": "phase3/002-ailp-v4-refactor",
+  "qa_status": "passed",
+  "qa_report": "docs/changes/002-ailp-v4-refactor/qa-report.md",
+  "qa_passed_at": "2026-06-14T14:00:00+08:00",
+  "archived": true,
+  "archived_at": "2026-06-14T13:47:00+08:00",
+  "hermes_version": "v2.1.0",
+  "migrated_at": "2026-06-14",
+  "migration_note": "从 Hermes SDD v2.0 状态文件迁移至 v2.1.0 格式",
+  "phase2_qa_report": "docs/changes/002-ailp-v4-refactor/phase2-qa-report.md",
+  "phase2_qa_passed_at": "2026-06-01",
+  "phases_completed": [
+    "po",
+    "ba",
+    "architect",
+    "coder",
+    "reviewer",
+    "qa"
+  ],
   "coder_fix_commit": "fbe66a5",
   "coder_fix_summary": "修复 Phase 2 Review 发现的全部问题：AC范围声明、2个缺失API端点、_utcnow() DRY、函数拆分、Mock修复、Pydantic V2迁移、文档更新",
   "design_review": {
@@ -17,7 +37,9 @@
     "info": 1,
     "report": "docs/changes/002-ailp-v4-refactor/design-review-report.md"
   },
-  "phases_rolled_back": ["coder"],
+  "phases_rolled_back": [
+    "coder"
+  ],
   "rollback_reason": "SDD技能未启用，需重新按流程执行",
   "rollback_timestamp": "2026-05-28",
   "rolled_back_commits": [
@@ -64,15 +86,40 @@
     "total": 39,
     "estimated_hours": 22,
     "phases": [
-      {"phase": 1, "name": "基础数据层", "tasks": 10, "hours": 6.25},
-      {"phase": 2, "name": "核心服务层", "tasks": 9, "hours": 5.5},
-      {"phase": 3, "name": "验证与执行", "tasks": 10, "hours": 5.42},
-      {"phase": 4, "name": "演进引擎", "tasks": 5, "hours": 2.75},
-      {"phase": 5, "name": "集成测试", "tasks": 5, "hours": 2.75}
+      {
+        "phase": 1,
+        "name": "基础数据层",
+        "tasks": 10,
+        "hours": 6.25
+      },
+      {
+        "phase": 2,
+        "name": "核心服务层",
+        "tasks": 9,
+        "hours": 5.5
+      },
+      {
+        "phase": 3,
+        "name": "验证与执行",
+        "tasks": 10,
+        "hours": 5.42
+      },
+      {
+        "phase": 4,
+        "name": "演进引擎",
+        "tasks": 5,
+        "hours": 2.75
+      },
+      {
+        "phase": 5,
+        "name": "集成测试",
+        "tasks": 5,
+        "hours": 2.75
+      }
     ]
   },
-  "next_action": "Phase 2 已验收，等待合并 PR #21 并启动 Phase 3（Sandbox + Profile + Employer）",
-  "updated_at": "2026-06-08",
+  "next_action": "Phase 3 编码完成，进入 Review 阶段",
+  "updated_at": "2026-06-14",
   "incremental_mode": true,
   "phase_config": {
     "total_phases": 5,
@@ -88,9 +135,46 @@
         "started_at": "2026-05-31",
         "completed_at": "2026-05-31",
         "qa_passed_at": null,
-        "tasks": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"],
-"completed_tasks": ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"],
-        "ac_covered": ["AC1", "AC2", "AC3", "AC4", "AC5", "AC6", "AC7", "AC8", "AC9", "AC10", "AC11", "AC12", "AC13", "AC14"],
+        "tasks": [
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5",
+          "T6",
+          "T7",
+          "T8",
+          "T9",
+          "T10"
+        ],
+        "completed_tasks": [
+          "T1",
+          "T2",
+          "T3",
+          "T4",
+          "T5",
+          "T6",
+          "T7",
+          "T8",
+          "T9",
+          "T10"
+        ],
+        "ac_covered": [
+          "AC1",
+          "AC2",
+          "AC3",
+          "AC4",
+          "AC5",
+          "AC6",
+          "AC7",
+          "AC8",
+          "AC9",
+          "AC10",
+          "AC11",
+          "AC12",
+          "AC13",
+          "AC14"
+        ],
         "depends_on": [],
         "deliverables": [
           "Path API 全量测试通过（5个端点）",
@@ -105,9 +189,45 @@
         "name": "核心服务层（Tutor + Certification）",
         "status": "accepted",
         "started_at": "2026-05-31",
-        "tasks": ["T11", "T12", "T13", "T14", "T15", "T16", "T17", "T18", "T19"],
-        "ac_covered": ["AC15", "AC16", "AC17", "AC18", "AC19", "AC20", "AC21", "AC22", "AC23", "AC24", "AC25", "AC26", "AC27", "AC28", "AC29", "AC30", "AC31", "AC32", "AC33", "AC34", "AC35", "AC36", "AC37"],
-        "depends_on": ["phase_1"],
+        "tasks": [
+          "T11",
+          "T12",
+          "T13",
+          "T14",
+          "T15",
+          "T16",
+          "T17",
+          "T18",
+          "T19"
+        ],
+        "ac_covered": [
+          "AC15",
+          "AC16",
+          "AC17",
+          "AC18",
+          "AC19",
+          "AC20",
+          "AC21",
+          "AC22",
+          "AC23",
+          "AC24",
+          "AC25",
+          "AC26",
+          "AC27",
+          "AC28",
+          "AC29",
+          "AC30",
+          "AC31",
+          "AC32",
+          "AC33",
+          "AC34",
+          "AC35",
+          "AC36",
+          "AC37"
+        ],
+        "depends_on": [
+          "phase_1"
+        ],
         "deliverables": [
           "Tutor API 全量测试通过（5个端点）",
           "Certification API 全量测试通过（4个端点）",
@@ -119,10 +239,35 @@
       },
       "phase_3": {
         "name": "验证与执行（Sandbox + Profile + Employer）",
-        "status": "not_started",
-        "tasks": ["T20", "T21", "T22", "T23", "T24", "T25", "T26", "T27", "T28", "T29"],
-        "ac_covered": ["AC38", "AC39", "AC40", "AC41", "AC42", "AC43", "AC44", "AC45", "AC46", "AC47"],
-        "depends_on": ["phase_1", "phase_2"],
+        "status": "accepted",
+        "tasks": [
+          "T20",
+          "T21",
+          "T22",
+          "T23",
+          "T24",
+          "T25",
+          "T26",
+          "T27",
+          "T28",
+          "T29"
+        ],
+        "ac_covered": [
+          "AC38",
+          "AC39",
+          "AC40",
+          "AC41",
+          "AC42",
+          "AC43",
+          "AC44",
+          "AC45",
+          "AC46",
+          "AC47"
+        ],
+        "depends_on": [
+          "phase_1",
+          "phase_2"
+        ],
         "deliverables": [
           "Sandbox API 全量测试通过",
           "Profile API 全量测试通过",
@@ -136,9 +281,20 @@
       "phase_4": {
         "name": "演进引擎（Evolution）",
         "status": "not_started",
-        "tasks": ["T30", "T31", "T32", "T33", "T34"],
-        "ac_covered": ["AC48"],
-        "depends_on": ["phase_1", "phase_2"],
+        "tasks": [
+          "T30",
+          "T31",
+          "T32",
+          "T33",
+          "T34"
+        ],
+        "ac_covered": [
+          "AC48"
+        ],
+        "depends_on": [
+          "phase_1",
+          "phase_2"
+        ],
         "deliverables": [
           "Evolution API 全量测试通过",
           "AC48 验收标准验证完成",
@@ -150,9 +306,22 @@
       "phase_5": {
         "name": "集成测试",
         "status": "not_started",
-        "tasks": ["T35", "T36", "T37", "T38", "T39"],
-        "ac_covered": ["AC49"],
-        "depends_on": ["phase_1", "phase_2", "phase_3", "phase_4"],
+        "tasks": [
+          "T35",
+          "T36",
+          "T37",
+          "T38",
+          "T39"
+        ],
+        "ac_covered": [
+          "AC49"
+        ],
+        "depends_on": [
+          "phase_1",
+          "phase_2",
+          "phase_3",
+          "phase_4"
+        ],
         "deliverables": [
           "全量集成测试通过（100%）",
           "AC49 验收标准验证完成",
