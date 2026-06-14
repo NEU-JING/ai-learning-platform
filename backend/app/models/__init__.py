@@ -451,6 +451,10 @@ __all__ = [
     "CertificationApplication",
     "Certificate",
     "CapstoneSubmission",
+    # Employer module
+    "Employer",
+    "VerificationCode",
+    "EmployerApiLog",
     # Sandbox module
     "ExecutionRequest",
     "ExternalExecution",
