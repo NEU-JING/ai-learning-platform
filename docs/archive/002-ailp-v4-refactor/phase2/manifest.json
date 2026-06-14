@@ -1,0 +1,28 @@
+{
+  "change_id": "002-ailp-v4-refactor",
+  "phase": "phase_2",
+  "phase_name": "核心服务层（Tutor + Certification）",
+  "archived_at": "2026-06-14T13:47:00+08:00",
+  "hermes_version": "v2.1.0",
+  "migration": "从 SDD v2.0 归档至 v2.1.0 格式",
+  "ac_range": "AC15-AC37",
+  "ac_total": 23,
+  "ac_passed": 23,
+  "status": "accepted",
+  "tasks": ["T11", "T12", "T13", "T14", "T15", "T16", "T17", "T18", "T19"],
+  "deliverables": [
+    "Tutor API 全量测试通过（5个端点）",
+    "Certification API 全量测试通过（4个端点）",
+    "AC15-AC37 验收标准验证完成"
+  ],
+  "artifacts": [
+    "phase2-qa-report.md",
+    "phase2-review-report.md",
+    "phase2-fix-review-report.md",
+    "design-review-report.md"
+  ],
+  "baseline_synced": {
+    "spec": "docs/specs/ailp-core/spec.md",
+    "design": "docs/current/design.md"
+  }
+}

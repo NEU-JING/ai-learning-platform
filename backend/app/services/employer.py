@@ -8,9 +8,8 @@ Handles:
 - Rate limiting (in-memory)
 """
 
-import time
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Optional, Tuple
 
 from fastapi import Depends, Header, HTTPException, status
@@ -25,16 +24,34 @@ class RateLimiter:
     """In-memory rate limiter (AC48). 1000 requests/hour by default.
 
     Uses a sliding window approach. Thread-safe enough for single-worker FastAPI.
+    Auto-cleans expired hour counters older than 1 hour.
     """
 
     def __init__(self):
         self._counters: Dict[str, Dict[int, int]] = defaultdict(dict)
+
+    def _cleanup_expired(self):
+        """Remove entries from hours older than current hour - 1 (MAJOR fix: prevent memory leak)."""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc)
+        current_hour = now.hour
+        # Keep current and previous hour; remove everything else
+        expired_keys = []
+        for key, hours in self._counters.items():
+            expired_hours = [h for h in hours if h < current_hour - 1]
+            for h in expired_hours:
+                del hours[h]
+            if not hours:
+                expired_keys.append(key)
+        for key in expired_keys:
+            del self._counters[key]
 
     def check(self, api_key: str, limit: int = 1000) -> Tuple[bool, int]:
         """Check if request is allowed.
 
         Returns (allowed: bool, remaining: int).
         """
+        from datetime import datetime, timezone
         hour = datetime.now(timezone.utc).hour
         key = api_key
         current = self._counters[key].get(hour, 0)
@@ -43,7 +60,17 @@ class RateLimiter:
             return False, 0
 
         self._counters[key][hour] = current + 1
+        # Periodic cleanup every ~100 checks
+        if (current + 1) % 100 == 0:
+            self._cleanup_expired()
         return True, limit - current - 1
+
+    def get_usage(self, api_key: str) -> dict:
+        """Return current usage info for an API key (MINOR: capacity query)."""
+        from datetime import datetime, timezone
+        hour = datetime.now(timezone.utc).hour
+        current = self._counters.get(api_key, {}).get(hour, 0)
+        return {"current_hour": hour, "used": current}
 
     def reset(self, api_key: str = None):
         """Reset counters (for testing)."""
@@ -96,6 +123,8 @@ def get_api_key_employer(
 
 def log_api_call(db: Session, employer_id: int, endpoint: str, status_code: int, response_time_ms: int):
     """AC47: Record API call to audit log."""
+    import logging
+    _logger = logging.getLogger(__name__)
     try:
         log = EmployerApiLog(
             employer_id=employer_id,
@@ -107,6 +136,7 @@ def log_api_call(db: Session, employer_id: int, endpoint: str, status_code: int,
         db.commit()
     except Exception:
         db.rollback()
+        _logger.exception("Failed to log API call for employer_id=%s endpoint=%s", employer_id, endpoint)
 
 
 def render_verify_page(db: Session, cert_number: str) -> Tuple[str, int]:
@@ -142,37 +172,76 @@ def render_verify_page(db: Session, cert_number: str) -> Tuple[str, int]:
 
     # Expiry: 2 years from issue
     if cert.issue_date:
-        from datetime import timedelta
         expiry_date = cert.issue_date + timedelta(days=730)
         expiry_str = expiry_date.strftime("%Y-%m-%d")
     else:
         expiry_str = "N/A"
 
-    html = f"""<!DOCTYPE html>
+    # ── Render HTML using template constants (MAJOR fix: extracted from function) ──
+    valid_class = "valid" if cert.is_valid else "invalid"
+    signature_row = ""
+    if cert.signature:
+        signature_row = (
+            '<div class="row"><span class="label">数字签名</span>'
+            '<span class="value" style="font-size:11px;max-width:200px;word-break:break-all;">'
+            f'{cert.signature}</span></div>'
+        )
+
+    html = _VERIFY_PAGE_TEMPLATE.format(
+        css=_VERIFY_PAGE_CSS,
+        cert_number=cert_number,
+        level_name=level_name,
+        holder_name=holder_name,
+        issue_date=issue_date,
+        expiry_str=expiry_str,
+        completed_labs=completed_labs,
+        avg_score=avg_score,
+        valid_class=valid_class,
+        valid_status=valid_status,
+        signature_row=signature_row,
+    )
+
+    return html, 200
+
+
+def _error_html(title: str, message: str) -> str:
+    """Render an error HTML page."""
+    return _ERROR_HTML_TEMPLATE.format(title=title, message=message)
+
+
+# ── HTML template constants (MAJOR fix: extracted from function body) ──────────
+
+_VERIFY_PAGE_CSS = """
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+               background: #f5f7fa; color: #333; }
+        .container { max-width: 640px; margin: 60px auto; padding: 20px; }
+        .card { background: white; border-radius: 16px;
+                box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  color: white; padding: 32px 24px; text-align: center; }
+        .header h1 { font-size: 24px; margin-bottom: 8px; }
+        .header .cert-number { font-size: 14px; opacity: 0.85; font-family: monospace; }
+        .body { padding: 24px; }
+        .row { display: flex; justify-content: space-between;
+               padding: 12px 0; border-bottom: 1px solid #eee; }
+        .row:last-child { border-bottom: none; }
+        .label { color: #888; font-size: 14px; }
+        .value { font-weight: 600; font-size: 14px; }
+        .valid { color: #22c55e; }
+        .invalid { color: #ef4444; font-weight: 700; }
+        .footer { text-align: center; padding: 16px; font-size: 12px; color: #999; }
+        .footer a { color: #667eea; }
+        .badge { display: inline-block; background: #667eea; color: white;
+                 padding: 4px 12px; border-radius: 20px; font-size: 13px; margin-top: 8px; }"""
+
+_VERIFY_PAGE_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>证书验证 — AILP</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; }}
-        .container {{ max-width: 640px; margin: 60px auto; padding: 20px; }}
-        .card {{ background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); overflow: hidden; }}
-        .header {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 32px 24px; text-align: center; }}
-        .header h1 {{ font-size: 24px; margin-bottom: 8px; }}
-        .header .cert-number {{ font-size: 14px; opacity: 0.85; font-family: monospace; }}
-        .body {{ padding: 24px; }}
-        .row {{ display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #eee; }}
-        .row:last-child {{ border-bottom: none; }}
-        .label {{ color: #888; font-size: 14px; }}
-        .value {{ font-weight: 600; font-size: 14px; }}
-        .valid {{ color: #22c55e; }}
-        .invalid {{ color: #ef4444; font-weight: 700; }}
-        .footer {{ text-align: center; padding: 16px; font-size: 12px; color: #999; }}
-        .footer a {{ color: #667eea; }}
-        .badge {{ display: inline-block; background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 13px; margin-top: 8px; }}
-    </style>
+    <style>{css}</style>
 </head>
 <body>
     <div class="container">
@@ -209,9 +278,9 @@ def render_verify_page(db: Session, cert_number: str) -> Tuple[str, int]:
                 </div>
                 <div class="row">
                     <span class="label">验证状态</span>
-                    <span class="value {'valid' if cert.is_valid else 'invalid'}">{valid_status}</span>
+                    <span class="value {valid_class}">{valid_status}</span>
                 </div>
-                {'<div class="row"><span class="label">数字签名</span><span class="value" style="font-size:11px;max-width:200px;word-break:break-all;">' + (cert.signature or 'N/A') + '</span></div>' if cert.signature else ''}
+                {signature_row}
             </div>
             <div class="footer">
                 <p>由 <a href="/">AILP — AI能力验证平台</a> 提供验证服务</p>
@@ -222,12 +291,7 @@ def render_verify_page(db: Session, cert_number: str) -> Tuple[str, int]:
 </body>
 </html>"""
 
-    return html, 200
-
-
-def _error_html(title: str, message: str) -> str:
-    """Render an error HTML page."""
-    return f"""<!DOCTYPE html>
+_ERROR_HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -235,8 +299,12 @@ def _error_html(title: str, message: str) -> str:
     <title>{title} — AILP</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; display: flex; justify-content: center; align-items: center; min-height: 100vh; }}
-        .error-card {{ background: white; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,0.08); padding: 48px; text-align: center; max-width: 400px; }}
+        body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+               background: #f5f7fa; display: flex; justify-content: center;
+               align-items: center; min-height: 100vh; }}
+        .error-card {{ background: white; border-radius: 16px;
+                      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+                      padding: 48px; text-align: center; max-width: 400px; }}
         .error-card h1 {{ font-size: 48px; margin-bottom: 12px; }}
         .error-card p {{ color: #888; font-size: 16px; }}
         .error-card a {{ color: #667eea; margin-top: 24px; display: inline-block; }}
@@ -296,7 +364,7 @@ def verify_signature(db: Session, cert_number: str, signature: str) -> Dict[str,
             "holder": cert.cert_metadata.get("holder_name", user.username if user else "Unknown") if cert.cert_metadata else (user.username if user else "Unknown"),
             "level": level.name if level else "Unknown",
             "issued_at": cert.issue_date.strftime("%Y-%m-%d") if cert.issue_date else None,
-            "expires_at": (cert.issue_date + __import__("datetime").timedelta(days=730)).strftime("%Y-%m-%d") if cert.issue_date else None,
+            "expires_at": (cert.issue_date + timedelta(days=730)).strftime("%Y-%m-%d") if cert.issue_date else None,
         },
         "audit_summary": {
             "completed_labs": cert.cert_metadata.get("completed_labs", 0) if cert.cert_metadata else 0,
@@ -304,6 +372,50 @@ def verify_signature(db: Session, cert_number: str, signature: str) -> Dict[str,
             "verification_count": 1,
         },
     }
+
+
+def _query_certifications(db: Session, user_id: int) -> list:
+    """Query valid certifications for a user."""
+    from app.models.certification import Certificate
+    certs = db.query(Certificate).filter(
+        Certificate.user_id == user_id,
+        Certificate.is_valid.is_(True),
+    ).all()
+    return [
+        {
+            "cert_number": c.cert_number,
+            "level_id": c.level_id,
+            "issue_date": c.issue_date.isoformat() if c.issue_date else None,
+            "is_valid": c.is_valid,
+        }
+        for c in certs
+    ]
+
+
+def _query_skill_summary(db: Session, user_id: int) -> dict:
+    """Query skill scores for a user."""
+    from app.models import UserSkillScore
+    scores = db.query(UserSkillScore).filter(
+        UserSkillScore.user_id == user_id
+    ).all()
+    return {s.dimension: s.score for s in scores}
+
+
+def _query_lab_history(db: Session, user_id: int) -> list:
+    """Query recent lab submissions for a user."""
+    from app.models import LabSubmission
+    subs = db.query(LabSubmission).filter(
+        LabSubmission.user_id == user_id
+    ).order_by(LabSubmission.created_at.desc()).limit(20).all()
+    return [
+        {
+            "lab_id": s.lab_id,
+            "status": s.status,
+            "score": s.score,
+            "created_at": s.created_at.isoformat() if s.created_at else None,
+        }
+        for s in subs
+    ]
 
 
 def query_by_code(db: Session, verification_code: str, requested_fields: list) -> Dict[str, Any]:
@@ -337,43 +449,12 @@ def query_by_code(db: Session, verification_code: str, requested_fields: list) -
 
     # AC49: Only return fields that are both requested AND permitted
     if "certifications" in requested_fields and permissions.get("certifications", False):
-        from app.models.certification import Certificate
-        certs = db.query(Certificate).filter(
-            Certificate.user_id == user.id,
-            Certificate.is_valid.is_(True),
-        ).all()
-        result["certifications"] = [
-            {
-                "cert_number": c.cert_number,
-                "level_id": c.level_id,
-                "issue_date": c.issue_date.isoformat() if c.issue_date else None,
-                "is_valid": c.is_valid,
-            }
-            for c in certs
-        ]
+        result["certifications"] = _query_certifications(db, user.id)
 
     if "skill_summary" in requested_fields and permissions.get("skill_summary", False):
-        from app.models import UserSkillScore
-        scores = db.query(UserSkillScore).filter(
-            UserSkillScore.user_id == user.id
-        ).all()
-        result["skill_radar"] = {
-            s.dimension: s.score for s in scores
-        }
+        result["skill_radar"] = _query_skill_summary(db, user.id)
 
     if "lab_history" in requested_fields and permissions.get("lab_history", False):
-        from app.models import LabSubmission
-        subs = db.query(LabSubmission).filter(
-            LabSubmission.user_id == user.id
-        ).order_by(LabSubmission.created_at.desc()).limit(20).all()
-        result["lab_history"] = [
-            {
-                "lab_id": s.lab_id,
-                "status": s.status,
-                "score": s.score,
-                "created_at": s.created_at.isoformat() if s.created_at else None,
-            }
-            for s in subs
-        ]
+        result["lab_history"] = _query_lab_history(db, user.id)
 
     return result

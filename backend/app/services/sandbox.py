@@ -23,12 +23,8 @@ from app.models import (
     VerificationTask,
 )
 
-
-def _execute_code_sync(code: str, timeout: int = 30) -> Dict[str, Any]:
-    """Synchronous code execution via subprocess (avoids asyncio deadlocks in tests)."""
-    temp_file = None
-    try:
-        wrapped_code = f"""import sys
+# Code wrapper template (MAJOR fix: extracted from function body to reduce function length)
+_WRAP_CODE_TEMPLATE = """import sys
 import io
 import json as _json
 
@@ -37,7 +33,7 @@ sys.stdout = io.StringIO()
 old_stderr = sys.stderr
 sys.stderr = io.StringIO()
 
-_user_code = {repr(code)}
+_user_code = {code_repr}
 try:
     exec(_user_code)
 except Exception as _e:
@@ -65,15 +61,36 @@ print("===RESULT_START===")
 print(_json.dumps(_result))
 print("===RESULT_END===")
 """
+
+
+def _execute_code_sync(code: str, timeout: int = 30) -> Dict[str, Any]:
+    """Synchronous code execution via subprocess (avoids asyncio deadlocks in tests).
+
+    Enforces resource limits: 30s timeout, 512MB memory (AC38 Layer A: 2核4G design).
+    """
+    import resource
+
+    temp_file = None
+    try:
+        wrapped_code = _WRAP_CODE_TEMPLATE.format(code_repr=repr(code))
         with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
             f.write(wrapped_code)
             temp_file = f.name
+
+        # MAJOR fix: Enforce resource limits (memory: 512MB, per Design 2核4G)
+        def _set_limits():
+            try:
+                # 512 MB memory limit (soft=hard)
+                resource.setrlimit(resource.RLIMIT_AS, (512 * 1024 * 1024, 512 * 1024 * 1024))
+            except Exception:
+                pass  # Best effort — some environments don't support RLIMIT_AS
 
         proc = subprocess.run(
             ["python3", temp_file],
             capture_output=True,
             text=True,
             timeout=timeout + 5,
+            preexec_fn=_set_limits,
         )
 
         stdout = proc.stdout
@@ -108,8 +125,51 @@ print("===RESULT_END===")
 
 # ── Layer A: Local Execution (AC38) ───────────────────────────────────────────
 
+def _auto_grade_if_lab(db: Session, lab_id, code: str, exec_result: dict):
+    """Auto-grade if the lab has test cases (MAJOR fix: extracted from execute_layer_a)."""
+    if not (lab_id and exec_result.get("success")):
+        return None, None, None
+
+    from app.models import Lab
+    from app.services.grader import CodeGrader
+
+    lab = db.query(Lab).filter(Lab.id == lab_id).first()
+    if not lab or not lab.test_cases:
+        return None, None, None
+
+    grade_result = CodeGrader.grade_in_sandbox(
+        code=code,
+        test_cases=lab.test_cases,
+        timeout=lab.time_limit_seconds or 30,
+    )
+    return grade_result.get("score"), grade_result.get("passed"), grade_result.get("feedback")
+
+
+def _compute_verification_metrics(audit_data: dict, model_url: Optional[str] = None) -> tuple:
+    """Compute verification metrics from training log (MAJOR fix: extracted from verify_model)."""
+    epochs = audit_data.get("epochs", 0)
+    loss = audit_data.get("loss", 1.0)
+    accuracy = audit_data.get("accuracy", 0.0)
+    passed = epochs > 0 and loss < 0.5
+
+    metrics = {
+        "accuracy": accuracy if accuracy else round(max(0.0, 1.0 - loss), 2),
+        "loss": loss,
+        "precision": round(0.85 + (accuracy * 0.1), 2) if accuracy else 0.85,
+        "recall": round(0.80 + (accuracy * 0.15), 2) if accuracy else 0.80,
+    }
+
+    audit = {
+        "training_epochs": int(epochs),
+        "dataset_size": audit_data.get("dataset_size", 60000),
+        "no_anomalies": passed,
+        "model_url": model_url,
+    }
+
+    return metrics, audit, passed
+
+
 class SandboxService:
-    """Static service methods for sandbox execution."""
 
     # Valid providers per layer
     VALID_PROVIDERS = {"kaggle", "colab", "autodl"}
@@ -164,25 +224,8 @@ class SandboxService:
         if error:
             result["error"] = error
 
-        # Auto-grade if lab has test cases
-        score = None
-        passed = None
-        feedback = None
-
-        if lab_id and exec_result.get("success"):
-            from app.models import Lab
-            from app.services.grader import CodeGrader
-
-            lab = db.query(Lab).filter(Lab.id == lab_id).first()
-            if lab and lab.test_cases:
-                grade_result = CodeGrader.grade_in_sandbox(
-                    code=code,
-                    test_cases=lab.test_cases,
-                    timeout=lab.time_limit_seconds or 30,
-                )
-                score = grade_result.get("score")
-                passed = grade_result.get("passed")
-                feedback = grade_result.get("feedback")
+        # Auto-grade if lab has test cases (MAJOR fix: extracted helper)
+        score, passed, feedback = _auto_grade_if_lab(db, lab_id, code, exec_result)
 
         # Update request record
         status = "completed" if exec_result.get("success") else "failed"
@@ -290,27 +333,8 @@ class SandboxService:
             except json.JSONDecodeError:
                 audit_data = {"raw_log": training_log[:1000]}
 
-        # Compute verification metrics
-        epochs = audit_data.get("epochs", 0)
-        loss = audit_data.get("loss", 1.0)
-        accuracy = audit_data.get("accuracy", 0.0)
-
-        # Simulate verification: if epochs > 0 and loss < 0.5, pass
-        passed = epochs > 0 and loss < 0.5
-
-        metrics = {
-            "accuracy": accuracy if accuracy else round(max(0.0, 1.0 - loss), 2),
-            "loss": loss,
-            "precision": round(0.85 + (accuracy * 0.1), 2) if accuracy else 0.85,
-            "recall": round(0.80 + (accuracy * 0.15), 2) if accuracy else 0.80,
-        }
-
-        audit = {
-            "training_epochs": int(epochs),
-            "dataset_size": audit_data.get("dataset_size", 60000),
-            "no_anomalies": passed,
-            "model_url": model_url,
-        }
+        # Compute verification metrics (MAJOR fix: extracted helper)
+        metrics, audit, passed = _compute_verification_metrics(audit_data, model_url)
 
         # Create verification task
         vt = VerificationTask(

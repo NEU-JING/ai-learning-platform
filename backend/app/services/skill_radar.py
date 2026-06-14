@@ -6,6 +6,7 @@ chapter completion rates, and learning activity frequency.
 
 import logging
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -32,6 +33,15 @@ SKILL_DIMENSIONS: dict[str, tuple[str, list[int]]] = {
     "coding_harness": ("AI辅助开发", []),  # 新模块，暂无course_id
     "ai_application": ("AI应用实战", []),  # 新模块
     "ai_strategy": ("AI产品与策略", []),  # 新模块
+}
+
+# AC43: Path type → highlighted dimension mapping for profile skill radar
+# Matches the learning_path values from UserSettings
+SKILL_PATH_HIGHLIGHT: dict = {
+    "ai_engineer": ["engineering", "coding_harness", "python"],
+    "ai_expert": ["math", "ml", "dl", "llm"],
+    "ai_practitioner": ["ai_application", "python", "coding_harness"],
+    "ai_manager": ["ai_strategy", "ai_application"],
 }
 
 # Weights for each sub-component of the skill score
@@ -93,13 +103,19 @@ class SkillRadarService:
         return round(min(score, 100.0), 1)
 
     @staticmethod
-    def get_skill_radar(user_id: int, db: Session) -> dict:
+    def get_skill_radar(user_id: int, db: Session, path_type: Optional[str] = None) -> dict:
         """Build the full skill radar payload for a user.
+
+        Args:
+            user_id: The user's ID
+            db: Database session
+            path_type: Optional learning path for dimension highlighting (AC43).
+                       Values: ai_engineer, ai_expert, ai_practitioner, ai_manager
 
         Returns a dict matching the SkillRadarResponse schema:
         {
             "user_id": 1,
-            "skills": {"python": {"score": 85, "label": "Python基础", "trend": "+15"}, ...},
+            "skills": {"python": {"score": 85, "label": "Python基础", "trend": "+15", "highlighted": false}, ...},
             "overall_score": 45.2,
             "weakest": ["llm", "engineering"],
             "strongest": ["python", "math"],
@@ -111,6 +127,9 @@ class SkillRadarService:
         prev_records = db.query(UserSkillScore).filter(UserSkillScore.user_id == user_id).all()
         for rec in prev_records:
             prev_scores[rec.dimension] = rec.score
+
+        # Resolve highlighted dimensions from path_type
+        highlighted_dims = set(SKILL_PATH_HIGHLIGHT.get(path_type or "", []))
 
         skills: dict = {}
         scores_list: list[tuple[str, float]] = []
@@ -128,6 +147,7 @@ class SkillRadarService:
                 "score": current_score,
                 "label": label,
                 "trend": trend,
+                "highlighted": dim_key in highlighted_dims,
             }
             scores_list.append((dim_key, current_score))
 

@@ -9,9 +9,15 @@
 2. **读取 QUIRKS.md** — 已知陷阱，搜索是否已有相同问题
 3. 如需新功能，按 SDD 流程执行（见 `docs/AILP-DEVELOPMENT-FLOW.md`）
 
-## 🔄 标准开发流程（SDD V2.0）
+# Telemetry 匿名统计（默认关闭）
+# 取消注释并设置 enabled: true 以启用
+# telemetry:
+#   enabled: false
+
+## 🔄 标准开发流程（SDD V2.1.0）
 
 ```
+可选入口：/explore（探索模式）→ PRD /sdd start
 完整流程：PRD → 👤确认 → Spec → 👤确认 → Design → Tasks → Implement → Review → QA → 👤验收 → 归档
 
 关键门禁：
@@ -22,7 +28,7 @@
   · QA 第 5 轮仍失败 → 👤 熔断，等待用户决策
 ```
 
-详见 `docs/AILP-DEVELOPMENT-FLOW.md`。
+详见 `docs/AILP-DEVELOPMENT-FLOW.md` 和 `skill_view(name='sdd-orchestrator')`。
 
 ## 🤖 多 Agent 协作角色
 

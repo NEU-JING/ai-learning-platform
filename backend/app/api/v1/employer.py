@@ -8,7 +8,7 @@ AC49: POST /api/v1/employer/query — Authorization code query (API Key auth)
 
 import time
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 

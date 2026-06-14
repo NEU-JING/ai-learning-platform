@@ -83,4 +83,7 @@ class EmployerApiLog(Base):
     employer = relationship("Employer", back_populates="api_logs")
 
     def __repr__(self):
-        return f"<EmployerApiLog(id={self.id}, endpoint={self.endpoint!r}, status={self.status_code})>"
+        return (
+            f"<EmployerApiLog(id={self.id}, endpoint={self.endpoint!r}, "
+            f"status={self.status_code})>"
+        )
