@@ -34,6 +34,20 @@
 **修复方式**：使用 `copy.deepcopy()` 防止修改模块级数据
 **预防措施**：数据加载函数不应修改入参
 
+### JSON 列存入 datetime 会序列化失败（✓ 已修复 2026-08-18）
+
+**现象**：写入 `profile_cache.cached_data`（JSON 列）时抛 `TypeError: Object of type datetime is not JSON serializable`，flush 失败且未 rollback → 会话 pending-rollback 毒化，随后所有 ORM 访问连锁报错
+**原因**：响应 dict 内嵌 `datetime`，SQLite JSON 序列化无默认处理器
+**修复方式**：写入前 `json.dumps(response, default=str)` 再 `json.loads` 转安全 dict；except 中补 `db.rollback()`
+**预防措施**：任何 JSON 列写入前做 json-safe 转换；except 捕获后必须 rollback
+
+### AC12 并发测试在 SQLite 下必须 skip
+
+**现象**：`test_concurrent_reads_return_same_data` 在本地 SQLite 环境强跑必然失败（并发会话冲突 / rollback 竞态）
+**原因**：skipif 检查 `DATABASE_URL` 环境变量，但 conftest 未设置 → skip 永不触发
+**修复方式**：conftest 顶部 `os.environ.setdefault("DATABASE_URL", "sqlite://")`（✓ 已修复 2026-08-18）
+**预防措施**：新增依赖 DB 方言语义的测试时，确保 conftest 设置匹配的 DATABASE_URL
+
 ### Redis 缓存需手动清理
 
 **现象**：修改种子数据后前端仍显示旧数据
