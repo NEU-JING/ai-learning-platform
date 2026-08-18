@@ -1,10 +1,9 @@
-"""Profile API routes — Task-1: settings, Task-2: public profile.
+"""Profile API routes — Task-1: settings.
 
 Endpoints:
   GET  /api/v1/profile/me/settings         — get current user's settings
   PUT  /api/v1/profile/me/settings         — update settings (BR5 logic)
   POST /api/v1/profile/me/settings/batch   — show_all / hide_all
-  GET  /api/v1/profile/{username}          — public profile (anonymous access)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -17,7 +16,6 @@ from app.schemas.profile import (
     ProfileBatchAction,
     ProfileSettingsResponse,
     ProfileSettingsUpdate,
-    PublicProfileResponse,
 )
 from app.services.profile_service import profile_service
 
@@ -91,34 +89,5 @@ def batch_action(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="主页未开启，无法调整可见性",
         )
-
-    return result
-
-
-# ── Public profile (Task-2) ────────────────────────────────────────────────
-
-
-@router.get("/{username}", response_model=PublicProfileResponse)
-def get_public_profile(
-    username: str,
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    """Get public profile data for a user. No auth required (anonymous access).
-
-    Error responses:
-      404: User does not exist or is inactive (BR9)
-      403: User exists but has not enabled public profile
-    """
-    result = profile_service.get_public_profile(db, username, request_info=_request_info(request))
-
-    # Service returns error dict when access should be denied
-    if "error" in result:
-        code = result["error"]
-        detail = result["detail"]
-        if code == 404:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=detail)
-        elif code == 403:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
 
     return result

@@ -1,4 +1,4 @@
-"""Profile service — business logic for public profile settings and data.
+"""Profile service — business logic for profile settings and data.
 
 Key business rules:
   BR1: No UserProfile record = profile never enabled (privacy by default)
@@ -7,9 +7,7 @@ Key business rules:
   Closing profile preserves dimension settings; re-enabling resets all to true
 """
 
-import json
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -22,12 +20,10 @@ from app.models import (
     User,
     UserSettings,
 )
-from app.models.profile_cache import ProfileCache
 from app.models.user_profile import UserProfile
 from app.schemas.analytics import AnalyticsEventCreate
 from app.schemas.profile import ProfileSettingsUpdate
 from app.services.analytics_service import AnalyticsService
-from app.services.skill_radar import SkillRadarService
 
 logger = logging.getLogger(__name__)
 
@@ -251,236 +247,6 @@ class ProfileService:
 
         return self.get_settings(db, user_id, username, avatar_url)
 
-    # ── Public profile (Task-2) ────────────────────────────────────────────
-
-    def get_public_profile(
-        self, db: Session, username: str, request_info: dict | None = None
-    ) -> dict:
-        """Get public profile data for a given username.
-
-        Returns dict on success, or raises an appropriate exception.
-        Flow:
-          1. Query User by username → not found or is_active=false → 404
-          2. Query UserProfile by user_id → not found → 403
-          3. Check is_public → false → 403
-          4. Aggregate data and apply visibility
-        """
-        # Step 1: Find user
-        user = db.query(User).filter(User.username == username).first()
-        if user is None or not user.is_active:
-            logger.info("profile_404 username=%s reason=not_found_or_inactive", username)
-            return {"error": 404, "detail": "该用户不存在"}
-
-        # Step 2: Find profile
-        profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
-        if profile is None:
-            logger.info("profile_403 username=%s reason=no_profile_record", username)
-            return {"error": 403, "detail": "该用户尚未公开能力主页"}
-
-        # Step 3: Check is_public
-        if not profile.is_public:
-            logger.info("profile_403 username=%s reason=not_public", username)
-            return {"error": 403, "detail": "该用户尚未公开能力主页"}
-
-        # Step 4: Build response with full data, then apply visibility
-        # AC43: Determine path_type for dimension highlighting
-        path_type = None
-        user_settings = db.query(UserSettings).filter(UserSettings.user_id == user.id).first()
-        if user_settings and user_settings.learning_path:
-            path_type = user_settings.learning_path
-
-        response = {
-            "username": user.username,
-            "display_name": profile.display_name or user.username,
-            "bio": profile.bio,
-            "avatar_url": user.avatar_url,
-            "is_public": profile.is_public,
-            "visibility": {
-                "show_basic_info": profile.show_basic_info,
-                "show_skill_radar": profile.show_skill_radar,
-                "show_labs": profile.show_labs,
-                "show_certificates": profile.show_certificates,
-            },
-            "skill_radar": SkillRadarService.get_skill_radar(user.id, db, path_type=path_type),
-            "labs": self._get_labs(db, user.id),
-            "labs_total": 0,  # will be set below
-            "certificates": self._get_certificates(db, user.id),
-        }
-        response["labs_total"] = len(response["labs"])
-
-        # Apply visibility filtering
-        response = self._apply_visibility(response, profile)
-
-        # ── Analytics: profile_view (anonymous viewer, viewer IP from request_info) ──
-        self._emit_event(
-            db,
-            "profile_view",
-            user_id=None,
-            properties={"viewed_username": username, "viewed_user_id": user.id},
-            request_info=request_info,
-        )
-        # Observability log with anonymous viewer context
-        logger.info(
-            "profile_view username=%s viewer_ip=%s",
-            username,
-            (request_info or {}).get("ip_address"),
-        )
-
-        # ── Cache: write to ProfileCache for 5 minutes ──
-        try:
-            existing_cache = (
-                db.query(ProfileCache)
-                .filter(ProfileCache.cache_key == f"public_profile:{username}")
-                .first()
-            )
-            cache_entry = existing_cache or ProfileCache(
-                user_id=user.id, cache_key=f"public_profile:{username}"
-            )
-            cache_entry.cached_data = json.loads(
-                json.dumps(response, ensure_ascii=False, default=str)
-            )  # cached_data 是 JSON 列：datetime/UUID 等先转 string，否则 SQLite 序列化失败
-            cache_entry.expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
-            if not existing_cache:
-                db.add(cache_entry)
-            db.commit()
-        except Exception:
-            logger.warning("profile_cache_write_failed username=%s", username, exc_info=True)
-            db.rollback()  # 不 rollback 会让会话进入 pending-rollback 状态，毒化后续请求
-
-        return response
-
-    @staticmethod
-    def _apply_visibility(response: dict, profile: UserProfile) -> dict:
-        """Enforce visibility rules at Service layer — never rely on frontend hiding.
-
-        Per Design flow 3: hidden dimensions return null/[] instead of real data.
-        """
-        if not profile.show_basic_info:
-            response["display_name"] = None
-            response["bio"] = None
-            response["avatar_url"] = None
-        if not profile.show_skill_radar:
-            response["skill_radar"] = None
-        if not profile.show_labs:
-            response["labs"] = None
-            response["labs_total"] = None
-        if not profile.show_certificates:
-            response["certificates"] = None
-        return response
-
-    @staticmethod
-    def _get_labs(db: Session, user_id: int) -> list[dict]:
-        """Get passed lab submissions for a user.
-
-        Rules:
-          - Only passed submissions (passed=True)
-          - Best score per lab (highest score)
-          - Ordered by completed_at (created_at) DESC
-        """
-        # Query all passed submissions for this user
-        submissions = (
-            db.query(LabSubmission)
-            .filter(
-                LabSubmission.user_id == user_id,
-                LabSubmission.passed.is_(True),
-                LabSubmission.score.isnot(None),
-            )
-            .all()
-        )
-
-        if not submissions:
-            return []
-
-        # Group by lab_id, keep best score per lab
-        best_per_lab: dict[int, LabSubmission] = {}
-        for sub in submissions:
-            if sub.lab_id not in best_per_lab or sub.score > best_per_lab[sub.lab_id].score:
-                best_per_lab[sub.lab_id] = sub
-
-        # Build response items with lab and course info
-        result = []
-        for lab_id, sub in best_per_lab.items():
-            lab = sub.lab
-            if lab is None:
-                continue
-            chapter = lab.chapter
-            course = chapter.course if chapter else None
-
-            result.append(
-                {
-                    "lab_id": lab.id,
-                    "lab_title": lab.title,
-                    "course_title": course.title if course else "未知课程",
-                    "score": sub.score,
-                    "completed_at": sub.created_at,
-                }
-            )
-
-        # Sort by completed_at DESC
-        result.sort(
-            key=lambda x: x["completed_at"] or datetime.min.replace(tzinfo=timezone.utc),
-            reverse=True,
-        )
-        return result
-
-    @staticmethod
-    def _get_certificates(db: Session, user_id: int) -> list[dict]:
-        """Get completed courses for a user as certificate entries.
-
-        Rules:
-          - A course is "completed" when ALL its chapters have
-            LearningProgress status='completed'
-          - cert_id format: AI-{course_id}-{user_id}-{date}
-          - verify_url: /api/v1/certificates/verify/{cert_id}
-
-        Uses a single JOIN query to avoid N+1 per-course lookups.
-        """
-        from sqlalchemy import func
-
-        # Single query: get course_id, total chapters, and completed count per course
-        rows = (
-            db.query(
-                Course.id,
-                Course.title,
-                Course.level,
-                func.count(Chapter.id.distinct()).label("total_chapters"),
-                func.count(LearningProgress.id.distinct()).label("completed_count"),
-            )
-            .outerjoin(Chapter, Chapter.course_id == Course.id)
-            .outerjoin(
-                LearningProgress,
-                (LearningProgress.chapter_id == Chapter.id)
-                & (LearningProgress.user_id == user_id)
-                & (LearningProgress.status == "completed"),
-            )
-            .group_by(Course.id)
-            .all()
-        )
-
-        now = datetime.now(timezone.utc)
-        result = []
-        for row in rows:
-            course_id, title, level, total_chapters, completed_count = row
-            if total_chapters == 0 or completed_count < total_chapters:
-                continue
-
-            cert_id = f"AI-{course_id}-{user_id}-{now.strftime('%Y%m%d')}"
-            level_label = _LEVEL_LABELS.get(level, "学习认证")
-            verify_url = f"/api/v1/certificates/verify/{cert_id}"
-
-            result.append(
-                {
-                    "cert_id": cert_id,
-                    "course_title": title,
-                    "level": level,
-                    "level_label": level_label,
-                    "issue_date": now,
-                    "verify_url": verify_url,
-                }
-            )
-
-        return result
 
 
-# Module-level singleton (stateless, safe to share)
 profile_service = ProfileService()

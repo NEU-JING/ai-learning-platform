@@ -14,7 +14,6 @@ from app.api.v1 import (
     certificates,
     courses,
     discussions,
-    employer,
     labs,
     paths,
     profile,
@@ -246,23 +245,11 @@ app.include_router(discussions.router, prefix="/api/v1", tags=["讨论区"])
 app.include_router(analytics.router, prefix="/api/v1/analytics", tags=["数据分析"])
 app.include_router(skills.router, prefix="/api/v1/skills", tags=["技能雷达"])
 app.include_router(radar.router, prefix="/api/v1", tags=["技能雷达V2"])
-app.include_router(profile.router, prefix="/api/v1/profile", tags=["公开主页"])
+app.include_router(profile.router, prefix="/api/v1/profile", tags=["个人设置"])
 app.include_router(recommendations.router, prefix="/api/v1", tags=["个性化推荐"])
 app.include_router(paths.router, prefix="/api/v1/paths", tags=["学习路径"])
 app.include_router(tutor.router, prefix="/api/v1", tags=["AI导师"])
 app.include_router(sandbox.router, prefix="/api/v1/sandbox", tags=["沙箱"])
-app.include_router(employer.router, prefix="/api/v1/employer", tags=["雇主验证"])
-
-
-# ── AC45: Public certificate verification page (before SPA catch-all) ────
-
-@app.get("/verify/{cert_number}", response_class=HTMLResponse)
-def verify_certificate_page(cert_number: str, db: Session = Depends(get_db)):
-    """证书公开验证页面 — AC45."""
-    from app.services.employer import render_verify_page
-
-    html, status_code = render_verify_page(db, cert_number)
-    return HTMLResponse(content=html, status_code=status_code)
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -277,127 +264,6 @@ def root():
     if os.path.exists(index_file):
         return FileResponse(index_file)
     return HTMLResponse(content="<h1>AI Learning Platform</h1><p>Frontend not found</p>")
-
-
-@app.get("/p/{full_path:path}", response_class=HTMLResponse)
-async def public_profile_spa(full_path: str, request: Request):
-    """SPA fallback for public profile pages /p/{username}."""
-    # Serve static assets (js/css/png/...) under /p/ directly
-    static_ext = (
-        ".js",
-        ".mjs",
-        ".css",
-        ".map",
-        ".png",
-        ".jpg",
-        ".jpeg",
-        ".gif",
-        ".svg",
-        ".ico",
-        ".woff",
-        ".woff2",
-        ".ttf",
-        ".eot",
-        ".json",
-        ".webp",
-    )
-    if full_path and any(full_path.endswith(e) for e in static_ext):
-        file_path = os.path.normpath(os.path.join(STATIC_DIR, full_path))
-        if file_path.startswith(os.path.abspath(STATIC_DIR)) and os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return HTMLResponse(content="Not Found", status_code=404)
-
-    # Extract username from path
-    username = full_path.strip("/")
-    if not username or "/" in username:
-        index_file = os.path.join(STATIC_DIR, "spa.html")
-        if os.path.exists(index_file):
-            return FileResponse(index_file)
-        return HTMLResponse(content="<h1>Not Found</h1>", status_code=404)
-
-    # Try to fetch user profile data for OG tag injection
-    og_tags = _build_og_tags(username)
-
-    # Read the SPA template and inject OG tags
-    spa_file = os.path.join(STATIC_DIR, "spa.html")
-    if not os.path.exists(spa_file):
-        index_file = os.path.join(STATIC_DIR, "index.html")
-        if os.path.exists(index_file):
-            spa_file = index_file
-        else:
-            return HTMLResponse(content="<h1>Frontend not found</h1>")
-
-    with open(spa_file, "r", encoding="utf-8") as f:
-        html = f.read()
-
-    # Inject OG tags before </head>
-    if og_tags:
-        html = html.replace("</head>", f"{og_tags}\n</head>")
-
-    return HTMLResponse(content=html)
-
-
-def _build_og_tags(username: str) -> str:
-    """Build OG meta tags by querying user profile data.
-
-    Returns HTML string of <meta> tags to inject into <head>.
-    For non-existent/private users, returns noindex tag.
-    """
-    from app.models import User
-    from app.models.user_profile import UserProfile
-
-    db = SessionLocal()
-    try:
-        user = db.query(User).filter(User.username == username).first()
-
-        # Non-existent or inactive user → noindex
-        if user is None or not user.is_active:
-            return '<meta name="robots" content="noindex, nofollow">'
-
-        profile = db.query(UserProfile).filter(UserProfile.user_id == user.id).first()
-
-        # No profile or not public → noindex
-        if profile is None or not profile.is_public:
-            return '<meta name="robots" content="noindex, nofollow">'
-
-        # Public user → inject OG tags
-        display_name = profile.display_name or user.username
-        bio = profile.bio or f"{display_name}的AILP能力主页"
-        avatar_url = user.avatar_url or ""
-
-        tags = [
-            f'<meta property="og:title" content="{_html_escape(display_name)} - AILP能力主页">',
-            f'<meta property="og:description" content="{_html_escape(bio)}">',
-            '<meta property="og:type" content="profile">',
-            f'<meta property="og:url" content="/p/{_html_escape(username)}">',
-        ]
-
-        if avatar_url:
-            tags.append(f'<meta property="og:image" content="{_html_escape(avatar_url)}">')
-
-        # Always include profile username
-        tags.append(f'<meta property="profile:username" content="{_html_escape(username)}">')
-
-        # Update page title
-        tags.append(f"<title>{_html_escape(display_name)} - AILP能力主页</title>")
-
-        return "\n    ".join(tags)
-    except Exception:
-        # On any error, return noindex (fail safe)
-        return '<meta name="robots" content="noindex, nofollow">'
-    finally:
-        db.close()
-
-
-def _html_escape(s: str) -> str:
-    """Minimal HTML escaping for attribute values."""
-    return (
-        (s or "")
-        .replace("&", "&amp;")
-        .replace('"', "&quot;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
 
 
 @app.get("/health")

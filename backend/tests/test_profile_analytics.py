@@ -156,36 +156,6 @@ class TestProfileBatchActionEvent:
         assert evt.event_data.get("action") == "hide_all"
 
 
-class TestProfileViewEvent:
-    """profile_view event when public profile is accessed."""
-
-    def test_public_profile_view_creates_event(self, client, test_db):
-        user, headers = _make_user(test_db, username="view1")
-        # Enable profile
-        profile = UserProfile(
-            user_id=user.id,
-            is_public=True,
-            show_basic_info=True,
-            show_skill_radar=True,
-            show_labs=True,
-            show_certificates=True,
-            display_name="View1",
-            bio="bio",
-        )
-        test_db.add(profile)
-        test_db.commit()
-
-        resp = client.get(PUBLIC_URL.format(username="view1"))
-        assert resp.status_code == 200
-
-        events = _get_profile_events(test_db, "profile_view")
-        assert len(events) >= 1
-        evt = events[-1]
-        assert evt.event_data.get("viewed_username") == "view1"
-        # profile_view events have no user_id (anonymous viewer)
-        assert evt.user_id is None
-
-
 # ── Observability logging tests ─────────────────────────────────────────────
 
 
@@ -204,64 +174,6 @@ class TestObservabilityLogs:
         log_messages = [str(c) for c in mock_logger.info.call_args_list]
         assert any("profile_settings_update" in m for m in log_messages)
         assert any("profile_enabled" in m for m in log_messages)
-
-    def test_profile_view_log_with_ip(self, client, test_db):
-        user, headers = _make_user(test_db, username="logview1")
-        profile = UserProfile(
-            user_id=user.id,
-            is_public=True,
-            show_basic_info=True,
-            show_skill_radar=True,
-            show_labs=True,
-            show_certificates=True,
-        )
-        test_db.add(profile)
-        test_db.commit()
-
-        with patch("app.services.profile_service.logger") as mock_logger:
-            client.get(PUBLIC_URL.format(username="logview1"))
-
-        log_messages = [str(c) for c in mock_logger.info.call_args_list]
-        assert any("profile_view" in m for m in log_messages)
-
-    def test_profile_404_log(self, client, test_db):
-        with patch("app.services.profile_service.logger") as mock_logger:
-            resp = client.get(PUBLIC_URL.format(username="ghost_404"))
-        assert resp.status_code == 404
-
-        log_messages = [str(c) for c in mock_logger.info.call_args_list]
-        assert any("profile_404" in m for m in log_messages)
-
-    def test_profile_403_no_profile_log(self, client, test_db):
-        user, headers = _make_user(test_db, username="log403")
-        # User exists but no UserProfile
-
-        with patch("app.services.profile_service.logger") as mock_logger:
-            resp = client.get(PUBLIC_URL.format(username="log403"))
-        assert resp.status_code == 403
-
-        log_messages = [str(c) for c in mock_logger.info.call_args_list]
-        assert any("profile_403" in m for m in log_messages)
-
-    def test_profile_403_not_public_log(self, client, test_db):
-        user, headers = _make_user(test_db, username="log403b")
-        profile = UserProfile(
-            user_id=user.id,
-            is_public=False,
-            show_basic_info=True,
-            show_skill_radar=True,
-            show_labs=True,
-            show_certificates=True,
-        )
-        test_db.add(profile)
-        test_db.commit()
-
-        with patch("app.services.profile_service.logger") as mock_logger:
-            resp = client.get(PUBLIC_URL.format(username="log403b"))
-        assert resp.status_code == 403
-
-        log_messages = [str(c) for c in mock_logger.info.call_args_list]
-        assert any("profile_403" in m for m in log_messages)
 
     def test_profile_disabled_log(self, client, test_db):
         user, headers = _make_user(test_db, username="logdis1")

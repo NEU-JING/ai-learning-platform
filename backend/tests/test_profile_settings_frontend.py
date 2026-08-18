@@ -230,38 +230,6 @@ class TestSettingsAPIForFrontend:
 class TestPreviewURL:
     """Preview button opens /p/{username} in new tab."""
 
-    def test_preview_url_accessible(self, client, test_db):
-        """After enabling profile, /p/{username} returns 200 HTML."""
-        user, headers = _make_user(test_db, username="previewer")
-
-        client.put(SETTINGS_URL, json={"is_public": True}, headers=headers)
-
-        resp = client.get("/p/previewer")
-        assert resp.status_code == 200
-        assert "text/html" in resp.headers.get("content-type", "")
-
-    def test_preview_url_for_public_profile_has_og_tags(self, client, test_db):
-        """Public profile /p/{username} has OG tags for social sharing."""
-        user, headers = _make_user(test_db, username="ogpreview")
-
-        client.put(SETTINGS_URL, json={"is_public": True}, headers=headers)
-
-        resp = client.get("/p/ogpreview")
-        content = resp.text
-        assert "og:title" in content
-
-    def test_preview_url_for_closed_profile(self, client, test_db):
-        """Closed profile /p/{username} returns HTML (with noindex)."""
-        user, headers = _make_user(test_db, username="closedprev")
-
-        client.put(SETTINGS_URL, json={"is_public": True}, headers=headers)
-        client.put(SETTINGS_URL, json={"is_public": False}, headers=headers)
-
-        resp = client.get("/p/closedprev")
-        assert resp.status_code == 200
-        assert "noindex" in resp.text or "robots" in resp.text
-
-
 class TestSettingsResponseSchema:
     """Ensure settings response schema matches what frontend expects."""
 

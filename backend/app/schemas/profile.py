@@ -1,61 +1,13 @@
 """Profile schemas — single source of truth (Constitution 1.2).
 
 Task-1: settings-related schemas.
-Task-2: public profile response schemas.
+
 """
 
 from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
-
-# ── Public profile page response (Task-2) ───────────────────────────────────
-
-
-class ProfileLabItem(BaseModel):
-    """Single lab entry on public profile."""
-
-    lab_id: int
-    lab_title: str
-    course_title: str
-    score: float
-    completed_at: Optional[datetime] = None
-
-
-class ProfileCertificateItem(BaseModel):
-    """Single certificate entry on public profile."""
-
-    cert_id: str
-    course_title: str
-    level: str
-    level_label: str
-    issue_date: datetime
-    verify_url: str
-
-
-class ProfileVisibility(BaseModel):
-    """Visibility flags for profile modules."""
-
-    show_basic_info: bool
-    show_skill_radar: bool
-    show_labs: bool
-    show_certificates: bool
-
-
-class PublicProfileResponse(BaseModel):
-    """Response for GET /api/v1/profile/{username} — public view."""
-
-    username: str
-    display_name: Optional[str] = None
-    bio: Optional[str] = None
-    avatar_url: Optional[str] = None
-    is_public: bool
-    visibility: ProfileVisibility
-    skill_radar: Optional[dict] = None  # SkillRadarResponse subset, null if hidden
-    labs: Optional[list[ProfileLabItem]] = None
-    labs_total: Optional[int] = None
-    certificates: Optional[list[ProfileCertificateItem]] = None
-
 
 # ── Settings (authenticated user) ──────────────────────────────────────────
 

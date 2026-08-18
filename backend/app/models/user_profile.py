@@ -16,7 +16,6 @@ DEFAULT_PRIVACY_SETTINGS = json.dumps(
         "show_certifications": True,
         "show_lab_history": True,
         "show_ai_tutor_chats": False,
-        "allow_employer_view": True,
     }
 )
 

@@ -402,13 +402,7 @@ from app.models.tutor import (  # noqa: E402, F401 — T12: Tutor module
     TutorMessage,
     TutorSession,
 )
-from app.models.employer import (  # noqa: E402, F401 — Employer module
-    Employer,
-    EmployerApiLog,
-    VerificationCode,
-)
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
-from app.models.profile_cache import ProfileCache  # noqa: E402, F401 — V4: profile cache
 
 __all__ = [
     "Base",
