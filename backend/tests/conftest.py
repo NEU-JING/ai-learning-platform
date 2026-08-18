@@ -1,6 +1,9 @@
 """Shared test fixtures for the AI Learning Platform test suite."""
 
 import os
+
+# 标识测试库为 SQLite：AC12 并发测试按项目意图在 SQLite 下 skip（仅 PostgreSQL 保证并发一致性）
+os.environ.setdefault("DATABASE_URL", "sqlite://")
 from unittest.mock import patch
 
 import pytest

@@ -7,6 +7,7 @@ Key business rules:
   Closing profile preserves dimension settings; re-enabling resets all to true
 """
 
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -319,6 +320,11 @@ class ProfileService:
             request_info=request_info,
         )
         # Observability log with anonymous viewer context
+        logger.info(
+            "profile_view username=%s viewer_ip=%s",
+            username,
+            (request_info or {}).get("ip_address"),
+        )
 
         # ── Cache: write to ProfileCache for 5 minutes ──
         try:
@@ -330,13 +336,16 @@ class ProfileService:
             cache_entry = existing_cache or ProfileCache(
                 user_id=user.id, cache_key=f"public_profile:{username}"
             )
-            cache_entry.cached_data = response
+            cache_entry.cached_data = json.loads(
+                json.dumps(response, ensure_ascii=False, default=str)
+            )  # cached_data 是 JSON 列：datetime/UUID 等先转 string，否则 SQLite 序列化失败
             cache_entry.expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
             if not existing_cache:
                 db.add(cache_entry)
             db.commit()
         except Exception:
             logger.warning("profile_cache_write_failed username=%s", username, exc_info=True)
+            db.rollback()  # 不 rollback 会让会话进入 pending-rollback 状态，毒化后续请求
 
         return response
 
