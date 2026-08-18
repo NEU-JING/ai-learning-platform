@@ -35,7 +35,6 @@ export default async function Courses() {
         <li><a href="#" data-nav="/">首页</a></li>
         <li><a href="#" data-nav="/courses" class="active">课程</a></li>
           <li><a href="#" data-nav="/progress">学习进度</a></li>
-          <li><a href="#" data-nav="/profile/settings">我的公开主页</a></li>
       </ul>
       <div class="navbar-right">
         ${store.state.token && store.state.user ? `

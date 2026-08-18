@@ -31,7 +31,6 @@ export class MobileNav {
           <li><a href="#" data-nav="/">🏠 首页</a></li>
           <li><a href="#" data-nav="/courses">📚 全部课程</a></li>
           <li><a href="#" data-nav="/progress">📊 学习进度</a></li>
-          <li><a href="#" data-nav="/profile/settings">🌐 我的公开主页</a></li>
         </ul>
         
         <div class="mobile-menu-footer">
@@ -143,10 +142,6 @@ export class BottomNav {
       <a href="#" class="bottom-nav-item ${this.isActive('/progress')}" data-nav="/progress">
         <span class="bottom-nav-icon">📊</span>
         <span class="bottom-nav-label">进度</span>
-      </a>
-      <a href="#" class="bottom-nav-item ${this.isActive('/profile')}" data-nav="/profile/settings">
-        <span class="bottom-nav-icon">👤</span>
-        <span class="bottom-nav-label">我的</span>
       </a>
     `;
 
