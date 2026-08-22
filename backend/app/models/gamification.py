@@ -38,10 +38,14 @@ class XpEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    action = Column(String(50), nullable=False)          # lab_passed / task_passed / chain_completed / daily_challenge
-    ref_type = Column(String(30), nullable=False)        # lab / capstone_task / capstone_chain / daily_challenge
-    ref_id = Column(Integer, nullable=False)             # 关联对象 id
-    xp = Column(Integer, nullable=False, default=1)      # 本次 XP 点数
+    action = Column(
+        String(50), nullable=False
+    )  # lab_passed / task_passed / chain_completed / daily_challenge
+    ref_type = Column(
+        String(30), nullable=False
+    )  # lab / capstone_task / capstone_chain / daily_challenge
+    ref_id = Column(Integer, nullable=False)  # 关联对象 id
+    xp = Column(Integer, nullable=False, default=1)  # 本次 XP 点数
     created_at = Column(DateTime, default=_utcnow)
 
 
@@ -65,8 +69,10 @@ class Badge(Base):
     code = Column(String(50), nullable=False, unique=True)
     name = Column(String(100), nullable=False)
     description = Column(Text, nullable=True)
-    icon = Column(String(10), nullable=True)           # emoji
-    criteria = Column(JSON, default=dict)              # {"type": "first_lab" | "chain_complete" | "streak_days", "value": N}
+    icon = Column(String(10), nullable=True)  # emoji
+    criteria = Column(
+        JSON, default=dict
+    )  # {"type": "first_lab" | "chain_complete" | "streak_days", "value": N}
     is_active = Column(Boolean, default=True)
 
 
@@ -74,15 +80,13 @@ class UserBadge(Base):
     """徽章发放记录 — create_only。"""
 
     __tablename__ = "user_badges"
-    __table_args__ = (
-        UniqueConstraint("user_id", "badge_code", name="uq_user_badges_once"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "badge_code", name="uq_user_badges_once"),)
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     badge_code = Column(String(50), nullable=False)
     awarded_at = Column(DateTime, default=_utcnow)
-    ref_id = Column(Integer, nullable=True)            # 触发该徽章的关联对象
+    ref_id = Column(Integer, nullable=True)  # 触发该徽章的关联对象
 
 
 class CapstoneChain(Base):
@@ -94,8 +98,8 @@ class CapstoneChain(Base):
     code = Column(String(50), nullable=False, unique=True)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    skill_tags = Column(JSON, default=list)            # ["numpy", "pandas", ...]
-    xp_reward = Column(Integer, nullable=False, default=50)   # 链完成额外奖励 XP
+    skill_tags = Column(JSON, default=list)  # ["numpy", "pandas", ...]
+    xp_reward = Column(Integer, nullable=False, default=50)  # 链完成额外奖励 XP
     cert_level_id = Column(Integer, nullable=True, index=True)  # 关联认证等级（F3 触发）
     is_active = Column(Boolean, default=True)
 
@@ -104,16 +108,14 @@ class CapstoneTask(Base):
     """任务链内单个任务。"""
 
     __tablename__ = "capstone_tasks"
-    __table_args__ = (
-        UniqueConstraint("chain_id", "seq", name="uq_capstone_task_seq"),
-    )
+    __table_args__ = (UniqueConstraint("chain_id", "seq", name="uq_capstone_task_seq"),)
 
     id = Column(Integer, primary_key=True, index=True)
     chain_id = Column(Integer, ForeignKey("capstone_chains.id"), nullable=False, index=True)
-    seq = Column(Integer, nullable=False)              # 1..N 顺序
+    seq = Column(Integer, nullable=False)  # 1..N 顺序
     title = Column(String(200), nullable=False)
-    scenario = Column(Text, nullable=False)            # 场景描述（讲"为什么做"）
-    test_cases = Column(JSON, default=list)            # 评分测试用例（复用 CodeGrader）
+    scenario = Column(Text, nullable=False)  # 场景描述（讲"为什么做"）
+    test_cases = Column(JSON, default=list)  # 评分测试用例（复用 CodeGrader）
     xp_reward = Column(Integer, nullable=False, default=10)  # 单任务通过 XP
     pass_threshold = Column(Float, nullable=False, default=70.0)
 
@@ -122,9 +124,7 @@ class CapstoneAttempt(Base):
     """任务提交/评分记录 — 沙箱执行结果即证据。"""
 
     __tablename__ = "capstone_attempts"
-    __table_args__ = (
-        UniqueConstraint("user_id", "task_id", name="uq_capstone_attempt_once"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "task_id", name="uq_capstone_attempt_once"),)
 
     id = Column(Integer, primary_key=True, index=True)
     task_id = Column(Integer, ForeignKey("capstone_tasks.id"), nullable=False, index=True)
@@ -132,7 +132,7 @@ class CapstoneAttempt(Base):
     status = Column(String(16), nullable=False, default="pending")  # pending/completed/failed
     score = Column(Float, nullable=True)
     passed = Column(Boolean, nullable=True)
-    output = Column(Text, nullable=True)               # 沙箱 stdout/结果证据
+    output = Column(Text, nullable=True)  # 沙箱 stdout/结果证据
     started_at = Column(DateTime, default=_utcnow)
     completed_at = Column(DateTime, nullable=True)
 
@@ -143,10 +143,10 @@ class DailyChallenge(Base):
     __tablename__ = "daily_challenges"
 
     id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date, nullable=False, unique=True)   # 某天一个挑战
-    task = Column(Text, nullable=False)                # 任务描述
+    date = Column(Date, nullable=False, unique=True)  # 某天一个挑战
+    task = Column(Text, nullable=False)  # 任务描述
     test_cases = Column(JSON, default=list)
-    xp_reward = Column(Integer, nullable=False, default=20)   # 双倍发放=reward*2
+    xp_reward = Column(Integer, nullable=False, default=20)  # 双倍发放=reward*2
     is_active = Column(Boolean, default=True)
 
 

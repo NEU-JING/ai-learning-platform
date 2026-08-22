@@ -3,13 +3,13 @@
 前后端契约唯一真相源。
 """
 
-from datetime import date, datetime
+from datetime import date
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-
 # ── Gamification ────────────────────────────────────────────────────────────
+
 
 class GamificationSummary(BaseModel):
     total_xp: int = 0
@@ -31,13 +31,14 @@ class DailyChallengeSubmitRequest(BaseModel):
 
 class DailyChallengeSubmitResponse(BaseModel):
     xp_awarded: int = 0
-    status: str              # passed / failed / already_submitted / not_found
+    status: str  # passed / failed / already_submitted / not_found
     passed: bool = False
     score: Optional[float] = None
     feedback: Optional[str] = None
 
 
 # ── Capstone chain ──────────────────────────────────────────────────────────
+
 
 class CapstoneChainItem(BaseModel):
     id: int
@@ -60,7 +61,7 @@ class CapstoneSubmitRequest(BaseModel):
 
 
 class CapstoneSubmitResponse(BaseModel):
-    status: str              # passed / failed / chain_inactive / not_found / already_passed
+    status: str  # passed / failed / chain_inactive / not_found / already_passed
     task_id: int
     passed: bool = False
     xp_awarded: int = 0

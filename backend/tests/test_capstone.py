@@ -120,3 +120,16 @@ class TestSequentialLock:
         assert r["status"] == "locked"
         assert "前面" in r["feedback"]
         assert test_db.query(XpEvent).filter_by(user_id=user.id).count() == 0
+
+
+class TestFirstTaskBoundary:
+    def test_first_task_allowed_without_prev(self, test_db):
+        """首任务(seq=1)无前置 → 可直接正常提交（reviewer 建议补的边界测试）。"""
+        user = _make_user(test_db)
+        chain = _make_chain(test_db)
+        task1 = test_db.query(CapstoneTask).filter_by(chain_id=chain.id, seq=1).first()
+        with patch("app.services.capstone._grade",
+                   return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"}):
+            r = capstone.submit_task(test_db, user.id, task1.id, "code")
+        assert r["status"] == "passed"
+        assert r["xp_awarded"] == 10

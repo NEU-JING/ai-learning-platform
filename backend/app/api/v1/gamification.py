@@ -40,6 +40,7 @@ router = APIRouter()
 
 # ── Gamification ────────────────────────────────────────────────────────────
 
+
 @router.get("/gamification/me", response_model=GamificationSummary)
 def get_gamification_me(
     current_user: User = Depends(get_current_active_user),
@@ -71,7 +72,9 @@ def get_today_challenge(
     return challenge
 
 
-@router.post("/gamification/daily-challenge/today/submit", response_model=DailyChallengeSubmitResponse)
+@router.post(
+    "/gamification/daily-challenge/today/submit", response_model=DailyChallengeSubmitResponse
+)
 def submit_today_challenge(
     body: DailyChallengeSubmitRequest,
     current_user: User = Depends(get_current_active_user),
@@ -100,6 +103,7 @@ def submit_today_challenge(
 
 # ── Capstone chain ──────────────────────────────────────────────────────────
 
+
 @router.get("/capstone/chains", response_model=list[CapstoneChainItem])
 def list_chains(
     current_user: User = Depends(get_current_active_user),
@@ -125,7 +129,9 @@ def get_next_task(
     return CapstoneNextTaskResponse(chain_id=chain_id, has_next=True, task=task_item)
 
 
-@router.post("/capstone/chains/{chain_id}/tasks/{task_id}/submit", response_model=CapstoneSubmitResponse)
+@router.post(
+    "/capstone/chains/{chain_id}/tasks/{task_id}/submit", response_model=CapstoneSubmitResponse
+)
 def submit_chain_task(
     chain_id: int,
     task_id: int,
