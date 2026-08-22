@@ -124,8 +124,27 @@ class LabService:
                 db.add(progress)
             db.commit()
 
-        # 8. Auto-refresh skill radar scores when lab is passed
+        # 8. Lab 通过 → 游戏化 XP/徽章 + L1 自动发证判定 + 技能雷达刷新
         if grading_result["passed"]:
+            # 游戏化（best-effort，不阻塞提交）
+            try:
+                from app.services import gamification as gm
+
+                gm.award_xp(db, user_id, "lab_passed", "lab", lab.id, xp=gm.LAB_XP)
+                gm.award_badge(db, user_id, "first_lab", ref_id=lab.id)
+            except Exception:
+                pass
+            # L1 自动发证（事件驱动）
+            try:
+                from app.models import Chapter
+                from app.services.certificate_hooks import maybe_auto_certify_on_lab_pass
+
+                chapter = db.query(Chapter).filter(Chapter.id == lab.chapter_id).first()
+                if chapter and chapter.course_id:
+                    maybe_auto_certify_on_lab_pass(db, user_id, chapter.course_id)
+            except Exception:
+                pass
+            # 技能雷达（原逻辑）
             try:
                 SkillRadarService.refresh_skill_scores(user_id, db)
             except Exception:

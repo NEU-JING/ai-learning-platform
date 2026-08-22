@@ -335,3 +335,34 @@ class TestSeedDataIdempotency:
         assert (
             ch_count_after == ch_count_before
         ), f"Phase 1 chapters changed after reinit: {ch_count_before} → {ch_count_after}"
+
+
+class TestGamificationSchema:
+    """Phase 4: gamified-learning tables must be present after create_all."""
+
+    def test_gamification_tables_created(self, test_db):
+        from sqlalchemy import inspect
+
+        tables = set(inspect(test_db.get_bind()).get_table_names())
+        required = {
+            "xp_events",
+            "user_xp",
+            "badges",
+            "user_badges",
+            "capstone_chains",
+            "capstone_tasks",
+            "capstone_attempts",
+            "daily_challenges",
+            "daily_challenge_attempts",
+        }
+        missing = required - tables
+        assert not missing, f"Gamification tables missing: {sorted(missing)}"
+
+    def test_no_enterprise_tables_remain(self, test_db):
+        """产品定位回归学习体验：企业端表不得存在。"""
+        from sqlalchemy import inspect
+
+        tables = set(inspect(test_db.get_bind()).get_table_names())
+        assert "employers" not in tables
+        assert "profile_cache" not in tables
+        assert "verification_codes" not in tables

@@ -23,6 +23,7 @@ from app.api.v1 import (
     sandbox,
     skills,
     tutor,
+    gamification,
 )
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db, init_db
@@ -136,6 +137,11 @@ async def lifespan(app: FastAPI):
         from app.data.skill_dimensions import seed_skill_dimensions
 
         seed_skill_dimensions(db)
+        # Phase 4: seed badges + daily challenges (idempotent)
+        from app.data.gamification_seed import seed_badges, seed_daily_challenges
+
+        seed_badges(db)
+        seed_daily_challenges(db)
     finally:
         db.close()
     print("✅ 数据库初始化完成（数据契约校验通过）")
@@ -250,6 +256,7 @@ app.include_router(recommendations.router, prefix="/api/v1", tags=["个性化推
 app.include_router(paths.router, prefix="/api/v1/paths", tags=["学习路径"])
 app.include_router(tutor.router, prefix="/api/v1", tags=["AI导师"])
 app.include_router(sandbox.router, prefix="/api/v1/sandbox", tags=["沙箱"])
+app.include_router(gamification.router, prefix="/api/v1", tags=["游戏化"])
 
 
 @app.get("/", response_class=HTMLResponse)

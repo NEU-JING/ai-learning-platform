@@ -57,6 +57,14 @@
 
 ---
 
+### grader legacy 逐行 exec 限制
+
+**现象**：`grade_in_sandbox` 的 legacy `test_cases`（str 断言脚本）按行 `exec` 生成测试，若一行内包含多行构造（for 循环体、函数定义等）无法正确计分。
+**原因**：`_build_legacy_grading_script` 逐行 split/exec，语句块被拆散。
+**预防措施**：每日挑战/任务链的 test_cases 用**单行断言**（`assert fn(...) == ...`），不要写多行块；评分用 `len(test_results)` 而非 `len(test_cases)`（str 会按字符数低估）。
+
+---
+
 ## 环境怪癖
 
 | 怪癖 | 影响 | 处理方式 |

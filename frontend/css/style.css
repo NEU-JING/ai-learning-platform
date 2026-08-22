@@ -834,3 +834,48 @@ body {
     background: var(--border-color);
     margin: 0.5rem 0;
 }
+
+/* ── Phase 4 游戏化组件 ─────────────────────────────── */
+.gamification-panel {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  padding: 16px 20px; background: var(--card-bg, #1e293b);
+  border: 1px solid var(--border-color); border-radius: var(--radius-md, 12px);
+  margin-bottom: 20px;
+}
+.gamification-panel .gp-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 220px; }
+.gp-level { font-size: 1.6rem; font-weight: 800; color: var(--bg-primary, #38bdf8); }
+.gp-xpbar { flex: 1; height: 8px; background: var(--border-color); border-radius: 99px; overflow: hidden; }
+.gp-xpbar-fill { height: 100%; background: linear-gradient(90deg, #38bdf8, #818cf8); border-radius: 99px; }
+.gp-xp { font-weight: 700; color: var(--text-primary); }
+.gp-streak { font-size: 0.85rem; color: #fb7185; font-weight: 600; }
+.gp-badges { display: flex; gap: 6px; font-size: 1.2rem; }
+.gp-empty { color: var(--text-muted); font-size: 0.85rem; }
+
+.daily-challenge { padding: 18px 20px; border: 1px dashed var(--border-color);
+  border-radius: var(--radius-md, 12px); margin-bottom: 24px; background: rgba(56,189,248,0.05); }
+.dc-title { margin: 0 0 6px; color: var(--text-primary); }
+.dc-xp { color: #f59e0b; font-size: 0.85rem; }
+.dc-task { color: var(--text-secondary); margin: 0 0 12px; }
+.dc-code { width: 100%; min-height: 90px; background: var(--card-bg, #0f172a);
+  color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px;
+  font-family: ui-monospace, monospace; font-size: 0.85rem; margin-bottom: 10px; }
+.dc-result { margin-top: 8px; font-size: 0.9rem; }
+
+.chains-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.chain-card { padding: 18px 20px; }
+.chain-card h3 { margin: 0 0 6px; }
+.chain-tags { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.tag { font-size: 0.75rem; padding: 2px 8px; background: var(--border-color); border-radius: 99px; color: var(--text-secondary); }
+.task-box { margin-top: 14px; padding: 14px; border: 1px solid var(--border-color); border-radius: 10px; }
+.task-title { font-weight: 700; margin-bottom: 4px; }
+.task-code { width: 100%; min-height: 110px; margin: 10px 0; background: var(--card-bg, #0f172a);
+  color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px;
+  font-family: ui-monospace, monospace; font-size: 0.82rem; }
+.chain-result { margin-top: 10px; }
+.chain-ok, .chain-done { color: var(--success, #10b981); font-weight: 600; }
+.chain-fail { color: var(--danger, #ef4444); font-weight: 600; }
+.chain-result-pending { color: var(--text-muted); }
+.evidence-card { margin-top: 14px; padding: 14px; border: 1px solid var(--border-color); border-radius: 10px; }
+.evidence-card h4 { margin: 0 0 10px; }
+.evidence-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.evidence-table th, .evidence-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border-color); }

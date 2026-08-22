@@ -3,12 +3,20 @@
  * 横向时间线 + 环形进度 + 暗色统计卡片
  */
 
+import { renderGamificationPanel } from '../components/GamificationPanel.js';
+
 export default async function Progress() {
   const store = window.$store;
   await store?.dispatch('fetchProgress');
 
   let learningPath = [];
   let stats = {};
+  let gamification = null;
+  try {
+    gamification = await window.$api.gamification.me();
+  } catch (e) {
+    gamification = null;
+  }
 
   try {
     learningPath = await window.$api.progress.getLearningPath();
@@ -96,6 +104,8 @@ export default async function Progress() {
       </nav>
 
       <div class="container">
+        <!-- Gamification panel (Phase 4) -->
+        ${gamification ? `<div class="gamification-slot">${renderGamificationPanel(gamification)}</div>` : ''}
         <!-- Hero stats row -->
         <div class="stats-hero">
           <div class="stats-hero-main">

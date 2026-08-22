@@ -262,6 +262,24 @@ export const API = {
     delete: (id) => client.delete(`/discussions/${id}`),
     createComment: (id, content, parentId) => client.post(`/discussions/${id}/comments`, { content, parent_id: parentId }),
     like: (id) => client.post(`/discussions/${id}/like`)
+  },
+
+  // 游戏化相关（Phase 4）
+  gamification: {
+    me: () => client.get('/gamification/me'),
+    badges: () => client.get('/gamification/badges'),
+    todayChallenge: () => client.get('/gamification/daily-challenge/today'),
+    submitChallenge: (code) =>
+      client.post('/gamification/daily-challenge/today/submit', { code })
+  },
+
+  // 任务链（Phase 4）
+  capstone: {
+    chains: () => client.get('/capstone/chains'),
+    nextTask: (chainId) => client.get(`/capstone/chains/${chainId}/next`),
+    submitTask: (chainId, taskId, code) =>
+      client.post(`/capstone/chains/${chainId}/tasks/${taskId}/submit`, { code }),
+    evidence: (chainId) => client.get(`/capstone/chains/${chainId}/evidence`)
   }
 };
 
