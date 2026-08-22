@@ -119,6 +119,13 @@ def submit_task(
         result["chain_completed"] = True
         result["chain_xp"] = chain.xp_reward if cxp["awarded"] else 0
         gm.award_badge(db, user_id, "chain_complete", ref_id=chain.id)
+        # 触发关联认证等级判定（best-effort）
+        try:
+            from app.services.certificate_hooks import maybe_auto_certify_on_chain_complete
+
+            maybe_auto_certify_on_chain_complete(db, user_id, chain)
+        except Exception:
+            pass
 
     return result
 

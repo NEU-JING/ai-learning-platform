@@ -21,6 +21,9 @@ from app.models import (
 # 每累计 LEVEL_XP 点 XP 升一级
 LEVEL_XP = 100
 
+# 各行为 XP 奖励（点数）
+LAB_XP = 20             # 单个 Lab 通过
+
 
 def _get_or_create_user_xp(db: Session, user_id: int) -> UserXp:
     row = db.query(UserXp).filter(UserXp.user_id == user_id).first()
