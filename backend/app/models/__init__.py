@@ -403,6 +403,17 @@ from app.models.tutor import (  # noqa: E402, F401 — T12: Tutor module
     TutorSession,
 )
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
+from app.models.gamification import (  # noqa: E402, F401 — Phase 4: gamified learning
+    Badge,
+    CapstoneAttempt,
+    CapstoneChain,
+    CapstoneTask,
+    DailyChallenge,
+    DailyChallengeAttempt,
+    UserBadge,
+    UserXp,
+    XpEvent,
+)
 
 __all__ = [
     "Base",
@@ -425,7 +436,6 @@ __all__ = [
     "LearningPathModule",
     # V4 additions
     "UserProfile",
-    "ProfileCache",
     # V4 Path module
     "PathTemplate",
     "UserPath",
@@ -447,13 +457,19 @@ __all__ = [
     "CertificationApplication",
     "Certificate",
     "CapstoneSubmission",
-    # Employer module
-    "Employer",
-    "VerificationCode",
-    "EmployerApiLog",
     # Sandbox module
     "ExecutionRequest",
     "ExternalExecution",
     "VerificationTask",
     "SandboxProvider",
+    # Phase 4: gamified learning
+    "XpEvent",
+    "UserXp",
+    "Badge",
+    "UserBadge",
+    "CapstoneChain",
+    "CapstoneTask",
+    "CapstoneAttempt",
+    "DailyChallenge",
+    "DailyChallengeAttempt",
 ]
