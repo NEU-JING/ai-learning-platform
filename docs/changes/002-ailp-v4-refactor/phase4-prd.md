@@ -1,7 +1,7 @@
 # PRD: Phase 4 验证深度加强层 v1.1（游戏化 + 任务链 + 证据自动沉淀）
 
 > **变更 ID**: 002-ailp-v4-refactor（增量 Phase 4，对应 PRD Sprint 6 重构）
-> **版本**: 1.1（v1.0 的 Capstone 模板提交设计已废弃，v1.1 改为混合方案）
+> **版本**: 1.2（v1.0 的 Capstone 模板提交已废弃；v1.1 的人工抽检已废弃 → v1.2 信任优先，证据来自行为）
 > **日期**: 2026-08-18
 > **流程级别**: Standard（Incremental Delivery，沿用 phase2/phase3 模式）
 > **前置**: AILP-V4-PRD-重构版.md §10.3（Sprint 6）、Phase 1-3 验收完成
@@ -48,9 +48,8 @@ Phase 1-3 交付了 "Lab 判题 → 证书" 链路，但存在三个缺口：
 | 用户角色 | 特征 | 核心诉求 |
 |---------|------|---------|
 | 学习者 | 完成模块 Lab 的学员 | 学得爽、有反馈、有成就感 |
-| 深度用户 | 想冲高级认证的学员 | 有舞台证明"会做项目"，但不想写文档 |
-| 雇主/验证方 | 用验证码查证书的人 | 看到项目级证据 + 成长轨迹，不是"做题截图" |
-| 平台运营 | AILP 管理员 | 评审可控、防作弊、可审计 |
+| 深度用户 | 想挑战真实问题的学员 | 有舞台练真本事，但不想写文档 |
+| 持续学习者 | 长期在平台刷能力的人 | 打卡、成长曲线、看得见的进步 |
 
 ## 4. 核心功能点
 
@@ -71,9 +70,8 @@ Phase 1-3 交付了 "Lab 判题 → 证书" 链路，但存在三个缺口：
   - 任务类型：写函数/跑通脚本/修正 bug/小模型训练跑通/配置完成（复用 sandbox 执行）
   - 每个任务 = 场景描述（2-3 句，讲"为什么做"）+ 产出要求（可运行的成果物）+ 自动评分（grader 扩展/自定义评分器）
 - **即时反馈**：提交 → 自动评分 → 通过/不通过 + 提示，马上知道对错
-- **证据卡自动生成**：任务链完成 → 系统自动聚合（代码片段、运行结果、各任务评分、耗时、时间戳）成一张项目证据卡，**用户零整理**
-- **防作弊**：评分通过记录 + 高分/可疑项按比例抽检人工复核（评审池），抽检不通过回收认证
-- **人工评审（轻量）**：仅抽检复核，不再要求用户提交长篇文档
+- **证据卡自动生成**：任务链完成 → 系统自动聚合（代码片段、运行结果、各任务评分、耗时、时间戳）成一张项目证据卡，**用户零整理，零人工评审**
+- **信任来源**：证据即沙箱真实执行记录（代码跑过、结果可复现），行为级可信——**不设人工抽检/评审池**（YAGNI：MVP 阶段无作弊规模问题，上线后 analytics 出现信号再补机制）
 
 ### F3: L1 认证自动化（P0）—— 扩展触发条件
 
@@ -125,10 +123,9 @@ user_badges(user_id, badge_id, awarded_at, ref_id)      -- 发放记录（create
 -- 任务链
 capstone_chains(id, code UNIQUE, title, description, skill_tags JSON, is_active)
 capstone_tasks(id, chain_id FK, seq, title, scenario, grader_ref, pass_threshold, xp_reward)
-capstone_attempts(id, task_id FK, user_id, status, score, output, started_at, completed_at)  -- 提交/评分
-submission_reviews(id, attempt_id FK, reviewer_type, reviewer_id, verdict, note, reviewed_at) -- 人工抽检
+capstone_attempts(id, task_id FK, user_id, status, score, output, started_at, completed_at)  -- 提交/评分（沙箱执行记录即证据）
 
--- 证据/挑战（v1.0 的 capstone_projects/capstone_submissions 表设计废弃）
+-- 挑战（v1.0 的 capstone_projects/capstone_submissions 表设计废弃；无人工评审表）
 challenge_attempts(id, challenge_id FK, user_id, status, metrics JSON, started_at, completed_at)
 ```
 
@@ -148,14 +145,14 @@ challenge_attempts(id, challenge_id FK, user_id, status, metrics JSON, started_a
 | 周活跃学习率（每日挑战参与率） | ≥ 50% | 挑战参与 / 活跃用户 |
 | 任务链完成率 | ≥ 60% | 完成链 / 启动链 |
 | L1 自动化发证覆盖率 | 100% | 审计：发证全自动 |
-| 认证误发/作弊回收率 | ≤ 1% | 抽检不通过 / 发证总数 |
 | 用户零整理负担 | 100% | 证据卡全自动生成，无手动上传入口 |
 
 ## 9. 不做的事（Non-Goals）
 
 - **不做** v1.0 的 Capstone 模板文档提交（已废弃）
+- **不做** 人工抽检/评审池（信任优先，证据来自沙箱执行；YAGNI）
 - **不做** 排行榜（P1 后置）、付费门槛、惩罚性机制（扣 XP/降级）
-- **不做** Sprint 7 课程演进、Sprint 8 雇主端、Docker 升级
+- **不做** Sprint 7 课程演进、Docker 升级
 - **不做** AI 评审的模型训练（复用 llm_router 通用推理）
 - **不做** 区块链证书
 
@@ -169,4 +166,3 @@ challenge_attempts(id, challenge_id FK, user_id, status, metrics JSON, started_a
 
 1. **每日挑战的题库来源**：人工预设（P0 先小批量）vs LLM 生成（后置）？建议 P0 人工预设 10+ 题起步
 2. **XP 等级门槛**：是否有偏好（如 1-10 级、每级递增），还是让 Design 阶段定？
-3. **人工抽检比例**：默认 5% 抽检 + 可疑自动进池（如满分/秒过），是否有异议？
