@@ -128,6 +128,10 @@ async function submitTask(container, chainId, taskId, idx) {
       result.innerHTML = `
         <div class="chain-ok">✅ 通过！${res.xp_awarded ? `+${res.xp_awarded} XP` : ''}${res.chain_completed ? ' · 🏆 任务链完成!' : ''}</div>`;
       await loadTask(container, chainId);  // 解锁下一个 or 完成
+    } else if (res.status === 'already_passed') {
+      result.innerHTML = '<div class="chain-ok">✅ 该任务已通过</div>';
+    } else if (res.status === 'locked') {
+      result.innerHTML = `<div class="chain-fail">🔒 ${esc(res.feedback || '请先完成前面的任务')}</div>`;
     } else {
       result.innerHTML = `<div class="chain-fail">❌ 未通过${res.feedback ? `: ${esc(res.feedback)}` : ''}</div>`;
     }

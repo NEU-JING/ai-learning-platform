@@ -123,3 +123,19 @@ class TestGamificationSummary:
         assert summary["level"] == 1
         assert summary["badges"] == ["first_lab"]
         assert "daily_streak" in summary
+
+class TestDailyChallengeRetry:
+    def test_failed_then_retry_passed_awards_xp(self, test_db):
+        """首次失败、重试通过 → 正常发双倍 XP；重复通过不再发。"""
+        user = _make_user(test_db)
+        today = datetime.date.today()
+        c = DailyChallenge(date=today, task="重试", xp_reward=20)
+        test_db.add(c)
+        test_db.commit()
+        gm.submit_daily_challenge(test_db, user.id, c.id, passed=False)
+        assert test_db.query(XpEvent).count() == 0
+        r = gm.submit_daily_challenge(test_db, user.id, c.id, passed=True)
+        assert r["xp_awarded"] == 40
+        r2 = gm.submit_daily_challenge(test_db, user.id, c.id, passed=True)
+        assert r2["xp_awarded"] == 0
+        assert test_db.query(XpEvent).count() == 1

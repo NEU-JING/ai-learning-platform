@@ -9,6 +9,12 @@ const BADGE_META = {
   streak_7: { icon: '🔥', label: '连击7天' },
 };
 
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 export function renderGamificationPanel(g) {
   if (!g) return '';
   const levelXp = g.level * 100;           // 当前级门槛
@@ -16,8 +22,8 @@ export function renderGamificationPanel(g) {
   const inLevel = Math.min(100, Math.round(((g.total_xp - levelBase) / 100) * 100));
   const badges = (g.badges && g.badges.length)
     ? g.badges.map((b) => {
-        const meta = BADGE_META[b] || { icon: '🏅', label: b };
-        return `<span class="gp-badge" title="${meta.label}">${meta.icon}</span>`;
+        const meta = BADGE_META[b] || { icon: '🏅', label: esc(b) };
+        return `<span class="gp-badge" title="${esc(meta.label)}">${meta.icon}</span>`;
       }).join('')
     : '<span class="gp-empty">暂无徽章</span>';
   return `
@@ -39,7 +45,7 @@ export function renderDailyChallenge(c, xp = 20) {
   return `
     <div class="daily-challenge">
       <h3 class="dc-title">🎯 今日挑战 <span class="dc-xp">+${xp * 2} XP</span></h3>
-      <p class="dc-task">${c.task}</p>
+      <p class="dc-task">${esc(c.task)}</p>
       <textarea class="dc-code" rows="4" placeholder="在这里写代码..."></textarea>
       <button class="btn btn-primary btn-sm dc-submit">提交</button>
       <div class="dc-result muted"></div>

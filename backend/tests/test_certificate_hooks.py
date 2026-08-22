@@ -71,3 +71,17 @@ class TestChainCompleteTrigger:
             triggered = hooks.maybe_auto_certify_on_chain_complete(test_db, user.id, chain)
         assert triggered == []
         mock_eval.assert_not_called()
+
+class TestApplicationIdempotency:
+    def test_skips_when_approved_application_exists(self, test_db):
+        """同等级已有 approved application → 不重复评估（防累积）。"""
+        from app.models.certification import CertificationApplication
+
+        user = _make_user(test_db)
+        level = _make_level(test_db, [10])
+        test_db.add(CertificationApplication(user_id=user.id, level_id=level.id, status="approved"))
+        test_db.commit()
+        with patch("app.services.certificate.CertificateService.auto_evaluate_l1") as mock_eval:
+            triggered = hooks.maybe_auto_certify_on_lab_pass(test_db, user.id, course_id=10)
+        assert triggered == []
+        mock_eval.assert_not_called()

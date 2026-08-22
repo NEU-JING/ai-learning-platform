@@ -107,3 +107,16 @@ class TestChainCompletion:
             capstone.submit_task(test_db, user.id, tasks[0].id, "code")
         nxt2 = capstone.get_next_task(test_db, user.id, chain.id)
         assert nxt2["seq"] == 2
+
+class TestSequentialLock:
+    def test_cannot_skip_to_later_task(self, test_db):
+        """跳过前置任务直接提交后续任务 → 被拒绝（locked），不发 XP。"""
+        user = _make_user(test_db)
+        chain = _make_chain(test_db)
+        task3 = test_db.query(CapstoneTask).filter_by(chain_id=chain.id, seq=3).first()
+        with patch("app.services.capstone._grade",
+                   return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"}):
+            r = capstone.submit_task(test_db, user.id, task3.id, "code")
+        assert r["status"] == "locked"
+        assert "前面" in r["feedback"]
+        assert test_db.query(XpEvent).filter_by(user_id=user.id).count() == 0

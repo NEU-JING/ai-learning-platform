@@ -8,6 +8,7 @@
 
 import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -22,7 +23,7 @@ from app.models import (
 LEVEL_XP = 100
 
 # 各行为 XP 奖励（点数）
-LAB_XP = 20             # 单个 Lab 通过
+LAB_XP = 20  # 单个 Lab 通过
 
 
 def _get_or_create_user_xp(db: Session, user_id: int) -> UserXp:
@@ -61,7 +62,12 @@ def award_xp(
     row.level = new_level
 
     db.add(XpEvent(user_id=user_id, action=action, ref_type=ref_type, ref_id=ref_id, xp=xp))
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError:
+        # 并发下另一请求已插入同一幂等事件 → 不双发、不抛 500
+        db.rollback()
+        return {"awarded": False, "level_ups": []}
 
     level_ups = list(range(old_level + 1, new_level + 1)) if new_level > old_level else []
     db.commit()
@@ -70,22 +76,24 @@ def award_xp(
 
 def award_badge(db: Session, user_id: int, badge_code: str, ref_id: int | None = None) -> bool:
     """发放徽章（幂等）。返回是否本次新发放。"""
-    exists = (
-        db.query(UserBadge)
-        .filter_by(user_id=user_id, badge_code=badge_code)
-        .first()
-    )
+    exists = db.query(UserBadge).filter_by(user_id=user_id, badge_code=badge_code).first()
     if exists is not None:
         return False
     db.add(UserBadge(user_id=user_id, badge_code=badge_code, ref_id=ref_id))
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return False
     return True
 
 
-def submit_daily_challenge(
-    db: Session, user_id: int, challenge_id: int, passed: bool
-) -> dict:
-    """提交每日挑战（upsert 打卡记录）。通过则发双倍 XP（幂等）。"""
+def submit_daily_challenge(db: Session, user_id: int, challenge_id: int, passed: bool) -> dict:
+    """提交每日挑战（upsert 打卡记录）。通过则发双倍 XP（幂等）。
+
+    幂等语义：同一用户+挑战 首次通过发 XP，重复提交不再发。
+    失败后重试通过 → 视为首次通过，正常发放（不因之前失败错过双倍奖）。
+    """
     challenge = db.query(DailyChallenge).filter(DailyChallenge.id == challenge_id).first()
     if challenge is None:
         return {"xp_awarded": 0, "status": "not_found"}
@@ -95,21 +103,20 @@ def submit_daily_challenge(
         .filter_by(user_id=user_id, challenge_id=challenge_id)
         .first()
     )
-    if attempt is not None:
-        # 已提交过：不重复发 XP（retry 通过但已记过）
+    if attempt is None:
+        attempt = DailyChallengeAttempt(user_id=user_id, challenge_id=challenge_id, passed=False)
+        db.add(attempt)
+    elif attempt.passed:
+        # 已通过过：幂等，不重复发
         return {"xp_awarded": 0, "status": "already_submitted"}
 
-    db.add(
-        DailyChallengeAttempt(
-            user_id=user_id, challenge_id=challenge_id, passed=passed
-        )
-    )
+    attempt.passed = passed
     db.commit()
 
     if not passed:
         return {"xp_awarded": 0, "status": "failed"}
 
-    # 双倍 XP：reward * 2
+    # 首次通过 → 双倍 XP（award_xp 唯一约束保证重试/并发不双发）
     result = award_xp(
         db, user_id, "daily_challenge", "daily_challenge", challenge_id, xp=challenge.xp_reward * 2
     )
@@ -143,10 +150,7 @@ def _get_daily_streak(db: Session, user_id: int) -> int:
 def get_user_gamification(db: Session, user_id: int) -> dict:
     """汇总用户游戏化状态，供前端展示。"""
     xp_row = db.query(UserXp).filter(UserXp.user_id == user_id).first()
-    badges = [
-        b.badge_code
-        for b in db.query(UserBadge).filter(UserBadge.user_id == user_id).all()
-    ]
+    badges = [b.badge_code for b in db.query(UserBadge).filter(UserBadge.user_id == user_id).all()]
     return {
         "total_xp": xp_row.total_xp if xp_row else 0,
         "level": xp_row.level if xp_row else 1,

@@ -8,11 +8,9 @@
 from sqlalchemy.orm import Session
 
 from app.models import (
-    Badge,
     CapstoneAttempt,
     CapstoneChain,
     CapstoneTask,
-    XpEvent,
 )
 from app.services import gamification as gm
 from app.services.grader import CodeGrader
@@ -23,8 +21,13 @@ def list_chains(db: Session, only_active: bool = True) -> list[dict]:
     if only_active:
         query = query.filter(CapstoneChain.is_active.is_(True))
     return [
-        {"id": c.id, "code": c.code, "title": c.title, "description": c.description,
-         "skill_tags": c.skill_tags or []}
+        {
+            "id": c.id,
+            "code": c.code,
+            "title": c.title,
+            "description": c.description,
+            "skill_tags": c.skill_tags or [],
+        }
         for c in query.all()
     ]
 
@@ -41,18 +44,19 @@ def get_tasks(db: Session, chain_id: int) -> list[dict]:
         .all()
     )
     return [
-        {"id": t.id, "seq": t.seq, "title": t.title, "scenario": t.scenario,
-         "test_cases": t.test_cases or []}
+        {
+            "id": t.id,
+            "seq": t.seq,
+            "title": t.title,
+            "scenario": t.scenario,
+            "test_cases": t.test_cases or [],
+        }
         for t in tasks
     ]
 
 
 def _is_task_passed(db: Session, user_id: int, task_id: int) -> bool:
-    a = (
-        db.query(CapstoneAttempt)
-        .filter_by(user_id=user_id, task_id=task_id)
-        .first()
-    )
+    a = db.query(CapstoneAttempt).filter_by(user_id=user_id, task_id=task_id).first()
     return a is not None and bool(a.passed)
 
 
@@ -81,21 +85,29 @@ def submit_task(
         return {"status": "chain_inactive"}
 
     # 幂等：已通过不重复评分/发 XP
-    already = (
-        db.query(CapstoneAttempt)
-        .filter_by(user_id=user_id, task_id=task_id)
-        .first()
-    )
+    already = db.query(CapstoneAttempt).filter_by(user_id=user_id, task_id=task_id).first()
     if already is not None and already.passed:
         return {"status": "already_passed"}
+
+    # 顺序强制：前置任务必须全部通过，否则跳过前置直接提交是被拒绝的
+    _prev = (
+        db.query(CapstoneTask)
+        .filter(CapstoneTask.chain_id == task.chain_id, CapstoneTask.seq < task.seq)
+        .all()
+    )
+    for pt in _prev:
+        if not _is_task_passed(db, user_id, pt.id):
+            return {
+                "status": "locked",
+                "task_id": task_id,
+                "feedback": "请先完成前面的任务再继续",
+            }
 
     # 自动评分（mockable：测试注入）
     grading = _grade(db, user_id, task, code, timeout)
     passed = bool(grading["passed"]) and float(grading["score"]) >= float(task.pass_threshold)
 
-    attempt = already or CapstoneAttempt(
-        user_id=user_id, task_id=task_id, started_at=_now()
-    )
+    attempt = already or CapstoneAttempt(user_id=user_id, task_id=task_id, started_at=_now())
     attempt.status = "completed" if passed else "failed"
     attempt.score = float(grading["score"])
     attempt.passed = passed
@@ -115,7 +127,9 @@ def submit_task(
     # 链是否全完成
     if get_next_task(db, user_id, task.chain_id) is None:
         chain = get_chain(db, task.chain_id)
-        cxp = gm.award_xp(db, user_id, "chain_completed", "capstone_chain", chain.id, xp=chain.xp_reward)
+        cxp = gm.award_xp(
+            db, user_id, "chain_completed", "capstone_chain", chain.id, xp=chain.xp_reward
+        )
         result["chain_completed"] = True
         result["chain_xp"] = chain.xp_reward if cxp["awarded"] else 0
         gm.award_badge(db, user_id, "chain_complete", ref_id=chain.id)
@@ -142,9 +156,7 @@ def get_evidence_card(db: Session, user_id: int, chain_id: int) -> dict | None:
         return None
     tasks = get_tasks(db, chain_id)
     attempts = {
-        t["id"]: db.query(CapstoneAttempt)
-        .filter_by(user_id=user_id, task_id=t["id"])
-        .first()
+        t["id"]: db.query(CapstoneAttempt).filter_by(user_id=user_id, task_id=t["id"]).first()
         for t in tasks
     }
     items = []

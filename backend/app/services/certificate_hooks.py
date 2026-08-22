@@ -6,7 +6,12 @@
 
 from sqlalchemy.orm import Session
 
-from app.models import Certificate, CertificationLevel, CapstoneChain
+from app.models import (
+    CapstoneChain,
+    Certificate,
+    CertificationApplication,
+    CertificationLevel,
+)
 
 
 def has_level_cert(db: Session, user_id: int, level_id: int) -> bool:
@@ -18,10 +23,31 @@ def has_level_cert(db: Session, user_id: int, level_id: int) -> bool:
     )
 
 
+def _has_approved_application(db: Session, user_id: int, level_id: int) -> bool:
+    """同等级是否已有 approved 申请（避免同一必修触发时累积多条 application）。"""
+    return (
+        db.query(CertificationApplication)
+        .filter(
+            CertificationApplication.user_id == user_id,
+            CertificationApplication.level_id == level_id,
+            CertificationApplication.status == "approved",
+        )
+        .first()
+        is not None
+    )
+
+
+def _is_already_evaluated(db: Session, user_id: int, level_id: int) -> bool:
+    """已持证或已有 approved 申请 → 无需再自动评估。"""
+    return has_level_cert(db, user_id, level_id) or _has_approved_application(db, user_id, level_id)
+
+
 def _active_levels_requiring_course(db: Session, course_id: int) -> list:
     return [
         level
-        for level in db.query(CertificationLevel).filter(CertificationLevel.is_active.is_(True)).all()
+        for level in db.query(CertificationLevel)
+        .filter(CertificationLevel.is_active.is_(True))
+        .all()
         if course_id in (level.required_courses or [])
     ]
 
@@ -30,7 +56,7 @@ def maybe_auto_certify_on_lab_pass(db: Session, user_id: int, course_id: int) ->
     """Lab 通过后触发：若该 course 属某活跃等级的必修，则评估该等级。返回新评估的 level_id 列表。"""
     evaluated = []
     for level in _active_levels_requiring_course(db, course_id):
-        if has_level_cert(db, user_id, level.id):  # 幂等
+        if _is_already_evaluated(db, user_id, level.id):  # 幂等：已持证/已有 approved 申请
             continue
         from app.services.certificate import CertificateService
 
@@ -44,7 +70,7 @@ def maybe_auto_certify_on_chain_complete(db: Session, user_id: int, chain: Capst
     """任务链完成后触发：若关联某认证等级，则评估。幂等。"""
     if not chain.cert_level_id:
         return []
-    if has_level_cert(db, user_id, chain.cert_level_id):
+    if _is_already_evaluated(db, user_id, chain.cert_level_id):  # 幂等
         return []
     from app.services.certificate import CertificateService
 
