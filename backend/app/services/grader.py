@@ -82,7 +82,9 @@ class CodeGrader:
 
         # 5. Compute score
         passed_count = sum(1 for t in test_results if t.get("passed"))
-        total = len(test_cases)
+        # 注意：test_cases 可能是 str（legacy 断言脚本），len() 会算字符数
+        # → 以解析出的 test_results 数量为准，避免评分低估
+        total = len(test_results)
         score = round((passed_count / total) * 100, 1) if total > 0 else 0.0
         passed = passed_count == total and score >= 60
 
