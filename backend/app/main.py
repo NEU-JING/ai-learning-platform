@@ -137,6 +137,11 @@ async def lifespan(app: FastAPI):
         from app.data.skill_dimensions import seed_skill_dimensions
 
         seed_skill_dimensions(db)
+        # Phase 4: seed badges + daily challenges (idempotent)
+        from app.data.gamification_seed import seed_badges, seed_daily_challenges
+
+        seed_badges(db)
+        seed_daily_challenges(db)
     finally:
         db.close()
     print("✅ 数据库初始化完成（数据契约校验通过）")

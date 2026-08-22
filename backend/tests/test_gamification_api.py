@@ -31,19 +31,13 @@ class TestGamificationAPI:
         resp = client.get("/api/v1/gamification/me")
         assert resp.status_code in (401, 403)
 
-    def test_today_challenge_404_when_none(self, client, test_db):
+    def test_today_challenge_found_seeded(self, client, test_db):
+        """启动 seed 后，今日挑战必然存在（题库自动填充）。"""
         headers = _auth_user(test_db)
-        resp = client.get("/api/v1/gamification/daily-challenge/today", headers=headers)
-        assert resp.status_code == 404
-
-    def test_today_challenge_found(self, client, test_db):
-        headers = _auth_user(test_db)
-        test_db.add(DailyChallenge(date=datetime.date.today(), task="写个函数",
-                                   test_cases=[], xp_reward=20))
-        test_db.commit()
         resp = client.get("/api/v1/gamification/daily-challenge/today", headers=headers)
         assert resp.status_code == 200
-        assert resp.json()["task"] == "写个函数"
+        assert resp.json()["task"]  # 非空
+        assert resp.json()["xp_reward"] > 0
 
 
 class TestCapstoneAPI:
