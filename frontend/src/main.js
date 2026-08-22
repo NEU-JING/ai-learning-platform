@@ -171,6 +171,12 @@ const routes = [
     requiresAuth: true
   },
   {
+    path: '/capstone',
+    component: () => import('./views/CapstoneView.js'),
+    title: '挑战',
+    requiresAuth: true
+  },
+  {
     path: '/discussions',
     component: () => import('./views/Discussion.js'),
     title: '讨论区'
