@@ -23,6 +23,7 @@ from app.api.v1 import (
     sandbox,
     skills,
     tutor,
+    gamification,
 )
 from app.core.config import settings
 from app.core.database import SessionLocal, get_db, init_db
@@ -250,6 +251,7 @@ app.include_router(recommendations.router, prefix="/api/v1", tags=["个性化推
 app.include_router(paths.router, prefix="/api/v1/paths", tags=["学习路径"])
 app.include_router(tutor.router, prefix="/api/v1", tags=["AI导师"])
 app.include_router(sandbox.router, prefix="/api/v1/sandbox", tags=["沙箱"])
+app.include_router(gamification.router, prefix="/api/v1", tags=["游戏化"])
 
 
 @app.get("/", response_class=HTMLResponse)
