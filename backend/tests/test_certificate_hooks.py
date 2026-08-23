@@ -2,7 +2,7 @@
 
 from unittest.mock import patch
 
-from app.models import CertificationLevel, Certificate, User
+from app.models import Certificate, CertificationLevel, User
 from app.services import certificate_hooks as hooks
 
 
@@ -15,8 +15,9 @@ def _make_user(db, username="cert1"):
 
 
 def _make_level(db, required_courses, code="L1"):
-    level = CertificationLevel(name=code, required_courses=required_courses,
-                               min_average_score=70.0, is_active=True)
+    level = CertificationLevel(
+        name=code, required_courses=required_courses, min_average_score=70.0, is_active=True
+    )
     db.add(level)
     db.commit()
     db.refresh(level)
@@ -27,8 +28,10 @@ class TestLabPassTrigger:
     def test_triggers_evaluation_for_level_requiring_course(self, test_db):
         user = _make_user(test_db)
         level = _make_level(test_db, [10])  # course 10
-        with patch("app.services.certificate.CertificateService.auto_evaluate_l1",
-                   return_value={"status": "approved"}) as mock_eval:
+        with patch(
+            "app.services.certificate.CertificateService.auto_evaluate_l1",
+            return_value={"status": "approved"},
+        ) as mock_eval:
             triggered = hooks.maybe_auto_certify_on_lab_pass(test_db, user.id, course_id=10)
         assert triggered == [level.id]
         mock_eval.assert_called_once()
@@ -58,8 +61,10 @@ class TestChainCompleteTrigger:
         user = _make_user(test_db)
         level = _make_level(test_db, [])
         chain = type("Chain", (), {"cert_level_id": level.id})()
-        with patch("app.services.certificate.CertificateService.auto_evaluate_l1",
-                   return_value={"status": "approved"}) as mock_eval:
+        with patch(
+            "app.services.certificate.CertificateService.auto_evaluate_l1",
+            return_value={"status": "approved"},
+        ) as mock_eval:
             triggered = hooks.maybe_auto_certify_on_chain_complete(test_db, user.id, chain)
         assert triggered == [level.id]
         mock_eval.assert_called_once()
@@ -71,6 +76,7 @@ class TestChainCompleteTrigger:
             triggered = hooks.maybe_auto_certify_on_chain_complete(test_db, user.id, chain)
         assert triggered == []
         mock_eval.assert_not_called()
+
 
 class TestApplicationIdempotency:
     def test_skips_when_approved_application_exists(self, test_db):

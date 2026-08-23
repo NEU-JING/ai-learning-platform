@@ -1,7 +1,7 @@
 # Sandbox module models
 # Tables: execution_requests, external_executions, verification_tasks, sandbox_providers
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.models import Base, _utcnow

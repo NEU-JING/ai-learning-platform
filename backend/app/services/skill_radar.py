@@ -115,7 +115,7 @@ class SkillRadarService:
         Returns a dict matching the SkillRadarResponse schema:
         {
             "user_id": 1,
-            "skills": {"python": {"score": 85, "label": "Python基础", "trend": "+15", "highlighted": false}, ...},
+            "skills": {"python": {"score": 85, "label": "Python基础", "trend": "+15", "highlighted": false}, ...},  # noqa: E501
             "overall_score": 45.2,
             "weakest": ["llm", "engineering"],
             "strongest": ["python", "math"],

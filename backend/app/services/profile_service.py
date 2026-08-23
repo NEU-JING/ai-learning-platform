@@ -12,14 +12,6 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 
-from app.models import (
-    Chapter,
-    Course,
-    LabSubmission,
-    LearningProgress,
-    User,
-    UserSettings,
-)
 from app.models.user_profile import UserProfile
 from app.schemas.analytics import AnalyticsEventCreate
 from app.schemas.profile import ProfileSettingsUpdate
@@ -151,21 +143,32 @@ class ProfileService:
 
         # ── Analytics events (MAJOR fix: extracted helper) ─────────────────
         self._emit_settings_events(
-            db=db, user_id=user_id, username=username,
-            is_now_public=profile.is_public, was_public=was_public,
-            prev_dimensions=prev_dimensions, profile=profile,
-            update_data=update_data, request_info=request_info,
+            db=db,
+            user_id=user_id,
+            username=username,
+            is_now_public=profile.is_public,
+            was_public=was_public,
+            prev_dimensions=prev_dimensions,
+            profile=profile,
+            update_data=update_data,
+            request_info=request_info,
         )
 
         return self.get_settings(db, user_id, username, avatar_url)
 
     def _emit_settings_events(
-        self, db: Session, user_id: int, username: str,
-        is_now_public: bool, was_public: bool,
-        prev_dimensions: dict, profile: UserProfile,
-        update_data: dict, request_info: dict | None,
+        self,
+        db: Session,
+        user_id: int,
+        username: str,
+        is_now_public: bool,
+        was_public: bool,
+        prev_dimensions: dict,
+        profile: UserProfile,
+        update_data: dict,
+        request_info: dict | None,
     ) -> None:
-        """Emit analytics events for settings changes (MAJOR fix: extracted from update_settings)."""
+        """Emit analytics events for settings changes (MAJOR fix: extracted from update_settings)."""  # noqa: E501
         # profile_enabled: is_public transitioned false→true
         if is_now_public and not was_public:
             self._emit_event(
@@ -246,7 +249,6 @@ class ProfileService:
         logger.info("profile_batch_action user_id=%s action=%s", user_id, action)
 
         return self.get_settings(db, user_id, username, avatar_url)
-
 
 
 profile_service = ProfileService()

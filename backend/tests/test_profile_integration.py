@@ -33,7 +33,6 @@ from app.models import (
     Course,
     Lab,
     LabSubmission,
-    LearningProgress,
     User,
 )
 from app.models.user_profile import UserProfile
@@ -144,6 +143,7 @@ PUBLIC_URL = "/api/v1/profile/{username}"
 class TestAC1FullVisibility:
     """AC1: All dimensions visible → visitor sees complete profile."""
 
+
 # ════════════════════════════════════════════════════════════════════════════
 # AC2: Partial visibility — hidden dimensions excluded
 # ════════════════════════════════════════════════════════════════════════════
@@ -151,6 +151,7 @@ class TestAC1FullVisibility:
 
 class TestAC2PartialVisibility:
     """AC2: Some dimensions hidden → hidden fields null, others normal."""
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # AC3: First-time enable — all dimensions auto-set to true
@@ -213,6 +214,7 @@ class TestAC4AdjustAndPreview:
 class TestAC5AllDimensionsHidden:
     """AC5: All dimensions hidden → only username + AILP branding."""
 
+
 # ════════════════════════════════════════════════════════════════════════════
 # AC6: Nonexistent user → 404
 # ════════════════════════════════════════════════════════════════════════════
@@ -220,6 +222,7 @@ class TestAC5AllDimensionsHidden:
 
 class TestAC6NonexistentUser:
     """AC6: Username does not exist → 404 with proper message."""
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # AC7: Profile not enabled → 403
@@ -229,6 +232,7 @@ class TestAC6NonexistentUser:
 class TestAC7ProfileNotEnabled:
     """AC7: User exists but profile not enabled → 403."""
 
+
 # ════════════════════════════════════════════════════════════════════════════
 # AC8: Zero labs / zero certs — empty state display
 # ════════════════════════════════════════════════════════════════════════════
@@ -236,6 +240,7 @@ class TestAC7ProfileNotEnabled:
 
 class TestAC8ZeroData:
     """AC8: User with no labs/certs sees empty state."""
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # AC9: Large dataset — labs_total reflects full count
@@ -245,6 +250,7 @@ class TestAC8ZeroData:
 class TestAC9LargeDataset:
     """AC9: User with many labs — labs_total accurate, data complete."""
 
+
 # ════════════════════════════════════════════════════════════════════════════
 # AC10: OG tags — social media preview (tested in test_profile_frontend.py)
 # ════════════════════════════════════════════════════════════════════════════
@@ -252,6 +258,7 @@ class TestAC9LargeDataset:
 
 class TestAC10OGTags:
     """AC10: OG meta tags present for public profile (API-level check)."""
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # AC11: Close profile → previously shared link returns 403
@@ -370,6 +377,7 @@ class TestAC12ConcurrentAccess:
 
 class TestFullLifecycle:
     """Complete lifecycle: enable → visit → adjust → preview → close → fail."""
+
 
 # ════════════════════════════════════════════════════════════════════════════
 # Security: Data leakage prevention

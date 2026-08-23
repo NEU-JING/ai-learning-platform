@@ -2,11 +2,10 @@ import asyncio
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy.orm import Session
 
 from app.api.v1 import (
     analytics,
@@ -14,6 +13,7 @@ from app.api.v1 import (
     certificates,
     courses,
     discussions,
+    gamification,
     labs,
     paths,
     profile,
@@ -23,10 +23,9 @@ from app.api.v1 import (
     sandbox,
     skills,
     tutor,
-    gamification,
 )
 from app.core.config import settings
-from app.core.database import SessionLocal, get_db, init_db
+from app.core.database import SessionLocal, init_db
 from app.data.courses import PHASE_TITLES, init_courses_data
 from app.data.courses_phase1 import init_phase1_data
 from app.data.courses_phase2 import init_phase2_data

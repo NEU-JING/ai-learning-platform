@@ -230,6 +230,7 @@ class TestSettingsAPIForFrontend:
 class TestPreviewURL:
     """Preview button opens /p/{username} in new tab."""
 
+
 class TestSettingsResponseSchema:
     """Ensure settings response schema matches what frontend expects."""
 

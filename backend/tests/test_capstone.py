@@ -15,16 +15,30 @@ def _make_user(db, username="chain1"):
 
 
 def _make_chain(db, code="ml-basics", cert_level_id=None):
-    chain = CapstoneChain(code=code, title="ML 入门", description="三个渐进任务",
-                          xp_reward=50, cert_level_id=cert_level_id)
+    chain = CapstoneChain(
+        code=code,
+        title="ML 入门",
+        description="三个渐进任务",
+        xp_reward=50,
+        cert_level_id=cert_level_id,
+    )
     db.add(chain)
     db.commit()
     db.refresh(chain)
     for i, (title, tc) in enumerate(
-        [("写函数", [{"test": "x"}]), ("修 bug", [{"test": "y"}]), ("跑模型", [{"test": "z"}])], start=1
+        [("写函数", [{"test": "x"}]), ("修 bug", [{"test": "y"}]), ("跑模型", [{"test": "z"}])],
+        start=1,
     ):
-        db.add(CapstoneTask(chain_id=chain.id, seq=i, title=title, scenario=f"任务{i}",
-                            test_cases=tc, xp_reward=10))
+        db.add(
+            CapstoneTask(
+                chain_id=chain.id,
+                seq=i,
+                title=title,
+                scenario=f"任务{i}",
+                test_cases=tc,
+                xp_reward=10,
+            )
+        )
     db.commit()
     return chain
 
@@ -34,8 +48,10 @@ class TestSubmitTask:
         user = _make_user(test_db)
         chain = _make_chain(test_db)
         task = test_db.query(CapstoneTask).filter_by(chain_id=chain.id, seq=1).first()
-        with patch("app.services.capstone._grade",
-                   return_value={"passed": True, "score": 90.0, "test_results": [], "feedback": "OK"}):
+        with patch(
+            "app.services.capstone._grade",
+            return_value={"passed": True, "score": 90.0, "test_results": [], "feedback": "OK"},
+        ):
             r = capstone.submit_task(test_db, user.id, task.id, "print('hi')")
         assert r["status"] == "passed"
         assert r["xp_awarded"] == 10
@@ -48,8 +64,10 @@ class TestSubmitTask:
         user = _make_user(test_db)
         chain = _make_chain(test_db)
         task = test_db.query(CapstoneTask).filter_by(chain_id=chain.id, seq=1).first()
-        with patch("app.services.capstone._grade",
-                   return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"}):
+        with patch(
+            "app.services.capstone._grade",
+            return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"},
+        ):
             capstone.submit_task(test_db, user.id, task.id, "code")
             r2 = capstone.submit_task(test_db, user.id, task.id, "code")
         assert r2["status"] == "already_passed"
@@ -59,8 +77,10 @@ class TestSubmitTask:
         user = _make_user(test_db)
         chain = _make_chain(test_db)
         task = test_db.query(CapstoneTask).filter_by(chain_id=chain.id, seq=1).first()
-        with patch("app.services.capstone._grade",
-                   return_value={"passed": False, "score": 30.0, "test_results": [], "feedback": "错"}):
+        with patch(
+            "app.services.capstone._grade",
+            return_value={"passed": False, "score": 30.0, "test_results": [], "feedback": "错"},
+        ):
             r = capstone.submit_task(test_db, user.id, task.id, "wrong")
         assert r["status"] == "failed"
         assert test_db.query(XpEvent).filter_by(user_id=user.id).count() == 0
@@ -71,8 +91,10 @@ class TestSubmitTask:
         user = _make_user(test_db)
         chain = _make_chain(test_db)
         task = test_db.query(CapstoneTask).filter_by(chain_id=chain.id, seq=1).first()
-        with patch("app.services.capstone._grade",
-                   return_value={"passed": False, "score": 10.0, "test_results": [], "feedback": "语法错"}):
+        with patch(
+            "app.services.capstone._grade",
+            return_value={"passed": False, "score": 10.0, "test_results": [], "feedback": "语法错"},
+        ):
             r = capstone.submit_task(test_db, user.id, task.id, "bad(")
         assert r["feedback"] == "语法错"
 
@@ -81,9 +103,16 @@ class TestChainCompletion:
     def test_completing_all_tasks_triggers_chain_xp_and_evidence(self, test_db):
         user = _make_user(test_db)
         chain = _make_chain(test_db)
-        tasks = test_db.query(CapstoneTask).filter_by(chain_id=chain.id).order_by(CapstoneTask.seq).all()
-        with patch("app.services.capstone._grade",
-                   return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"}):
+        tasks = (
+            test_db.query(CapstoneTask)
+            .filter_by(chain_id=chain.id)
+            .order_by(CapstoneTask.seq)
+            .all()
+        )
+        with patch(
+            "app.services.capstone._grade",
+            return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"},
+        ):
             last = None
             for t in tasks:
                 last = capstone.submit_task(test_db, user.id, t.id, "code")
@@ -101,12 +130,20 @@ class TestChainCompletion:
         chain = _make_chain(test_db)
         nxt = capstone.get_next_task(test_db, user.id, chain.id)
         assert nxt["seq"] == 1
-        tasks = test_db.query(CapstoneTask).filter_by(chain_id=chain.id).order_by(CapstoneTask.seq).all()
-        with patch("app.services.capstone._grade",
-                   return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"}):
+        tasks = (
+            test_db.query(CapstoneTask)
+            .filter_by(chain_id=chain.id)
+            .order_by(CapstoneTask.seq)
+            .all()
+        )
+        with patch(
+            "app.services.capstone._grade",
+            return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"},
+        ):
             capstone.submit_task(test_db, user.id, tasks[0].id, "code")
         nxt2 = capstone.get_next_task(test_db, user.id, chain.id)
         assert nxt2["seq"] == 2
+
 
 class TestSequentialLock:
     def test_cannot_skip_to_later_task(self, test_db):
@@ -114,8 +151,10 @@ class TestSequentialLock:
         user = _make_user(test_db)
         chain = _make_chain(test_db)
         task3 = test_db.query(CapstoneTask).filter_by(chain_id=chain.id, seq=3).first()
-        with patch("app.services.capstone._grade",
-                   return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"}):
+        with patch(
+            "app.services.capstone._grade",
+            return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"},
+        ):
             r = capstone.submit_task(test_db, user.id, task3.id, "code")
         assert r["status"] == "locked"
         assert "前面" in r["feedback"]
@@ -128,8 +167,10 @@ class TestFirstTaskBoundary:
         user = _make_user(test_db)
         chain = _make_chain(test_db)
         task1 = test_db.query(CapstoneTask).filter_by(chain_id=chain.id, seq=1).first()
-        with patch("app.services.capstone._grade",
-                   return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"}):
+        with patch(
+            "app.services.capstone._grade",
+            return_value={"passed": True, "score": 100.0, "test_results": [], "feedback": "OK"},
+        ):
             r = capstone.submit_task(test_db, user.id, task1.id, "code")
         assert r["status"] == "passed"
         assert r["xp_awarded"] == 10

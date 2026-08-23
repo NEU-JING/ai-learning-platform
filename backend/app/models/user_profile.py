@@ -5,7 +5,7 @@
 
 import json
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy import JSON, Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.models import Base, _utcnow

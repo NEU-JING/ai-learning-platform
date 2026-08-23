@@ -2,8 +2,6 @@
 
 import datetime
 
-import pytest
-
 from app.models import (
     Badge,
     DailyChallenge,
@@ -75,8 +73,9 @@ class TestDailyChallenge:
         user = _make_user(test_db)
         today = datetime.date.today()
         c_today = DailyChallenge(date=today, task="今天", xp_reward=20)
-        c_yesterday = DailyChallenge(date=today - datetime.timedelta(days=1),
-                                     task="昨天", xp_reward=20)
+        c_yesterday = DailyChallenge(
+            date=today - datetime.timedelta(days=1), task="昨天", xp_reward=20
+        )
         test_db.add_all([c_today, c_yesterday])
         test_db.commit()
         gm.submit_daily_challenge(test_db, user.id, c_today.id, passed=True)
@@ -89,8 +88,9 @@ class TestDailyChallenge:
         user = _make_user(test_db)
         today = datetime.date.today()
         c_today = DailyChallenge(date=today, task="今天", xp_reward=20)
-        c_2days_ago = DailyChallenge(date=today - datetime.timedelta(days=2),
-                                     task="前天", xp_reward=20)
+        c_2days_ago = DailyChallenge(
+            date=today - datetime.timedelta(days=2), task="前天", xp_reward=20
+        )
         test_db.add_all([c_today, c_2days_ago])
         test_db.commit()
         gm.submit_daily_challenge(test_db, user.id, c_today.id, passed=True)
@@ -123,6 +123,7 @@ class TestGamificationSummary:
         assert summary["level"] == 1
         assert summary["badges"] == ["first_lab"]
         assert "daily_streak" in summary
+
 
 class TestDailyChallengeRetry:
     def test_failed_then_retry_passed_awards_xp(self, test_db):

@@ -2,11 +2,10 @@
 
 import json
 
-import pytest
 from fastapi import status
 
-
 # ── S2: Layer A — Local execution (AC38) ────────────────────────────────────
+
 
 class TestLayerAExecute:
     """AC38: POST /api/v1/sandbox/execute — Layer A local subprocess execution."""
@@ -122,6 +121,7 @@ class TestLayerAExecute:
 
 # ── S3: Layer B — External resource submission (AC39) ────────────────────────
 
+
 class TestLayerBExternalSubmit:
     """AC39: POST /api/v1/sandbox/external/submit — Layer B external resource."""
 
@@ -146,9 +146,11 @@ class TestLayerBExternalSubmit:
         # Verify DB
         from app.models import ExternalExecution
 
-        ext = test_db.query(ExternalExecution).filter(
-            ExternalExecution.id == data["submission_id"]
-        ).first()
+        ext = (
+            test_db.query(ExternalExecution)
+            .filter(ExternalExecution.id == data["submission_id"])
+            .first()
+        )
         assert ext is not None
         assert ext.provider == "kaggle"
         assert ext.status == "queued"
@@ -181,6 +183,7 @@ class TestLayerBExternalSubmit:
 
 
 # ── S4: Layer C — Verification engine (AC40-AC41) ────────────────────────────
+
 
 class TestLayerCVerify:
     """AC40-AC41: POST /api/v1/sandbox/verify — Verification engine."""
@@ -263,6 +266,7 @@ class TestLayerCVerify:
 
 # ── S5: Hybrid flow completion (AC42) ────────────────────────────────────────
 
+
 class TestHybridComplete:
     """AC42: POST /api/v1/sandbox/complete — Hybrid flow completion marker."""
 
@@ -323,6 +327,7 @@ class TestHybridComplete:
 
 
 # ── S6: Provider health check ─────────────────────────────────────────────────
+
 
 class TestProviderHealthCheck:
     """S6: GET /api/v1/sandbox/providers — Provider health check."""

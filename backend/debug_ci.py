@@ -1,4 +1,5 @@
 """Debug CI failure - replicate test_auth + test_certification + test_code_review sequence."""
+
 import os
 from unittest.mock import AsyncMock, patch
 
@@ -9,6 +10,7 @@ os.environ["DISABLE_DOCKER_SANDBOX"] = "1"
 
 # Force complete reimport
 import sys
+
 # Remove cached modules
 for mod in list(sys.modules.keys()):
     if "app" in mod and "app.main" in mod:
@@ -19,10 +21,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.database import get_db, Base
+from app.core.database import Base, get_db
 from app.core.security import create_access_token, get_password_hash
 from app.main import app
-from app.models import User, JobSkillRequirement, PathTemplate, SkillDimension, UserSkillSnapshot
+from app.models import User
 from app.services.llm_router import LLMRouter
 
 # Setup fresh engine
@@ -67,13 +69,16 @@ try:
             yield db
         finally:
             pass
+
     app.dependency_overrides[get_db] = override_get_db
 
-    with patch("app.core.database.init_db"), \
-         patch("app.core.database.SessionLocal"), \
-         patch("app.main.SessionLocal"), \
-         patch("app.main._assert_data_contract"), \
-         patch.object(LLMRouter, "chat", new_callable=AsyncMock) as mock_llm:
+    with (
+        patch("app.core.database.init_db"),
+        patch("app.core.database.SessionLocal"),
+        patch("app.main.SessionLocal"),
+        patch("app.main._assert_data_contract"),
+        patch.object(LLMRouter, "chat", new_callable=AsyncMock) as mock_llm,
+    ):
 
         mock_llm.return_value = {
             "content": '{"issues": [], "dimensions": {"correctness": 80, "efficiency": 75, "readability": 70, "style": 60, "best_practices": 75}, "overall_score": 72.0, "summary": "Mock review"}',

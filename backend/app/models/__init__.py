@@ -377,6 +377,17 @@ from app.models.certification import (  # noqa: E402, F401 — T16: Certificatio
     CertificationApplication,
     CertificationLevel,
 )
+from app.models.gamification import (  # noqa: E402, F401 — Phase 4: gamified learning
+    Badge,
+    CapstoneAttempt,
+    CapstoneChain,
+    CapstoneTask,
+    DailyChallenge,
+    DailyChallengeAttempt,
+    UserBadge,
+    UserXp,
+    XpEvent,
+)
 from app.models.path import (  # noqa: E402, F401 — V4 Path module
     PathCourse,
     PathMilestone,
@@ -403,17 +414,6 @@ from app.models.tutor import (  # noqa: E402, F401 — T12: Tutor module
     TutorSession,
 )
 from app.models.user_profile import UserProfile  # noqa: E402, F401 — V4: public profile settings
-from app.models.gamification import (  # noqa: E402, F401 — Phase 4: gamified learning
-    Badge,
-    CapstoneAttempt,
-    CapstoneChain,
-    CapstoneTask,
-    DailyChallenge,
-    DailyChallengeAttempt,
-    UserBadge,
-    UserXp,
-    XpEvent,
-)
 
 __all__ = [
     "Base",

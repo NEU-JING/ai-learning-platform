@@ -1,14 +1,17 @@
 """Gamification & Capstone chain API tests (Phase 4 F1/F2)."""
 
-import datetime
-
 from app.core.security import create_access_token, get_password_hash
-from app.models import CapstoneChain, CapstoneTask, DailyChallenge, User
+from app.models import CapstoneChain, User
 
 
 def _auth_user(test_db, username="gamapi"):
-    user = User(username=username, email=f"{username}@x.com",
-                password_hash=get_password_hash("Pass1234"), role="student", is_active=True)
+    user = User(
+        username=username,
+        email=f"{username}@x.com",
+        password_hash=get_password_hash("Pass1234"),
+        role="student",
+        is_active=True,
+    )
     test_db.add(user)
     test_db.commit()
     test_db.refresh(user)

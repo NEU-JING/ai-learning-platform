@@ -5,11 +5,12 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-
 # ── Layer A: Execute ──────────────────────────────────────────────────────────
+
 
 class ExecuteRequest(BaseModel):
     """AC38: Code execution request."""
+
     lab_id: Optional[int] = None
     code: str = Field(..., min_length=1, max_length=100000)
     language: str = Field(default="python", max_length=16)
@@ -18,6 +19,7 @@ class ExecuteRequest(BaseModel):
 
 class ExecuteResult(BaseModel):
     """Execution result from subprocess."""
+
     output: Optional[str] = None
     exit_code: Optional[int] = None
     execution_time_ms: Optional[int] = None
@@ -26,6 +28,7 @@ class ExecuteResult(BaseModel):
 
 class ExecuteResponse(BaseModel):
     """AC38: Code execution response."""
+
     execution_id: int
     status: str
     result: Optional[ExecuteResult] = None
@@ -36,8 +39,10 @@ class ExecuteResponse(BaseModel):
 
 # ── Layer B: External Submit ──────────────────────────────────────────────────
 
+
 class ExternalSubmitRequest(BaseModel):
     """AC39: External execution submission request."""
+
     lab_id: Optional[int] = None
     provider: str = Field(..., max_length=16)
     notebook_url: Optional[str] = Field(None, max_length=1024)
@@ -46,6 +51,7 @@ class ExternalSubmitRequest(BaseModel):
 
 class ExternalSubmitResponse(BaseModel):
     """AC39: External execution submission response."""
+
     submission_id: int
     status: str
     estimated_wait: Optional[str] = None
@@ -54,8 +60,10 @@ class ExternalSubmitResponse(BaseModel):
 
 # ── Layer C: Verify ───────────────────────────────────────────────────────────
 
+
 class VerifyRequest(BaseModel):
     """AC40-AC41: Verification request."""
+
     execution_request_id: int
     lab_id: Optional[int] = None
     model_url: Optional[str] = Field(None, max_length=1024)
@@ -64,6 +72,7 @@ class VerifyRequest(BaseModel):
 
 class VerifyResponse(BaseModel):
     """AC40-AC41: Verification response."""
+
     verification_id: int
     status: str
     metrics: Optional[Dict[str, Any]] = None
@@ -72,8 +81,10 @@ class VerifyResponse(BaseModel):
 
 # ── S5: Hybrid Complete ──────────────────────────────────────────────────────
 
+
 class CompleteRequest(BaseModel):
     """AC42: Hybrid flow completion request."""
+
     execution_request_id: int
     layers_completed: List[str] = Field(..., min_length=1)
     final_status: str = Field(default="completed", max_length=16)
@@ -81,14 +92,17 @@ class CompleteRequest(BaseModel):
 
 class CompleteResponse(BaseModel):
     """AC42: Hybrid flow completion response."""
+
     status: str
     message: str
 
 
 # ── S6: Provider ─────────────────────────────────────────────────────────────
 
+
 class ProviderResponse(BaseModel):
     """Provider health check response."""
+
     id: int
     name: str
     layer: str

@@ -1,7 +1,11 @@
 """Phase 2 部署验证脚本 — 测试所有关键 API 端点"""
-import json, urllib.request, sys
+
+import json
+import sys
+import urllib.request
 
 BASE = "http://localhost:8000"
+
 
 def api(method, path, data=None, token=None):
     url = f"{BASE}{path}"
@@ -17,6 +21,7 @@ def api(method, path, data=None, token=None):
         return e.code, json.loads(e.read())
     except Exception as e:
         return 0, {"error": str(e)}
+
 
 results = []
 
@@ -45,31 +50,31 @@ print("\n" + "=" * 60)
 print("🔐 认证 & Phase 2 API 验证")
 print("=" * 60)
 
-status, data = api("POST", "/api/v1/auth/register", {
-    "email": "verify_p2@test.com", "username": "verifier_p2", "password": "TestPass123"
-})
+status, data = api(
+    "POST",
+    "/api/v1/auth/register",
+    {"email": "verify_p2@test.com", "username": "verifier_p2", "password": "TestPass123"},
+)
 if status == 200:
     token = data.get("access_token", "")
     print(f"  ✅ 注册成功 (token: {token[:20]}...)")
 else:
     # Try login
-    status, data = api("POST", "/api/v1/auth/login", {
-        "username": "verifier_p2", "password": "TestPass123"
-    })
+    status, data = api(
+        "POST", "/api/v1/auth/login", {"username": "verifier_p2", "password": "TestPass123"}
+    )
     token = data.get("access_token", "")
     print(f"  {'✅' if token else '❌'} 登录 {'成功' if token else '失败'}")
 
 if token:
     # 3. L1 认证申请 (M1)
-    status, data = api("POST", "/api/v1/certifications/apply",
-                       {"level_id": 1}, token=token)
+    status, data = api("POST", "/api/v1/certifications/apply", {"level_id": 1}, token=token)
     ok = status == 200
     results.append(("POST /certifications/apply (L1)", ok))
     print(f"  {'✅' if ok else '❌'} 认证申请 → {status}")
 
     # 4. Tutor session
-    status, data = api("POST", "/api/v1/tutor/sessions",
-                       {"course_id": 1}, token=token)
+    status, data = api("POST", "/api/v1/tutor/sessions", {"course_id": 1}, token=token)
     ok = status == 200
     if ok:
         session_id = data.get("session_id") or data.get("id")
@@ -77,8 +82,12 @@ if token:
         print(f"  {'✅' if ok else '❌'} 创建 Session → session_id={session_id}")
 
         # 5. Tutor chat
-        status, data = api("POST", f"/api/v1/tutor/sessions/{session_id}/messages",
-                           {"content": "Hello tutor"}, token=token)
+        status, data = api(
+            "POST",
+            f"/api/v1/tutor/sessions/{session_id}/messages",
+            {"content": "Hello tutor"},
+            token=token,
+        )
         ok = status == 200
         results.append(("POST /tutor/sessions/{id}/messages", ok))
         print(f"  {'✅' if ok else '❌'} 发送消息 → {status}")
@@ -87,11 +96,12 @@ if token:
         print(f"  ❌ 创建 Session → {status}")
 
     # 6. Code Review (T13)
-    status, data = api("POST", "/api/v1/tutor/code-review", {
-        "lab_id": 1,
-        "code_content": "def add(a, b):\n    return a + b",
-        "language": "python"
-    }, token=token)
+    status, data = api(
+        "POST",
+        "/api/v1/tutor/code-review",
+        {"lab_id": 1, "code_content": "def add(a, b):\n    return a + b", "language": "python"},
+        token=token,
+    )
     ok = status == 200
     results.append(("POST /tutor/code-review (T13)", ok))
     print(f"  {'✅' if ok else '❌'} Code Review → {status}")

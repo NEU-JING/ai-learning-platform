@@ -240,4 +240,8 @@ def test_course(test_db):
 @pytest.fixture(scope="function")
 def test_lab(test_course):
     """Shorthand fixture that returns the lab portion of test_course."""
-    return {"course": test_course["course"], "chapter": test_course["chapter"], "lab": test_course["lab"]}
+    return {
+        "course": test_course["course"],
+        "chapter": test_course["chapter"],
+        "lab": test_course["lab"],
+    }

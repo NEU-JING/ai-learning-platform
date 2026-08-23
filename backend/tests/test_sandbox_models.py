@@ -19,9 +19,19 @@ class TestSandboxModels:
         result = test_db.execute(text("SELECT * FROM execution_requests LIMIT 0"))
         columns = {col[0] for col in result.cursor.description}
         expected = {
-            "id", "user_id", "lab_id", "layer", "code", "language",
-            "resources", "status", "result", "logs",
-            "started_at", "completed_at", "created_at",
+            "id",
+            "user_id",
+            "lab_id",
+            "layer",
+            "code",
+            "language",
+            "resources",
+            "status",
+            "result",
+            "logs",
+            "started_at",
+            "completed_at",
+            "created_at",
         }
         assert expected.issubset(columns), f"Missing: {expected - columns}"
 
@@ -30,8 +40,14 @@ class TestSandboxModels:
         result = test_db.execute(text("SELECT * FROM external_executions LIMIT 0"))
         columns = {col[0] for col in result.cursor.description}
         expected = {
-            "id", "request_id", "provider", "external_job_id",
-            "artifacts", "status", "submitted_at", "completed_at",
+            "id",
+            "request_id",
+            "provider",
+            "external_job_id",
+            "artifacts",
+            "status",
+            "submitted_at",
+            "completed_at",
         }
         assert expected.issubset(columns), f"Missing: {expected - columns}"
 
@@ -40,8 +56,15 @@ class TestSandboxModels:
         result = test_db.execute(text("SELECT * FROM verification_tasks LIMIT 0"))
         columns = {col[0] for col in result.cursor.description}
         expected = {
-            "id", "request_id", "model_url", "dataset",
-            "metrics", "audit_log", "status", "passed", "verified_at",
+            "id",
+            "request_id",
+            "model_url",
+            "dataset",
+            "metrics",
+            "audit_log",
+            "status",
+            "passed",
+            "verified_at",
         }
         assert expected.issubset(columns), f"Missing: {expected - columns}"
 
@@ -50,8 +73,13 @@ class TestSandboxModels:
         result = test_db.execute(text("SELECT * FROM sandbox_providers LIMIT 0"))
         columns = {col[0] for col in result.cursor.description}
         expected = {
-            "id", "name", "layer", "is_healthy",
-            "last_health_check", "failure_count", "config",
+            "id",
+            "name",
+            "layer",
+            "is_healthy",
+            "last_health_check",
+            "failure_count",
+            "config",
         }
         assert expected.issubset(columns), f"Missing: {expected - columns}"
 

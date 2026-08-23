@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -124,6 +124,7 @@ def _execute_code_sync(code: str, timeout: int = 30) -> Dict[str, Any]:
 
 
 # ── Layer A: Local Execution (AC38) ───────────────────────────────────────────
+
 
 def _auto_grade_if_lab(db: Session, lab_id, code: str, exec_result: dict):
     """Auto-grade if the lab has test cases (MAJOR fix: extracted from execute_layer_a)."""
@@ -264,7 +265,9 @@ class SandboxService:
         """
         provider = provider.lower()
         if provider not in SandboxService.VALID_PROVIDERS:
-            raise ValueError(f"Unknown provider: {provider}. Valid: {SandboxService.VALID_PROVIDERS}")
+            raise ValueError(
+                f"Unknown provider: {provider}. Valid: {SandboxService.VALID_PROVIDERS}"
+            )
 
         # Create execution request
         req = ExecutionRequest(
@@ -319,9 +322,7 @@ class SandboxService:
             dict with verification_id, status, metrics, audit.
         """
         # Look up execution request
-        req = db.query(ExecutionRequest).filter(
-            ExecutionRequest.id == execution_request_id
-        ).first()
+        req = db.query(ExecutionRequest).filter(ExecutionRequest.id == execution_request_id).first()
         if req is None:
             raise ValueError(f"Execution request {execution_request_id} not found")
 
@@ -372,9 +373,7 @@ class SandboxService:
         Returns:
             dict with status, message.
         """
-        req = db.query(ExecutionRequest).filter(
-            ExecutionRequest.id == execution_request_id
-        ).first()
+        req = db.query(ExecutionRequest).filter(ExecutionRequest.id == execution_request_id).first()
         if req is None:
             raise ValueError(f"Execution request {execution_request_id} not found")
 
@@ -389,7 +388,7 @@ class SandboxService:
         return {
             "status": "ok",
             "message": f"Hybrid flow {execution_request_id} marked as {final_status}. "
-                       f"Layers completed: {', '.join(layers_completed)}",
+            f"Layers completed: {', '.join(layers_completed)}",
         }
 
     # ── S6: Provider Health ───────────────────────────────────────────────

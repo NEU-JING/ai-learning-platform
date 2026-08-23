@@ -5,6 +5,7 @@ pytest-asyncio>=0.21.0
 httpx>=0.24.0
 
 # Linting & Formatting
-black>=23.0.0
-isort>=5.12.0
+# 版本与 .pre-commit-config.yaml 对齐（防止 pip 浮动装到新版 black 误判格式）
+black==25.1.0
+isort==6.0.1
 ruff==0.15.12

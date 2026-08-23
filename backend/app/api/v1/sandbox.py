@@ -42,11 +42,7 @@ def sandbox_execute(
         response = ExecuteResponse(
             execution_id=result["execution_id"],
             status=result["status"],
-            result=(
-                ExecuteResult(**result["result"])
-                if result.get("result")
-                else None
-            ),
+            result=(ExecuteResult(**result["result"]) if result.get("result") else None),
             score=result.get("score"),
             passed=result.get("passed"),
             feedback=result.get("feedback"),
