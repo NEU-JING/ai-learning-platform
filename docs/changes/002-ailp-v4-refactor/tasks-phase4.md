@@ -43,3 +43,8 @@
 - [ ] 6.1 全量测试（pytest）+ 契约测试
 - [ ] 6.2 post-coding-review 三阶段
 - [ ] 6.3 各模块独立 commit + 推送
+## 7. P1 模块收束（2026-08-23）
+
+- [x] **F5 AI 导师对话记录入库** — 实现时确认 TutorMessage/TutorSession 已持久化（tutor.py 写库），本轮无需重建
+- [x] **F6 技能成长趋势** — 完成（06d6696 feat + 394bccf fix + dc8b22e docs），配 414 测试，post-coding-review 两轮 passed
+- [x] **F4 场景挑战** — **跳过**（YAGNI：每日挑战 + 任务链已覆盖挑战维度，避免新机制过度设计；"时间压力"可能违背"有趣非压力"哲学）
