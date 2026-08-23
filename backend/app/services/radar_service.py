@@ -8,7 +8,7 @@ AC覆盖:
 """
 
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
 from sqlalchemy import desc, func
@@ -236,6 +236,7 @@ class SkillUpdateService:
         dimension_id: int,
         db: Session,
         limit: int = 100,
+        as_of: Optional[datetime] = None,
     ) -> float:
         """Calculate weighted dimension score based on skill events.
 
@@ -246,21 +247,20 @@ class SkillUpdateService:
             dimension_id: The dimension's ID
             db: Database session
             limit: Maximum number of events to consider
+            as_of: Optional cutoff — only count events at or before this time
+                   (used by skill trend: score as of end of a given week)
 
         Returns:
             The calculated dimension score (0-100)
         """
-        events = (
-            db.query(SkillEvent)
-            .filter(
-                SkillEvent.user_id == user_id,
-                SkillEvent.dimension_id == dimension_id,
-                SkillEvent.score_impact.isnot(None),
-            )
-            .order_by(desc(SkillEvent.created_at))
-            .limit(limit)
-            .all()
+        query = db.query(SkillEvent).filter(
+            SkillEvent.user_id == user_id,
+            SkillEvent.dimension_id == dimension_id,
+            SkillEvent.score_impact.isnot(None),
         )
+        if as_of is not None:
+            query = query.filter(SkillEvent.created_at <= as_of)
+        events = query.order_by(desc(SkillEvent.created_at)).limit(limit).all()
 
         if not events:
             return 0.0
@@ -853,3 +853,24 @@ class GapAnalysisService:
         }
 
         return course_mapping.get(dim_slug, [])
+
+
+def get_skill_trend(db: Session, user_id: int, weeks: int = 8) -> list[dict]:
+    """技能成长趋势 — 按周聚合各维度分数（截至每周末）。
+
+    Phase 4 F6: 数据源 = SkillEvent（行为自动记录，零手动打点）。
+    每个时间桶分数 = 截至该周末所有事件的时间衰减加权（与当前雷达同模型，
+    早期事件权重低，曲线反映真实成长而非瞬时波动）。
+    """
+    dims = db.query(SkillDimension).order_by(SkillDimension.id).all()
+    today = date.today()
+    trend: list[dict] = []
+    for i in range(weeks - 1, -1, -1):
+        monday = (today - timedelta(days=today.weekday())) - timedelta(weeks=i)
+        end = monday + timedelta(days=7)  # 该周截止（含该周全部事件）
+        row: dict = {"period": monday.isoformat(), "dimensions": {}}
+        for dim in dims:
+            score = SkillUpdateService.calculate_dimension_score(user_id, dim.id, db, as_of=end)
+            row["dimensions"][dim.slug] = round(score, 1)
+        trend.append(row)
+    return trend

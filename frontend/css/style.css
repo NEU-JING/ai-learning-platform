@@ -879,3 +879,9 @@ body {
 .evidence-card h4 { margin: 0 0 10px; }
 .evidence-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .evidence-table th, .evidence-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid var(--border-color); }
+
+/* ── Phase 4 F6 技能成长趋势 ────────────────────────── */
+.skill-trend { padding: 14px 4px 4px; }
+.trend-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.trend-legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.8rem; color: var(--text-secondary); }
+.trend-legend-item i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }

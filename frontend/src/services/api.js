@@ -280,6 +280,11 @@ export const API = {
     submitTask: (chainId, taskId, code) =>
       client.post(`/capstone/chains/${chainId}/tasks/${taskId}/submit`, { code }),
     evidence: (chainId) => client.get(`/capstone/chains/${chainId}/evidence`)
+  },
+
+  // 技能雷达（Phase 4 F6 趋势）
+  radar: {
+    trend: (weeks = 8) => client.get('/radar/trend', { weeks })
   }
 };
 

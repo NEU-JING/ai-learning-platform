@@ -17,6 +17,12 @@ export default async function Progress() {
   } catch (e) {
     gamification = null;
   }
+  let skillTrend = [];
+  try {
+    skillTrend = await window.$api.radar.trend(8);
+  } catch (e) {
+    skillTrend = [];
+  }
 
   try {
     learningPath = await window.$api.progress.getLearningPath();
@@ -146,6 +152,15 @@ export default async function Progress() {
           ${timelineNodes || '<div class="tl-empty">暂无课程</div>'}
         </div>
 
+        <!-- Skill growth trend (Phase 4 F6) -->
+        <div class="section-header" style="margin-top:2rem;">
+          <h2>📈 技能成长</h2>
+          <span class="section-subtitle">你的技能如何随时间提升</span>
+        </div>
+        ${skillTrend.length && Object.keys(skillTrend[skillTrend.length - 1].dimensions || {}).length
+          ? renderSkillTrend(skillTrend)
+          : '<p class="muted">完成实验即可看到成长曲线</p>'}
+
         <!-- Achievements -->
         <div class="section-header" style="margin-top:2rem;">
           <h2>🏅 成就</h2>
@@ -166,5 +181,31 @@ function achievementCard(icon, title, desc, unlocked) {
       <div class="ach-icon">${unlocked ? icon : '🔒'}</div>
       <div class="ach-title">${title}</div>
       <div class="ach-desc">${unlocked ? desc : '???'}</div>
+    </div>`;
+}
+
+function renderSkillTrend(trend) {
+  const dims = [...new Set(trend.flatMap((t) => Object.keys(t.dimensions || {})))].slice(0, 5);
+  if (!trend.length || !dims.length) return '';
+  const W = 700, H = 210, pad = 34, maxScore = 100;
+  const x = (i) => pad + (i * (W - pad * 2)) / Math.max(trend.length - 1, 1);
+  const y = (s) => H - pad - (Math.min(s, maxScore) / maxScore) * (H - pad * 2);
+  const colors = ['#38bdf8', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
+  const grid = [0, 25, 50, 75, 100].map((g) =>
+    `<line x1="${pad}" y1="${y(g)}" x2="${W - pad}" y2="${y(g)}" stroke="var(--border-color)" stroke-width="1" stroke-dasharray="4 4"/>`
+  ).join('');
+  const polys = dims.map((slug, di) => {
+    const pts = trend.map((t, i) => `${x(i)},${y(t.dimensions?.[slug] ?? 0)}`).join(' ');
+    return `<polyline points="${pts}" fill="none" stroke="${colors[di % 5]}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  }).join('');
+  const legend = dims.map((slug, di) =>
+    `<span class="trend-legend-item"><i style="background:${colors[di % 5]}"></i>${slug}</span>`
+  ).join('');
+  return `
+    <div class="skill-trend">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" width="100%" role="img" aria-label="技能成长曲线">
+        ${grid}${polys}
+      </svg>
+      <div class="trend-legend">${legend}</div>
     </div>`;
 }

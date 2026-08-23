@@ -23,8 +23,9 @@ from app.schemas.skill_radar import (
     RadarGapAnalysisResponse,
     RadarSnapshotCreate,
     RadarSnapshotResponse,
+    SkillTrendPoint,
 )
-from app.services.radar_service import RadarService, SnapshotService
+from app.services.radar_service import RadarService, SnapshotService, get_skill_trend
 
 router = APIRouter()
 
@@ -162,3 +163,17 @@ def gap_analysis(
     )
 
     return result
+
+
+@router.get("/radar/trend", response_model=list[SkillTrendPoint])
+def get_trend(
+    weeks: int = Query(8, ge=1, le=52, description="返回的周数，默认 8"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """技能成长趋势 — Phase 4 F6。
+
+    按周聚合各维度分数（截至每周末），数据源 = SkillEvent（行为自动记录，
+    零手动打点）。成长曲线由浏览器/前端可视化。
+    """
+    return get_skill_trend(db, current_user.id, weeks=weeks)

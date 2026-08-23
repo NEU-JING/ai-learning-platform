@@ -135,3 +135,10 @@ class RadarGapAnalysisResponse(BaseModel):
     gaps: list[SkillGap] = Field(..., description="技能差距列表")
     overall_readiness: float = Field(..., description="整体准备度 0-100")
     estimated_gap_days: int = Field(..., description="预计弥补差距所需天数")
+
+
+class SkillTrendPoint(BaseModel):
+    """单一时间桶的技能各维度分数 — Phase 4 F6 技能趋势。"""
+
+    period: str = Field(..., description="周起始日期，ISO 格式（yyyy-mm-dd）")
+    dimensions: dict[str, float] = Field(..., description="维度 slug → 分数")
