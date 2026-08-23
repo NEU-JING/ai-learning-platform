@@ -65,6 +65,15 @@
 
 ---
 
+### CI 格式工具必须 pin 版本（✓ 已修复 4854399）
+
+**现象**：CI 因 requirements-dev 用浮动版本（pip 装到新发布的 black 26.5.1），与项目 pre-commit/代码的 black 25.1.0 格式标准不符 → 全项目文件（含未改动的历史文件）判需 reformat，CI 全面失败。
+**原因**：black/isort 新版格式规则变化；需求文件用 `>=` 浮动装到最新版。
+**修复方式**：requirements-dev 中 black==25.1.0 + isort==6.0.1（与 .pre-commit-config.yaml 的 rev 对齐），一次性 black reformat 全部历史遗留文件归一到标准。
+**预防措施**：格式工具版本必须与 pre-commit rev 对齐并 `==` pin 死；改代码后本地先跑 `black --check backend/ isort --check-only backend/ ruff check backend/ --select=E,W,F` 验证再提交。
+
+---
+
 ## 环境怪癖
 
 | 怪癖 | 影响 | 处理方式 |
