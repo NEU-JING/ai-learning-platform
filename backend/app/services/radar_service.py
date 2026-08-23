@@ -118,13 +118,18 @@ class SkillUpdateService:
         AC10: Time decay calculation with 90-day half-life.
         Formula: weight = 0.5 ^ (days_passed / half_life_days)
 
-        Args:
-            event_date: The date of the event
-            half_life_days: Number of days for weight to decay to 50%
-            min_weight: Minimum weight to prevent events from having zero impact
-            reference: Optional anchor time. When provided, decay is measured
-                       relative to it (used by skill trend so each week bucket is
-                       scored at its own cutoff, not vs real now). Defaults to now.
+        args:
+                    event_date: The date of the event
+                    half_life_days: Number of days for weight to decay to 50%
+                    min_weight: Minimum weight to prevent events from having zero impact
+                    reference: Optional anchor time. When provided, decay is measured
+                               relative to it (used by skill trend so each week bucket is
+                               scored at its own cutoff, not vs real now). Defaults to now.
+
+                Note: with exponential decay the weighted average is invariant to the
+                anchor UNLESS min_weight clamping triggers (events ≳299 days old for
+                HL=90). In the practical trend window (≤~8 weeks) anchoring is a
+                semantic/safety improvement with no numeric effect.
 
         Returns:
             The decay weight, clamped to min_weight
