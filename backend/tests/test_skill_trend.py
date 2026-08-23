@@ -107,3 +107,23 @@ class TestSkillTrendAPI:
         data = resp.json()
         assert len(data) == 2
         assert "python" in data[-1]["dimensions"]
+
+
+class TestDecayAnchoring:
+    def test_early_bucket_isolates_its_own_week_events(self, test_db):
+        """早期桶只包含截至该周末的事件(as_of 过滤正确)——不放未来的新事件。"""
+        user = _make_user(test_db)
+        dim = _make_dim(test_db, "python")
+        _add_event(test_db, user.id, dim.id, 10.0, 80)  # 早期事件
+        _add_event(test_db, user.id, dim.id, 50.0, 5)  # 近期事件
+        test_db.commit()
+
+        trend = get_skill_trend(test_db, user.id, weeks=13)
+        event_week = (NOW - datetime.timedelta(days=80)).date()
+        event_monday = event_week - datetime.timedelta(days=event_week.weekday())
+        bucket = next((t for t in trend if t["period"] == event_monday.isoformat()), None)
+        assert bucket is not None, "应存在覆盖早期事件周的桶"
+        # 早期桶只含 80 天前那一个事件 → 分数≈10，不应被 50 的近期事件污染
+        assert (
+            abs(bucket["dimensions"]["python"] - 10.0) < 0.5
+        ), f"早期桶分数 {bucket['dimensions']['python']} 应≈10(仅该周事件)"

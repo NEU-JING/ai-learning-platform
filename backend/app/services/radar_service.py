@@ -111,6 +111,7 @@ class SkillUpdateService:
         event_date: datetime,
         half_life_days: int = DEFAULT_HALF_LIFE_DAYS,
         min_weight: float = DEFAULT_MIN_WEIGHT,
+        reference: Optional[datetime] = None,
     ) -> float:
         """Calculate time decay weight for an event.
 
@@ -121,17 +122,22 @@ class SkillUpdateService:
             event_date: The date of the event
             half_life_days: Number of days for weight to decay to 50%
             min_weight: Minimum weight to prevent events from having zero impact
+            reference: Optional anchor time. When provided, decay is measured
+                       relative to it (used by skill trend so each week bucket is
+                       scored at its own cutoff, not vs real now). Defaults to now.
 
         Returns:
             The decay weight, clamped to min_weight
         """
-        now = datetime.now(timezone.utc)
+        ref = reference if reference is not None else datetime.now(timezone.utc)
+        if ref.tzinfo is None:
+            ref = ref.replace(tzinfo=timezone.utc)
 
         # Ensure event_date has timezone info
         if event_date.tzinfo is None:
             event_date = event_date.replace(tzinfo=timezone.utc)
 
-        days_passed = (now - event_date).days
+        days_passed = (ref - event_date).days
 
         # Calculate weight using the formula: 0.5 ^ (days / half_life)
         weight = 0.5 ** (days_passed / half_life_days)
@@ -269,7 +275,9 @@ class SkillUpdateService:
         weight_sum = 0.0
 
         for event in events:
-            weight = SkillUpdateService.calculate_time_decay_weight(event.created_at)
+            weight = SkillUpdateService.calculate_time_decay_weight(
+                event.created_at, reference=as_of
+            )
             weighted_sum += event.score_impact * weight
             weight_sum += weight
 
@@ -867,10 +875,11 @@ def get_skill_trend(db: Session, user_id: int, weeks: int = 8) -> list[dict]:
     trend: list[dict] = []
     for i in range(weeks - 1, -1, -1):
         monday = (today - timedelta(days=today.weekday())) - timedelta(weeks=i)
-        end = monday + timedelta(days=7)  # 该周截止（含该周全部事件）
+        end_dt = datetime.combine(monday + timedelta(days=7), datetime.min.time())
+        # 该周截止（含该周全部事件）；衰减锚定 end_dt，避免早期桶被人为低估
         row: dict = {"period": monday.isoformat(), "dimensions": {}}
         for dim in dims:
-            score = SkillUpdateService.calculate_dimension_score(user_id, dim.id, db, as_of=end)
+            score = SkillUpdateService.calculate_dimension_score(user_id, dim.id, db, as_of=end_dt)
             row["dimensions"][dim.slug] = round(score, 1)
         trend.append(row)
     return trend
