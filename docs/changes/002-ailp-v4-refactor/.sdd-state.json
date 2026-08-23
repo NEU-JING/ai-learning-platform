@@ -2,7 +2,17 @@
   "change_id": "002-ailp-v4-refactor",
   "flow_level": "Standard",
   "current_state": "USER_ACCEPT",
-  "current_phase": "phase_3_accepted",
+  "current_phase": "gamified_accepted",
+  "gamified_phase": {
+    "accepted": true,
+    "merged_via": "PR #24",
+    "merge_commit": "5aa454d134d94411695856f6b4cd40730107156c",
+    "merged_at": "2026-08-22T14:13:07Z",
+    "branch": "phase4/002-ailp-v4-refactor",
+    "review_status": "passed",
+    "tests": "407 passed, 1 skipped",
+    "note": "游戏化学习体验：XP/徽章/每日挑战/任务链/L1自动发证；企业端能力已删除"
+  },
   "phase3_accepted": true,
   "phase3_accepted_at": "2026-06-14T20:00:00+08:00",
   "review_status": "passed",
